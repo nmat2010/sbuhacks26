@@ -26,7 +26,9 @@ The scaffold is marked "Phase 0 complete" in `STATUS.md`, but it has these probl
 7. **Possible ESM `__dirname` bug.** With `"type": "module"`, `__dirname` in `electron/main.ts` may be undefined, depending on vite-plugin-electron's output format. Check this when you first run `npm run dev`.
 8. **The Gemini provider is a stub** that uses the retired `gemini-pro` model. `LLMProvider` has no timeout, retry, daily cap, or Zod validation, and no `llm/prompts/` folder exists.
 9. **Missing pieces:** `demo-pages/`, `TESTING.md`, the `events` table helper (`logEvent`), and the `features/` directory.
-10. **No `nudge.push`.** Phases 3 and 4 need it, but the NudgeQueue belongs to Thu (Phase 1).
+10. ~~No `nudge.push`.~~ **Partly fixed in 85ff9b7 (Thu Phase 1).** `NudgeQueue` now exists, but it has gaps. See Step 0 item 8.
+
+**Status after Thu's 85ff9b7:** items 1–9 are still open. Thu also added more untyped IPC channels (`nudge-*`, `session-control`, `voice-toggle`) and another `__dirname` use.
 
 ---
 
@@ -53,14 +55,20 @@ Agent B runs this on `main`, or Tuan runs it, then posts it to Thu as a contract
 
    Put the engine's `EscalationState` type in `shared/src/schemas/escalation.ts`. Thu's web engine must implement the same type.
 7. Freeze the `requestHints` signature in `shared`: `requestHints(context: HintContext, source: HintSource, assessment: boolean) => Promise<HintResponse>`. Move `HintContext` into shared.
-8. Create stub seams in desktop so A and B can work in parallel:
-   - `desktop/src/main/nudge/index.ts`: `push(nudge)` validates, logs to `nudges` and `events`, and forwards to the overlay over the `nudge:show` IPC channel. Add a `// Thu replaces queue internals` marker.
+8. Connect to Thu's NudgeQueue (`desktop/src/main/nudge/`, merged from main in 85ff9b7). Call `getNudgeQueue().push(nudge)` directly from main-process code. Don't go through the `nudge-push` IPC. Before Agents A and B depend on it, send Thu a Contract Change Proposal asking for these:
+   - **Nudge id plus a response path back.** Today the overlay's `handleButtonClick` only dismisses the bubble, so main never sees the response. Add an `id` to `Nudge`, and have the overlay invoke `nudge-response {id, action}`. The queue then emits `response` so A4 and B3 can log `nudges.user_response`.
+   - **Logging to the database.** The queue writes nothing to the `nudges` or `events` tables. Either Thu adds that, or the queue emits `shown` and we log it on our side.
+   - **Escalation levels 1–2 aren't bubbles.** Glance and "?" need a separate `overlay-state` channel that skips the queue's cooldowns. Right now the `stuck` kind has a 3-minute cooldown, so level 2 gets dropped 45 s after level 1 and the offer never shows.
+   - **Push the rule's reason back to callers.** A dropped nudge returns `false` and is never queued, which is fine. A4 and B2 need to treat `false` as "not shown".
+   - **Cooldowns from settings.** `maxNudgesPerHour` and cooldowns are hardcoded. Read `NUDGE_MAX_PER_HOUR` from settings.
+   - **Voice intents.** Thu's `useVoiceIntents` matches help, dismiss, and close using the browser Web Speech API. That API doesn't work inside Electron, and those aren't the spec's intent words. Agree that B5's intent parser and ElevenLabs STT are the desktop path, and keep Web Speech for the web app only.
+9. Create stub seams in desktop so A and B can work in parallel:
    - `desktop/src/main/stuck/bus.ts`: a typed `EventEmitter` for `StruggleSignal` and `user-input` events.
    - `desktop/src/main/sync/context.ts`: `getLatestPageSummary()` and `requestPageSummary(): Promise<PageSummary|null>`. Agent A implements these.
    - `desktop/src/main/hints/index.ts`: exports `requestHints` and `followup`. Agent B implements these.
    - `desktop/src/main/events.ts`: `logEvent(type, payload)`.
    - `desktop/src/main/settings.ts`: typed `get` and `set` with defaults for every `SettingsKeys` entry.
-9. Commit as `[Phase 0] Contract fix-up`. Add a Contract Change Proposal to `COORDINATION.md` so Thu can acknowledge it.
+10. Commit as `[Phase 0] Contract fix-up`. Add a Contract Change Proposal to `COORDINATION.md` so Thu can acknowledge it.
 
 ---
 
@@ -109,7 +117,8 @@ Order: B1 → B2 → B3 (**M2 ready**) → B5 (needed by Thu's Phase 1 voice, so
 | `StruggleSignal` events | A (A5, A6) | B (B2) | `stuck/bus.ts` |
 | `getLatestPageSummary` / `requestPageSummary` | A (A2) | B (B3) | `sync/context.ts` |
 | `requestHints` / `followup` | B (B3, B4) | A (A8 for the web app) | `hints/index.ts` |
-| `nudge.push` | stub (Thu later) | A4, A9, B2, B3 | `nudge/index.ts` |
+| `getNudgeQueue().push` and `response` event | Thu (exists; response path pending) | A4, A9, B2, B3 | `nudge/index.ts` (Thu's) |
+| Escalation sprite state (L1/L2) | B (B2) | Thu's overlay | `overlay-state` IPC (proposed) |
 | Settings and `logEvent` | Step 0 | both | `settings.ts`, `events.ts` |
 | Plan snapshot for sync | B (B6) | A (A8) | B exports `getPlanSnapshot()`; A uses a stub until it lands |
 
