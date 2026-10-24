@@ -38,8 +38,28 @@ export const FLOW_TEXT = {
   captureFailed: "I couldn't get a look at your screen just now. Try again in a moment.",
   lastHint: "That's the last hint I have for this one. You've got what you need to take the next step.",
   gotIt: 'Great, glad that helped!',
-  failed: "Sorry, I couldn't put a hint together. Please try again in a moment."
+  failed: "Sorry, I couldn't put a hint together. Please try again in a moment.",
+  simpler: 'Explain that more simply, with an everyday analogy.'
 } as const;
+
+/** Bubble action for "Explain more simply" on a Watch-mode explanation. */
+export const EXPLAIN_SIMPLER = 'explain_simpler';
+
+/**
+ * Watch mode (WATCH_MODE.md). When it is on, help requests use what Wolfie has followed this
+ * session instead of a single confirmed screenshot: learning mode gets a direct explanation,
+ * homework mode gets the usual hint ladder with the session as context.
+ */
+export interface WatchHooks {
+  active: () => boolean;
+  mode: () => 'learning' | 'homework' | 'other';
+  /** Session memory as prompt text. */
+  contextText: () => string;
+  /** The newest watcher frame, or a fresh capture (no confirmation needed: Watch-mode consent). */
+  currentFrame: () => Promise<string | null>;
+  /** Answer a question (or, with no question, explain what the student seems stuck on). */
+  explain: (question: string | null) => Promise<{ ok: true; text: string; label: string } | { ok: false; message: string }>;
+}
 
 export interface HintFlowDeps {
   now: () => number;
@@ -72,6 +92,7 @@ export interface HintFlowDeps {
   log: (type: EventType, payload: Record<string, unknown>) => void;
   /** Delay before "Let me take a look..." appears; slow model calls only. */
   thinkingDelayMs?: number;
+  watch?: WatchHooks;
 }
 
 interface Ladder {
@@ -89,6 +110,8 @@ interface Ladder {
 
 export class HintFlow {
   private ladder: Ladder | null = null;
+  /** A Watch-mode explanation on screen (learning mode); it holds offers back like a ladder does. */
+  private explanation: { nudgeId: string | null; lastTouch: number } | null = null;
   private busy = false;
   private confirmedSessions = new Set<string>();
   private unsubs: Array<() => void> = [];
@@ -101,11 +124,15 @@ export class HintFlow {
     const { deps } = this;
     this.unsubs.push(
       deps.bus.on('help-requested', (trigger) => void this.onHelpRequested(trigger)),
-      deps.bus.on('problem-changed', () => this.close('problem_changed')),
+      deps.bus.on('problem-changed', () => {
+        this.close('problem_changed');
+        this.closeExplanation('problem_changed');
+      }),
       deps.onNudgeResponse((r) => this.onResponse(r)),
       deps.onSessionChange(() => {
         this.confirmedSessions.clear();
         this.close('session_changed');
+        this.closeExplanation('session_changed');
       })
     );
   }
@@ -113,10 +140,15 @@ export class HintFlow {
   stop(): void {
     while (this.unsubs.length) this.unsubs.pop()!();
     this.close('stopped');
+    this.closeExplanation('stopped');
   }
 
   hasOpenLadder(): boolean {
     return this.ladder !== null;
+  }
+
+  hasOpenExplanation(): boolean {
+    return this.explanation !== null;
   }
 
   currentLevel(): number {
@@ -131,6 +163,7 @@ export class HintFlow {
   /** Call every few seconds: closes a ladder nobody has touched, so offers can resume. */
   tick(): void {
     if (this.ladder && this.deps.now() - this.ladder.lastTouch > LADDER_IDLE_MS) this.close('idle');
+    if (this.explanation && this.deps.now() - this.explanation.lastTouch > LADDER_IDLE_MS) this.closeExplanation('idle');
   }
 
   /**
@@ -156,6 +189,14 @@ export class HintFlow {
       return;
     }
     if (this.busy) return;
+    if (this.explanation) {
+      // Asking again while an explanation is up: start over with a fresh look
+      this.closeExplanation('replaced');
+    }
+    if (deps.watch?.active() && deps.watch.mode() === 'learning') {
+      await this.explainFromSession(trigger, null);
+      return;
+    }
     this.busy = true;
     deps.setLadderOpen(true);
 
@@ -217,8 +258,28 @@ export class HintFlow {
     } catch {
       summary = null;
     }
-    if (summary && this.isUsable(summary)) {
-      return { ok: true, source: 'page', context: { ...base, pageSummary: summary, problemId: summary.problemId } };
+    const page = summary && this.isUsable(summary) ? summary : null;
+
+    // Watch mode: the session so far plus the current screen, no per-session confirmation
+    if (deps.watch?.active()) {
+      const sessionContext = deps.watch.contextText().slice(0, 8000) || undefined;
+      const frame = await deps.watch.currentFrame().catch(() => null);
+      if (page || frame) {
+        return {
+          ok: true,
+          source: page ? 'page' : 'screen',
+          context: {
+            ...base,
+            sessionContext,
+            ...(page ? { pageSummary: page, problemId: page.problemId } : {}),
+            ...(frame ? { imageDataUrl: frame } : {})
+          }
+        };
+      }
+    }
+
+    if (page) {
+      return { ok: true, source: 'page', context: { ...base, pageSummary: page, problemId: page.problemId } };
     }
 
     const shot = await deps.capture();
@@ -242,8 +303,89 @@ export class HintFlow {
   // ---- Responses ----------------------------------------------------------------------------
 
   private onResponse(response: NudgeResponse): void {
+    if (this.explanation && response.id === this.explanation.nudgeId) {
+      this.applyExplanation(response.action);
+      return;
+    }
     if (!this.ladder || response.id !== this.ladder.nudgeId) return;
     this.apply(response.action);
+  }
+
+  // ---- Watch mode: direct explanations (learning mode) ------------------------------------
+
+  /**
+   * Learning mode: explain from the whole session instead of a hint ladder. `question` is null
+   * when the student just asked for help (mascot click, accepted offer, "I'm stuck").
+   */
+  private async explainFromSession(trigger: HintTriggerType, question: string | null): Promise<void> {
+    const { deps } = this;
+    const watch = deps.watch!;
+    this.busy = true;
+    deps.setLadderOpen(true);
+    const thinkingTimer = setTimeout(
+      () => deps.push({ kind: 'stuck', level: 3, text: FLOW_TEXT.thinking, priority: 8 }),
+      deps.thinkingDelayMs ?? 800
+    );
+    try {
+      const res = await watch.explain(question);
+      clearTimeout(thinkingTimer);
+      if (!res.ok) {
+        deps.setLadderOpen(false);
+        this.say(res.message);
+        return;
+      }
+      const id = deps.push({
+        kind: 'stuck',
+        level: 3,
+        text: `${res.text}\n\n${res.label}`,
+        spokenText: firstSentences(res.text),
+        buttons: [
+          { label: 'Explain more simply', action: EXPLAIN_SIMPLER, variant: 'secondary' },
+          { label: 'I got it', action: ACTIONS.GOT_IT, variant: 'primary' }
+        ],
+        priority: 8
+      });
+      this.explanation = { nudgeId: id, lastTouch: deps.now() };
+      deps.log('watch.explained', { trigger, followup: question !== null });
+    } catch (error) {
+      clearTimeout(thinkingTimer);
+      console.error('[hint-flow] explanation failed:', (error as Error).message);
+      deps.setLadderOpen(false);
+      this.say(FLOW_TEXT.failed);
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  private applyExplanation(action: string): void {
+    if (!this.explanation) return;
+    this.explanation.lastTouch = this.deps.now();
+    switch (action) {
+      case EXPLAIN_SIMPLER:
+        this.explanation = null;
+        void this.explainFromSession('manual', FLOW_TEXT.simpler);
+        return;
+      case ACTIONS.GOT_IT:
+        this.closeExplanation('got_it');
+        this.say(FLOW_TEXT.gotIt);
+        return;
+      case ACTIONS.IM_GOOD:
+        this.deps.markImGood();
+        this.closeExplanation('im_good');
+        return;
+      case AUTO_RESPONSES.DISMISSED:
+        this.closeExplanation('dismissed');
+        return;
+      default:
+        return; // 'timeout': stays open until idle, like a ladder
+    }
+  }
+
+  private closeExplanation(reason: string): void {
+    if (!this.explanation) return;
+    this.explanation = null;
+    this.deps.setLadderOpen(false);
+    this.deps.log('watch.explanation_closed', { reason });
   }
 
   private apply(action: string): void {

@@ -6,6 +6,8 @@
 export interface ThumbnailLike {
   isEmpty(): boolean;
   toDataURL(): string;
+  /** Electron's NativeImage has it; used for smaller frames (Watch mode). */
+  toJPEG?(quality: number): Buffer;
 }
 
 export interface CaptureSourceLike {
@@ -34,6 +36,8 @@ export interface CaptureDeps {
   screenAccess: () => ScreenAccess;
   frontWindow?: () => FrontWindow | null;
   thumbnailSize?: { width: number; height: number };
+  /** JPEG (quality 0-100) instead of PNG when the thumbnail supports it. */
+  jpegQuality?: number;
 }
 
 export type CaptureResult =
@@ -51,6 +55,13 @@ export function getFrontWindowProvider(): (() => FrontWindow | null) | null {
   return frontWindowProvider;
 }
 
+function encode(thumbnail: ThumbnailLike, jpegQuality: number | undefined): string {
+  if (jpegQuality !== undefined && thumbnail.toJPEG) {
+    return `data:image/jpeg;base64,${thumbnail.toJPEG(jpegQuality).toString('base64')}`;
+  }
+  return thumbnail.toDataURL();
+}
+
 export async function captureActiveWindow(deps: CaptureDeps): Promise<CaptureResult> {
   // Without Screen Recording permission macOS returns blank thumbnails, so check first.
   if (deps.screenAccess() !== 'granted') return { ok: false, reason: 'permission' };
@@ -66,14 +77,14 @@ export async function captureActiveWindow(deps: CaptureDeps): Promise<CaptureRes
         windows.find((w) => title && w.name.toLowerCase().includes(title)) ??
         windows.find((w) => app && w.name.toLowerCase().includes(app));
       if (match && !match.thumbnail.isEmpty()) {
-        return { ok: true, dataUrl: match.thumbnail.toDataURL(), sourceName: 'window' };
+        return { ok: true, dataUrl: encode(match.thumbnail, deps.jpegQuality), sourceName: 'window' };
       }
     }
 
     const screens = await deps.desktopCapturer.getSources({ types: ['screen'], thumbnailSize: size });
     const screen = screens.find((s) => !s.thumbnail.isEmpty());
     if (!screen) return { ok: false, reason: 'empty' };
-    return { ok: true, dataUrl: screen.thumbnail.toDataURL(), sourceName: 'screen' };
+    return { ok: true, dataUrl: encode(screen.thumbnail, deps.jpegQuality), sourceName: 'screen' };
   } catch {
     return { ok: false, reason: 'error' };
   }

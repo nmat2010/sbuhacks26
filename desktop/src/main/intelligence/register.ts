@@ -36,11 +36,25 @@ import { attachNudgeSpeech } from '../voice/nudge-speech.js';
 import { createVoiceService, type VoiceService } from '../voice/service.js';
 import type { IntentHandler } from '../voice/router.js';
 import type { VoiceIntent } from '../voice/intents.js';
+import { getLLMClient, LLMClient } from '../llm/client.js';
+import { PrefixedUsageStore, SqliteUsageStore } from '../llm/usage.js';
+import { getForeground } from '../foreground.js';
+import { getLatestPageSummary } from '../sync/context.js';
+import { isExcludedDomain } from '../sync/desk-state.js';
+import type { WatchHooks } from '../hints/flow.js';
+import { SessionMemory } from '../watch/memory.js';
+import { Watcher } from '../watch/watcher.js';
+import { WatchController } from '../watch/controller.js';
+import { WatchAnswerService } from '../watch/answer.js';
 
 const cleanups: Array<() => void> = [];
 let voice: VoiceService | null = null;
 let engine: EscalationEngine | null = null;
 let flow: HintFlow | null = null;
+let watcher: Watcher | null = null;
+let watchController: WatchController | null = null;
+let watchAnswers: WatchAnswerService | null = null;
+let watchHooks: WatchHooks | undefined;
 /** The paper open in the reading view; spoken questions are answered from it. */
 let focusedPaperId: string | null = null;
 
@@ -61,6 +75,7 @@ export function registerIntelligence(): void {
   configureReading({ papersDir: join(app.getPath('userData'), 'papers') });
   registerVoice();
   registerEscalation();
+  registerWatch();
   registerHintFlow();
   registerPlan();
   registerReading();
@@ -140,7 +155,8 @@ function registerHintFlow(): void {
     onSessionChange: (fn) => sessionEvents.on('change', fn),
     setLadderOpen: (open) => engine?.setLadderOpen(open),
     markImGood: () => engine?.imGood(),
-    log: safeLog
+    log: safeLog,
+    watch: watchHooks
   });
   flow.start();
   const idleTimer = setInterval(() => flow?.tick(), 5_000);
@@ -161,6 +177,126 @@ function registerHintFlow(): void {
   // Any nudge with spokenText is spoken in voice mode (hint bubbles carry the first two sentences)
   cleanups.push(attachNudgeSpeech(queue, (text) => voice?.speakIfVoice(text) ?? false));
 }
+
+/** Domain suffix match, the same rule the hint service uses for assessment domains. */
+function domainListed(domain: string | null, list: string[]): boolean {
+  if (!domain) return false;
+  const d = domain.toLowerCase();
+  return list.some((entry) => {
+    const e = entry.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    return e !== '' && (d === e || d.endsWith(`.${e}`));
+  });
+}
+
+// Watch mode (WATCH_MODE.md): watcher + session memory + answers, and the hooks the hint flow uses.
+function registerWatch(): void {
+  const memory = new SessionMemory();
+  // Its own daily budget (watch.calls_per_day), counted separately from hints and plans
+  const client = new LLMClient({
+    provider: getLLMClient().provider,
+    usage: new PrefixedUsageStore(new SqliteUsageStore(), 'watch:'),
+    dailyCap: () => getSetting('watch.calls_per_day'),
+    timeoutMs: 20_000
+  });
+  const capture = () =>
+    captureActiveWindow({
+      desktopCapturer,
+      screenAccess: () => systemPreferences.getMediaAccessStatus('screen'),
+      thumbnailSize: { width: 1024, height: 640 },
+      jpegQuality: 60
+    });
+
+  const w = new Watcher({
+    now: Date.now,
+    isActive: () => watchController?.isActive() ?? false,
+    intervalMs: () => getSetting('watch.interval_seconds') * 1000,
+    getForeground,
+    isExcludedApp: (name) => {
+      const n = name.trim().toLowerCase();
+      return getSetting('watch.excluded_apps').some((a) => a.trim().toLowerCase() === n);
+    },
+    isExcludedDomain: (domain) => isExcludedDomain(domain, getSetting('monitored.excluded_domains')),
+    getPageSummary: getLatestPageSummary,
+    capture,
+    llm: () => client,
+    memory,
+    emitSignal: (signal) => {
+      stuckBus.emit('signal', signal);
+      safeLog('stuck.signal', { type: signal.type, strength: signal.strength, source: 'watch' });
+    },
+    onContentUrl: (url) => watchController?.onContentUrl(url),
+    onState: (state) => watchController?.onWatcherState(state),
+    log: safeLog
+  });
+  watcher = w;
+
+  const controller = new WatchController({
+    now: Date.now,
+    getSetting,
+    setSetting,
+    getSession: getActiveSession,
+    isPaused,
+    memory,
+    watcher: w,
+    importPaper: async (url) => {
+      const res = await getReadingService().importPdfUrl(url);
+      return res.success && res.data ? { paperId: res.data.paper.id, title: res.data.paper.title } : null;
+    },
+    log: safeLog
+  });
+  watchController = controller;
+
+  const answers = new WatchAnswerService({
+    now: Date.now,
+    memory,
+    // Questions are answered on the main budget (api.call_limit_per_day), like paper questions
+    llm: () => getLLMClient(),
+    excerpts: (paperId, query, limit) => getReadingService().excerpts(paperId, query, limit),
+    paperTitle: (paperId) => memory.listSources().find((s) => s.paperId === paperId)?.title ?? null,
+    currentFrame: (maxAgeMs) => w.captureNow(maxAgeMs),
+    assessment: () =>
+      (getActiveSession()?.assessmentMode ?? false) || domainListed(getForeground()?.domain ?? null, getSetting('assessment.domains')),
+    log: safeLog
+  });
+  watchAnswers = answers;
+
+  watchHooks = {
+    active: () => controller.isActive(),
+    mode: () => answers.mode(),
+    contextText: () => memory.toPromptText(6000),
+    currentFrame: () => w.captureNow(20_000),
+    explain: async (question) => {
+      const res = await answers.ask({ question: question ?? '', inputMode: 'text', proactive: question === null });
+      return res.success && res.data
+        ? { ok: true as const, text: res.data.answer, label: res.data.label }
+        : { ok: false as const, message: res.error ?? FALLBACK_WATCH_ERROR };
+    }
+  };
+
+  cleanups.push(controller.events.on('status', (status) => broadcast('watch-state', status)));
+  const refresh = () => controller.refresh();
+  cleanups.push(sessionEvents.on('change', refresh));
+  cleanups.push(sessionEvents.on('pause', refresh));
+  cleanups.push(
+    settingsEvents.on('change', (key) => {
+      if (key === 'watch.enabled' || key === 'watch.consented_at') refresh();
+    })
+  );
+
+  handle('watch-get', async () => controller.status());
+  handle('watch-set', async (patch) => controller.set(patch ?? {}));
+  handle('watch-consent', async (accepted) => controller.consent(accepted === true));
+  handle('watch-memory-get', async () => controller.memoryView());
+  handle('watch-memory-clear', async () => controller.clearMemory());
+  handle('watch-ask', async (input) => {
+    if (!controller.isOn()) return { success: false, error: 'Turn on Watch mode first, so I can follow what you are studying.' };
+    return answers.ask({ question: String(input?.question ?? ''), inputMode: input?.inputMode === 'voice' ? 'voice' : 'text' });
+  });
+
+  refresh();
+}
+
+const FALLBACK_WATCH_ERROR = "Sorry, I couldn't put that together. Please try again in a moment.";
 
 function registerPlan(): void {
   const plan = () => getPlanService();
@@ -240,6 +376,28 @@ function registerVoice(): void {
     hasOpenLadder: () => flow?.hasOpenLadder() ?? false,
     onFollowup: (utterance) => flow?.followup(utterance),
     onFreeSpeech: async (utterance) => {
+      // Watch mode answers from the whole session (the reading view's paper wins while it is open)
+      if (!focusedPaperId && watchController?.isActive() && watchAnswers) {
+        const res = await watchAnswers.ask({ question: utterance, inputMode: 'voice' });
+        if (res.success && res.data) {
+          broadcast('watch-answer', res.data);
+          // Also as a bubble until the overlay chat panel (Thu, U2) shows watch-answer itself
+          getNudgeQueue().push(
+            {
+              kind: 'other',
+              level: 1,
+              text: `${res.data.answer}\n\n${res.data.label}`,
+              spokenText: firstSentences(res.data.answer),
+              buttons: [{ label: 'Got it', action: ACTIONS.GOT_IT, variant: 'primary' }],
+              priority: 8
+            },
+            { userInitiated: true }
+          );
+        } else if (res.error) {
+          broadcast('voice-trouble', res.error);
+        }
+        return true;
+      }
       if (!focusedPaperId) return false;
       const res = await getReadingService().ask({ paperId: focusedPaperId, mode: 'explain', inputMode: 'voice', question: utterance });
       if (res.success && res.data) {
@@ -303,6 +461,11 @@ function registerVoice(): void {
 /** Called on quit. */
 export function unregisterIntelligence(): void {
   while (cleanups.length) cleanups.pop()!();
+  watcher?.stop();
+  watcher = null;
+  watchController = null;
+  watchAnswers = null;
+  watchHooks = undefined;
   flow?.stop();
   flow = null;
   engine?.stop();

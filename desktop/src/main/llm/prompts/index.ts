@@ -9,6 +9,8 @@ import planV1 from './plan.v1.md?raw';
 import planItemV1 from './plan-item.v1.md?raw';
 import ideasV1 from './ideas.v1.md?raw';
 import readingV1 from './reading.v1.md?raw';
+import watchObserveV1 from './watch-observe.v1.md?raw';
+import watchAnswerV1 from './watch-answer.v1.md?raw';
 
 // Versioned prompt files (SPEC 6: prompts are files, not inline strings). To change a prompt,
 // add a new version file and point the caller at it; the old one stays for comparison.
@@ -24,7 +26,9 @@ export const PROMPTS = {
   'plan.v1': planV1,
   'plan-item.v1': planItemV1,
   'ideas.v1': ideasV1,
-  'reading.v1': readingV1
+  'reading.v1': readingV1,
+  'watch-observe.v1': watchObserveV1,
+  'watch-answer.v1': watchAnswerV1
 } as const;
 
 export type PromptName = keyof typeof PROMPTS;

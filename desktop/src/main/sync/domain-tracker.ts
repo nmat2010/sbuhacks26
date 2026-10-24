@@ -5,8 +5,10 @@ export class DomainTracker {
   readonly events = new TypedEmitter<{ change: [domain: string | null, title: string | null] }>();
   private domain: string | null = null;
   private title: string | null = null;
+  private contentUrl: string | null = null;
 
-  set(domain: string, title: string | null): void {
+  set(domain: string, title: string | null, contentUrl: string | null = null): void {
+    this.contentUrl = contentUrl;
     if (domain === this.domain && title === this.title) return;
     this.domain = domain;
     this.title = title;
@@ -14,10 +16,16 @@ export class DomainTracker {
   }
 
   clear(): void {
+    this.contentUrl = null;
     if (this.domain === null && this.title === null) return;
     this.domain = null;
     this.title = null;
     this.events.emit('change', null, null);
+  }
+
+  /** Paper or video URL for the current tab (see ext.tab `contentUrl`); null otherwise. */
+  getContentUrl(): string | null {
+    return this.contentUrl;
   }
 
   getDomain(): string | null {

@@ -12,6 +12,10 @@ const rules = z.array(RuleEntry).max(200);
 
 /** Explicit schemas where the default's type isn't enough (ranges, enums, formats). */
 const EXPLICIT: Partial<Record<SettingsKey, z.ZodTypeAny>> = {
+  'watch.interval_seconds': positive(120, 5),
+  'watch.calls_per_day': positive(20_000, 0),
+  'watch.excluded_apps': z.array(z.string().trim().min(1).max(100)).max(200),
+  'watch.consented_at': z.number().int().positive().nullable(),
   'monitored.ai_tools': rules,
   'monitored.distractions': rules,
   'monitored.excluded_domains': domainList,

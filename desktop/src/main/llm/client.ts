@@ -22,6 +22,8 @@ export interface LlmCall<T> {
   system: string;
   messages: ChatMessage[];
   images?: LlmImage[];
+  /** Public YouTube watch URLs for the model to watch. */
+  videos?: string[];
   /** Validates (and may transform) the model's JSON. Also becomes the response JSON Schema. */
   schema: z.ZodType<T, z.ZodTypeDef, unknown>;
   mockKey?: Record<string, unknown>;
@@ -76,6 +78,7 @@ export class LLMClient {
         system: call.system,
         messages,
         images: call.images,
+        videos: call.videos,
         jsonSchema,
         mockKey: call.mockKey,
         temperature: call.temperature

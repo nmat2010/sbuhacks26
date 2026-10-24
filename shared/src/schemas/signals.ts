@@ -13,7 +13,10 @@ export const SignalType = z.enum([
   'idle_on_page',
   'scribble_outs',
   'undo_burst',
-  'abandoned_start'
+  'abandoned_start',
+  // Watch mode (WATCH_MODE.md): judgments from the watcher model, not local heuristics
+  'model_stuck',
+  'answer_seen_wrong'
 ]);
 
 export const SignalStrength = z.enum(['weak', 'strong']);

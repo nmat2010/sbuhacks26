@@ -36,6 +36,8 @@ export const HintContextSchema = z.object({
   pageSummary: PageSummarySchema.optional(),
   imageDataUrl: z.string().optional(),
   problemId: z.string().optional(),
+  /** Watch mode: what the student has been reading/watching this session, as text (WATCH_MODE.md). */
+  sessionContext: z.string().max(8000).optional(),
   conversationHistory: z.array(ChatTurn).max(6).optional()
 });
 

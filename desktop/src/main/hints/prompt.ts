@@ -36,6 +36,9 @@ function describePage(page: PageSummary): string {
 /** What the student is working on, as text. Images are attached separately. */
 export function describeContext(context: HintContext, source: HintSourceType, hasImage: boolean): string {
   const parts: string[] = [`Source: ${source}.`];
+  if (context.sessionContext) {
+    parts.push(`What the student has been studying this session (Watch mode notes):\n${context.sessionContext}`);
+  }
   if (context.pageSummary) parts.push(describePage(context.pageSummary));
   if (hasImage) parts.push('An image of the student\'s work is attached.');
   if (!context.pageSummary && !hasImage) parts.push('No page text or image is available.');

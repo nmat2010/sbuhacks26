@@ -59,6 +59,7 @@ function setup(
     capture?: HintFlowDeps['capture'];
     confirm?: HintFlowDeps['confirmCapture'];
     paused?: boolean;
+    watch?: HintFlowDeps['watch'];
   } = {}
 ) {
   const env = { now: NOW, paused: opts.paused ?? false };
@@ -118,7 +119,8 @@ function setup(
     setLadderOpen: (open) => void ladderOpen.push(open),
     markImGood,
     log: (type) => void logs.push(type),
-    thinkingDelayMs: 10 ** 9
+    thinkingDelayMs: 10 ** 9,
+    watch: opts.watch
   });
   flow.start();
 
@@ -469,5 +471,125 @@ describe('screen capture helper', () => {
       }
     };
     expect(await captureActiveWindow({ desktopCapturer: broken, screenAccess: () => 'granted' })).toEqual({ ok: false, reason: 'error' });
+  });
+});
+
+describe('hint flow with Watch mode on', () => {
+  const hooks = (mode: 'learning' | 'homework' | 'other', over: Partial<NonNullable<HintFlowDeps['watch']>> = {}) => {
+    const explain = vi.fn(async (_q: string | null) => ({ ok: true as const, text: 'He gates each score with a mask. That keeps heads sparse.', label: 'From your session' }));
+    const currentFrame = vi.fn(async () => 'data:image/jpeg;base64,QUFB');
+    return {
+      explain,
+      currentFrame,
+      watch: {
+        active: () => true,
+        mode: () => mode,
+        contextText: () => 'Sources this session: [paper] Sparse Gated Attention',
+        currentFrame,
+        explain,
+        ...over
+      }
+    };
+  };
+
+  it('learning mode: clicking Wolfie explains from the session instead of a hint ladder or screenshot prompt', async () => {
+    const h = hooks('learning');
+    const t = setup({ watch: h.watch });
+    t.bus.emit('help-requested', 'manual');
+    await t.settle();
+    expect(h.explain).toHaveBeenCalledWith(null);
+    expect(t.requestHintsSpy).not.toHaveBeenCalled();
+    expect(t.confirm).not.toHaveBeenCalled();
+    expect(t.last().text).toContain('He gates each score with a mask.');
+    expect(t.last().text).toContain('From your session');
+    expect(t.last().spokenText).toBe('He gates each score with a mask. That keeps heads sparse.');
+    expect(labels(t.last())).toEqual(['explain_simpler', ACTIONS.GOT_IT]);
+    expect(t.flow.hasOpenExplanation()).toBe(true);
+    expect(t.ladderOpen).toEqual([true]);
+  });
+
+  it('"Explain more simply" asks again; "I got it" closes and lets offers resume', async () => {
+    const h = hooks('learning');
+    const t = setup({ watch: h.watch });
+    t.bus.emit('help-requested', 'manual');
+    await t.settle();
+    t.press('explain_simpler');
+    await t.settle();
+    expect(h.explain).toHaveBeenLastCalledWith(FLOW_TEXT.simpler);
+    t.press(ACTIONS.GOT_IT);
+    expect(t.flow.hasOpenExplanation()).toBe(false);
+    expect(t.ladderOpen.at(-1)).toBe(false);
+    expect(t.last().text).toBe(FLOW_TEXT.gotIt);
+  });
+
+  it('dismissing or going idle closes the explanation', async () => {
+    const t = setup({ watch: hooks('learning').watch });
+    t.bus.emit('help-requested', 'manual');
+    await t.settle();
+    t.env.now += LADDER_IDLE_MS + 1;
+    t.flow.tick();
+    expect(t.flow.hasOpenExplanation()).toBe(false);
+    expect(t.ladderOpen.at(-1)).toBe(false);
+  });
+
+  it('an explanation error is shown and does not leave offers blocked', async () => {
+    const t = setup({ watch: hooks('learning', { explain: async () => ({ ok: false as const, message: 'No key' }) }).watch });
+    t.bus.emit('help-requested', 'manual');
+    await t.settle();
+    expect(t.last().text).toBe('No key');
+    expect(t.ladderOpen).toEqual([true, false]);
+  });
+
+  it('homework mode: the hint ladder gets the session and the current screen, with no confirmation', async () => {
+    const h = hooks('homework');
+    const t = setup({ watch: h.watch, summary: null });
+    t.bus.emit('help-requested', 'manual');
+    await t.settle();
+    expect(h.explain).not.toHaveBeenCalled();
+    expect(t.confirm).not.toHaveBeenCalled();
+    expect(t.capture).not.toHaveBeenCalled();
+    const [context, source] = t.requestHintsSpy.mock.calls[0];
+    expect(source).toBe('screen');
+    expect(context.sessionContext).toContain('Sparse Gated Attention');
+    expect(context.imageDataUrl).toBe('data:image/jpeg;base64,QUFB');
+    expect(t.pushed).toHaveLength(1);
+  });
+
+  it('homework mode with a page summary sends both the page and the session', async () => {
+    const t = setup({ watch: hooks('homework').watch });
+    t.bus.emit('help-requested', 'manual');
+    await t.settle();
+    const [context, source] = t.requestHintsSpy.mock.calls[0];
+    expect(source).toBe('page');
+    expect(context.pageSummary?.problemId).toBe('demo-algebra-problem');
+    expect(context.sessionContext).toBeTruthy();
+  });
+
+  it('falls back to the normal flow when Watch mode has no frame and no page', async () => {
+    const h = hooks('homework', { currentFrame: async () => null });
+    const t = setup({ watch: h.watch, summary: null });
+    t.bus.emit('help-requested', 'manual');
+    await t.settle();
+    expect(t.capture).toHaveBeenCalled();
+    expect(t.confirm).toHaveBeenCalled();
+  });
+
+  it('Watch mode off: unchanged behavior', async () => {
+    const t = setup({ watch: { ...hooks('learning').watch, active: () => false }, summary: null });
+    t.bus.emit('help-requested', 'manual');
+    await t.settle();
+    expect(t.confirm).toHaveBeenCalled();
+    expect(t.requestHintsSpy).toHaveBeenCalled();
+  });
+});
+
+describe('captureActiveWindow JPEG (Watch mode frames)', () => {
+  it('encodes JPEG when asked and the thumbnail supports it, PNG otherwise', async () => {
+    const thumb = { isEmpty: () => false, toDataURL: () => 'data:image/png;base64,UE5H', toJPEG: () => Buffer.from('JPG') };
+    const getSources = vi.fn(async () => [{ id: 's', name: 'Screen 1', thumbnail: thumb }]);
+    const jpeg = await captureActiveWindow({ desktopCapturer: { getSources }, screenAccess: () => 'granted', jpegQuality: 60 });
+    expect(jpeg).toMatchObject({ ok: true, dataUrl: `data:image/jpeg;base64,${Buffer.from('JPG').toString('base64')}` });
+    const png = await captureActiveWindow({ desktopCapturer: { getSources }, screenAccess: () => 'granted' });
+    expect(png).toMatchObject({ ok: true, dataUrl: 'data:image/png;base64,UE5H' });
   });
 });

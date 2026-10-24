@@ -44,6 +44,8 @@ import { isPublicSettingKey, keyPresent, readPublicSettings, writePublicSetting 
 import { startLanLink, type LanLink } from '../sync/lan-link.js';
 import { getPlanSnapshotForSync, getStreakSnapshotForSync, notifySnapshotsChanged, setStreakSnapshotProvider } from '../sync/snapshots.js';
 import type { SyncInfo } from '../../common/ipc-sensing.js';
+import { setForegroundProvider, type ForegroundInfo } from '../foreground.js';
+import { setFrontWindowProvider } from '../hints/capture.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -141,11 +143,31 @@ export function registerSensing(): void {
     });
     const m = monitor;
     m.start(2000);
+    // Watch mode and screen captures need to know what is in front (foreground.ts, hints/capture.ts)
+    const lastForeground = (): ForegroundInfo | null => {
+      const last = m.getLast();
+      if (!last) return null;
+      return {
+        appName: last.appName,
+        windowTitle: last.windowTitle,
+        isBrowser: last.isBrowser,
+        domain: last.isBrowser ? domainTracker.getDomain() : null,
+        contentUrl: last.isBrowser ? domainTracker.getContentUrl() : null,
+        ts: last.ts
+      };
+    };
+    setForegroundProvider(lastForeground);
+    setFrontWindowProvider(() => {
+      const f = lastForeground();
+      return f ? { title: f.windowTitle ?? undefined, app: f.appName } : null;
+    });
     const off = sessionEvents.on('change', (s) => {
       if (s) void m.poke();
     });
     return () => {
       off();
+      setForegroundProvider(null);
+      setFrontWindowProvider(null);
       m.stop();
     };
   });

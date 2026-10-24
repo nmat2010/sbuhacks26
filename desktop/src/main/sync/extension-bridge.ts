@@ -24,6 +24,14 @@ export interface ExtensionBridge {
   resetProblem(): void;
 }
 
+function hostOf(url: string): string | null {
+  try {
+    return new URL(url).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
 export function createExtensionBridge(deps: ExtensionBridgeDeps): ExtensionBridge {
   let lastProblemId: string | null = null;
 
@@ -36,10 +44,11 @@ export function createExtensionBridge(deps: ExtensionBridgeDeps): ExtensionBridg
 
   return {
     handlers: {
-      onTab({ domain, title }) {
+      onTab({ domain, title, contentUrl }) {
         if (!allowed(domain)) return;
-        // The tab title is kept in memory only; app_events stores the OS window title instead.
-        deps.tracker.set(domain, title ?? null);
+        // The tab title and content URL are kept in memory only; app_events stores the OS window
+        // title instead. A content URL must belong to the reported domain.
+        deps.tracker.set(domain, title ?? null, contentUrl && hostOf(contentUrl) === domain ? contentUrl : null);
       },
       onPageSummary(summary) {
         if (!allowed(summary.domain, true)) return;

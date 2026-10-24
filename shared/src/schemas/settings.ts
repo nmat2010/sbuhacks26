@@ -46,6 +46,14 @@ export const SettingsKeys = {
   EXTENSION_ID: 'pairing.extension_id',
   WEBAPP_DEVICES: 'pairing.webapp_devices',
 
+  // Watch mode (WATCH_MODE.md)
+  WATCH_ENABLED: 'watch.enabled',
+  WATCH_CONSENTED_AT: 'watch.consented_at',
+  WATCH_INTERVAL_SECONDS: 'watch.interval_seconds',
+  WATCH_EXCLUDED_APPS: 'watch.excluded_apps',
+  WATCH_AUTO_IMPORT_PAPERS: 'watch.auto_import_papers',
+  WATCH_CALLS_PER_DAY: 'watch.calls_per_day',
+
   // API
   API_CALL_LIMIT_PER_DAY: 'api.call_limit_per_day',
 
@@ -125,6 +133,15 @@ export interface SettingsValues {
   'pairing.extension_token': string | null;
   'pairing.extension_id': string | null;
   'pairing.webapp_devices': PairedDeviceType[];
+  'watch.enabled': boolean;
+  /** When the student accepted the Watch-mode consent screen (epoch ms), or null. */
+  'watch.consented_at': number | null;
+  'watch.interval_seconds': number;
+  /** App names that are never captured (matched case-insensitively against the app name). */
+  'watch.excluded_apps': string[];
+  'watch.auto_import_papers': boolean;
+  /** Separate cap for watcher calls, so watching never uses up the hint/plan budget. */
+  'watch.calls_per_day': number;
   'api.call_limit_per_day': number;
   'demo.mode': boolean;
 }
@@ -199,6 +216,24 @@ export const SettingsDefaults: SettingsValues = {
   'pairing.extension_token': null,
   'pairing.extension_id': null,
   'pairing.webapp_devices': [],
+  'watch.enabled': false,
+  'watch.consented_at': null,
+  'watch.interval_seconds': 8,
+  'watch.excluded_apps': [
+    'Messages',
+    'Mail',
+    'FaceTime',
+    'WhatsApp',
+    'Signal',
+    'Telegram',
+    '1Password',
+    'Bitwarden',
+    'Keychain Access',
+    'System Settings',
+    'Wallet'
+  ],
+  'watch.auto_import_papers': true,
+  'watch.calls_per_day': 2000,
   'api.call_limit_per_day': 200,
   'demo.mode': false
 };

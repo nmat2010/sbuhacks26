@@ -3,7 +3,7 @@
 // The pure parts live in ../lib and ./connection so they are unit-tested without chrome.*.
 import { EXTENSION_WS_PORT } from '@wolfie/shared';
 import { BacktrackDetector } from '../lib/backtrack';
-import { normalizeDomainInput, reportableDomain, type ReportState } from '../lib/report';
+import { contentUrlFor, normalizeDomainInput, reportableDomain, type ReportState } from '../lib/report';
 import type { ContentState, PopupStatus, RuntimeMessage, TabMessage } from '../lib/messages';
 import { DesktopConnection, type DeskStatePayload, type SocketLike } from './connection';
 
@@ -67,7 +67,9 @@ async function reportActiveTab(): Promise<void> {
 
 function reportTab(tab: chrome.tabs.Tab): void {
   const domain = reportableDomain(tab, reportState());
-  if (domain) conn.send('ext.tab', { domain, title: tab.title });
+  if (!domain) return;
+  const contentUrl = contentUrlFor(tab.url);
+  conn.send('ext.tab', contentUrl ? { domain, title: tab.title, contentUrl } : { domain, title: tab.title });
 }
 
 async function askActiveTabForSummary(): Promise<void> {
