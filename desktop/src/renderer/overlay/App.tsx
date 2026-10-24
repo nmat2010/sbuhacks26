@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Mascot, MascotState } from './components/Mascot';
 import { SpeechBubble } from './components/SpeechBubble';
 import { HoverMenu } from './components/HoverMenu';
+import { HintConversation, HintLevel } from './components/HintConversation';
 import { useNudge } from './hooks/useNudge';
 import { useVoiceIntents } from './hooks/useVoiceIntents';
 
@@ -11,6 +12,7 @@ function App() {
   const [voiceActive, setVoiceActive] = useState(false);
   const [showHoverMenu, setShowHoverMenu] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [showHintConversation, setShowHintConversation] = useState(false);
 
   const { currentNudge, dismissNudge, handleButtonClick } = useNudge();
 
@@ -107,8 +109,22 @@ function App() {
   };
 
   const handleMascotClick = () => {
-    // Request hint manually (will be implemented in Phase 4)
-    console.log('Mascot clicked - hint requested');
+    // Open hint conversation
+    setShowHintConversation(true);
+  };
+
+  const handleRequestHint = (level: HintLevel) => {
+    console.log(`Requesting hint level ${level}`);
+    // TODO: Call IPC to get actual hint from LLM
+    // await window.electronAPI.invoke('request-hint', { level, context });
+  };
+
+  const handleDismissHint = (action: 'got-it' | 'not-needed' | 'show-answer') => {
+    console.log(`Hint dismissed with action: ${action}`);
+    // TODO: Log to database
+    setTimeout(() => {
+      setShowHintConversation(false);
+    }, 500);
   };
 
   const handleOpenTestPanel = () => {
@@ -191,6 +207,20 @@ function App() {
           onDismiss={dismissNudge}
         />
       </div>
+
+      {/* Hint Conversation Modal */}
+      {showHintConversation && (
+        <HintConversation
+          onClose={() => setShowHintConversation(false)}
+          onRequestHint={handleRequestHint}
+          onDismiss={handleDismissHint}
+          voiceMode={voiceActive}
+          contextPreview={{
+            type: 'page',
+            description: 'I can see you\'re working on a data structures problem about linked lists.'
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,15 +1,45 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TodayView } from './views/TodayView';
 import { GoalsView } from './views/GoalsView';
 import { PapersView } from './views/PapersView';
 import { HistoryView } from './views/HistoryView';
 import { SettingsView } from './views/SettingsView';
+import { Onboarding } from './components/Onboarding';
 import './styles/Dashboard.css';
 
 type ViewType = 'today' | 'goals' | 'papers' | 'history' | 'settings';
 
 function App() {
   const [currentView, setCurrentView] = useState<ViewType>('today');
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isOnboarded, setIsOnboarded] = useState(false);
+
+  useEffect(() => {
+    // Check if user has completed onboarding
+    const checkOnboarding = async () => {
+      // TODO: Check from settings or database
+      // For now, show onboarding by default
+      const onboarded = localStorage.getItem('wolfie_onboarded');
+      setIsOnboarded(!!onboarded);
+      setShowOnboarding(!onboarded);
+    };
+    checkOnboarding();
+  }, []);
+
+  const handleOnboardingComplete = async (data: any) => {
+    try {
+      // TODO: Save onboarding data via IPC
+      // await window.electronAPI.invoke('save-onboarding-data', data);
+      console.log('Onboarding data:', data);
+
+      // Mark as onboarded
+      localStorage.setItem('wolfie_onboarded', 'true');
+      setIsOnboarded(true);
+      setShowOnboarding(false);
+    } catch (error) {
+      console.error('Failed to save onboarding data:', error);
+    }
+  };
 
   const renderView = () => {
     switch (currentView) {
@@ -84,6 +114,9 @@ function App() {
       <main className="main-content">
         {renderView()}
       </main>
+
+      {/* Onboarding Modal */}
+      {showOnboarding && <Onboarding onComplete={handleOnboardingComplete} />}
     </div>
   );
 }
