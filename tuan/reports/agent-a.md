@@ -16,7 +16,7 @@
 | A6 desktop signals (**M2**) | done | 0538f24 |
 | A8 LAN sync server (**M3**) | done | b0a2dec |
 | A9 streak engine | done | 249214e |
-| A10 history / settings / data controls | done | A10HASH |
+| A10 history / settings / data controls | done | 2f2bb74 |
 
 ## Verified (automated)
 `npm run typecheck`, `npm test`, `npm run smoke` (with `WOLFIE_USER_DATA=/tmp/wolfie-a`; logs `[extension] loopback server listening on 127.0.0.1:45678`), `npm run build:extension` (every file the manifest references exists in `extension/dist`).
