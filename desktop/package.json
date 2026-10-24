@@ -40,5 +40,13 @@
     "vite-plugin-electron": "^0.28.2",
     "vite-plugin-electron-renderer": "^0.14.5",
     "vitest": "^1.2.2"
+  },
+  "build": {
+    "extraResources": [
+      {
+        "from": "native/bin",
+        "to": "native/bin"
+      }
+    ]
   }
 }

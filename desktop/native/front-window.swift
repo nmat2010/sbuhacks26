@@ -7,6 +7,9 @@ import CoreGraphics
 
 struct Front: Encodable {
   let app: String
+  let bundleId: String?
+  /** The app can open web links (any browser, known or not): Watch mode treats it as a browser. */
+  let isBrowser: Bool
   let pid: Int32
   let windowId: Int?
   let title: String?
@@ -36,7 +39,23 @@ if let list = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String:
   }
 }
 
-let out = Front(app: app?.localizedName ?? "", pid: pid, windowId: windowId, title: title, bounds: bounds)
+// Every app registered to open https links counts as a browser, so an unknown browser is never
+// mistaken for an ordinary app (its private windows can't be told apart, so it is not watched)
+var isBrowser = false
+if let bundle = app?.bundleIdentifier?.lowercased(),
+   let handlers = LSCopyAllHandlersForURLScheme("https" as CFString)?.takeRetainedValue() as? [String] {
+  isBrowser = handlers.contains { $0.lowercased() == bundle }
+}
+
+let out = Front(
+  app: app?.localizedName ?? "",
+  bundleId: app?.bundleIdentifier,
+  isBrowser: isBrowser,
+  pid: pid,
+  windowId: windowId,
+  title: title,
+  bounds: bounds
+)
 if let data = try? JSONEncoder().encode(out), let line = String(data: data, encoding: .utf8) {
   print(line)
 }

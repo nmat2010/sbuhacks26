@@ -4,6 +4,8 @@
 
 export interface FrontWindow {
   app: string;
+  /** Registered to open https links: some browser, possibly one we don't know by name. */
+  isBrowser?: boolean;
   pid: number;
   windowId: number | null;
   /** Needs Screen Recording; null without it. */
@@ -18,6 +20,7 @@ export function parseFrontWindow(stdout: string): FrontWindow | null {
     if (typeof raw.app !== 'string' || typeof raw.pid !== 'number') return null;
     return {
       app: raw.app,
+      ...(typeof raw.isBrowser === 'boolean' ? { isBrowser: raw.isBrowser } : {}),
       pid: raw.pid,
       windowId: typeof raw.windowId === 'number' ? raw.windowId : null,
       title: typeof raw.title === 'string' && raw.title.trim() ? raw.title : null

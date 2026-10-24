@@ -210,7 +210,10 @@ function registerWatch(): void {
   });
   const run = promisify(execFile) as unknown as (file: string, args: string[], opts: { timeout: number }) => Promise<{ stdout: string }>;
   // Native helper (desktop/native, `npm run build:native`); without it nothing is captured
-  const helper = join(app.getAppPath(), 'native', 'bin', 'front-window');
+  // Packaged builds ship it unpacked under Resources (electron-builder extraResources)
+  const helper = app.isPackaged
+    ? join(process.resourcesPath, 'native', 'bin', 'front-window')
+    : join(app.getAppPath(), 'native', 'bin', 'front-window');
   if (!existsSync(helper)) console.warn('[watch] front-window helper missing; run npm run build:native in desktop/');
 
   const w = new Watcher({
@@ -285,11 +288,13 @@ function registerWatch(): void {
   // "Really working" (for automatic offers): at the keyboard in the last 10 minutes and, when Watch
   // mode has a recent look, on a study task rather than browsing or an unrelated app
   engagedCheck = () => {
-    if (powerMonitor.getSystemIdleTime() >= 10 * 60) return false;
-    if (!controller.isActive()) return true;
     const latest = memory.latest();
-    if (!latest || Date.now() - latest.ts > 3 * 60_000) return true;
-    return isStudying(latest.obs);
+    const fresh = !!latest && Date.now() - latest.ts <= 3 * 60_000;
+    // No input for 10 min means away, except while watching a lecture or video
+    const watchingVideo = fresh && latest!.obs.activity === 'watching_video';
+    if (powerMonitor.getSystemIdleTime() >= 10 * 60 && !watchingVideo) return false;
+    if (!controller.isActive() || !fresh) return true;
+    return isStudying(latest!.obs);
   };
 
   watchHooks = {

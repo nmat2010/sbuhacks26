@@ -218,10 +218,12 @@ export class EscalationEngine {
       ...this.state,
       now,
       voiceMode: this.deps.voiceMode(),
-      // Not really working (away, or not on a study task): treated like a pause, so no offers
-      paused: this.deps.isPaused() || !(this.deps.isEngaged?.() ?? true),
+      paused: this.deps.isPaused(),
       snoozed: this.deps.isSnoozed()
     };
+    // Not really working (away, or not on a study task): hold where we are. No new step, and an
+    // offer already on screen stays answerable (dropping to 0 would orphan its buttons).
+    if (this.deps.isEngaged && !this.deps.isEngaged()) return;
     const active = [...this.signals.values()].map((a) => a.signal);
     const level = computeLevel(active, this.state);
     const previous = this.state.lastLevel;

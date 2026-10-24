@@ -67,3 +67,30 @@
 ## Next
 - Merge `tuan/watch-mode` into `main` once Tuan has tried it.
 - Then W4 (homework answer checking is mostly in place via `answer_seen_wrong`) and W3 (Live voice with `gemini-3.8-live`).
+
+---
+
+## Update: first real run, and the fix (65bf79f + follow-up)
+- **What Tuan saw:** `watch-memory-get` was empty, and clicking Wolfie showed "Let me take a look..." followed by "No problem, I won't look".
+- **Cause, from the DB:**
+  - There were zero `watch.observed` events. System Events returns empty window titles for Chrome (and often for VS Code), so the title-based identity check skipped every window.
+  - The "stuck" bubbles were the mascot-click help flow, falling back to the old screenshot prompt. No struggle signal fired.
+- **Fix:**
+  - **Front window:** a native helper (`desktop/native/front-window.swift`, a universal binary, rebuilt with `npm run build:native`) gives the front window's id, title, and whether the app handles https links. The watcher captures exactly that window id.
+  - **Chromium browsers** (Chrome, Brave, Edge) are asked through Automation: incognito windows and excluded sites are skipped.
+    - The browser's tab title must match the window title (unread counts, the 🔊 marker and a profile suffix are tolerated).
+    - After capturing, the helper runs again, and the frame is dropped if the window or title changed.
+    - The browser's answer is cached per window id + title for 60 s.
+  - **Unknown browsers** (any app that opens https links) and Safari/Firefox are skipped unless the extension's tab report matches.
+  - **"Really working" layer:**
+    - "away" after 10 min without input, except while watching a video;
+    - stuck signals only for study activities;
+    - the engine holds its level (no new offers) while the student isn't engaged; manual help is unaffected.
+  - **Status:** `watch-get` returns a `note` for every skip reason.
+- **Reviews:** two more Opus passes; their findings are fixed: window/probe binding, unknown browsers, lectures counted as "away", offers orphaned by an engagement flip, the packaged helper path (`extraResources`), and probe caching.
+- **Verified:**
+  - 621 tests pass; typecheck, lint and smoke are clean.
+  - Live on Tuan's Mac: the helper returned the real Chrome window (id 2083, matching Electron's capture id), the Chrome probe returned `mode: normal`, and the title match passed on "(1) Facebook 🔊" vs "(1) Facebook".
+- **To check on the next run:**
+  - macOS asks "Electron wants to control Google Chrome": choose OK.
+  - Ask for Automation on the consent screen (Thu, U1), so the prompt doesn't appear mid-session.

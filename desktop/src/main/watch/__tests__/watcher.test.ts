@@ -6,7 +6,7 @@ import type { CaptureResult } from '../../hints/capture.js';
 import type { LlmCall } from '../../llm/client.js';
 import { LLMError } from '../../llm/provider.js';
 import { SessionMemory } from '../memory.js';
-import { AWAY_SECONDS, Watcher, UNCHANGED_RECHECK_MS, type WatcherDeps } from '../watcher.js';
+import { AWAY_SECONDS, titlesMatch, Watcher, UNCHANGED_RECHECK_MS, type WatcherDeps } from '../watcher.js';
 import type { Observation } from '../types.js';
 import { obs } from './helpers.js';
 
@@ -113,9 +113,11 @@ describe('Watcher', () => {
     probe = chrome({ host: 'secure.chase.com', title: 'Chase', contentUrl: null });
     await w.tick();
     expect(w.getSkipReason()).toBe('excluded_site');
-    probe = chrome({ incognito: true });
+    front = { app: 'Google Chrome', pid: 100, windowId: 8, title: 'Secret' }; // an incognito window is its own window
+    probe = chrome({ incognito: true, title: 'Secret' });
     await w.tick();
     expect(w.getSkipReason()).toBe('private_window');
+    front = { app: 'Google Chrome', pid: 100, windowId: 7, title: 'New Tab' };
     probe = chrome({ host: null, title: 'New Tab', contentUrl: null });
     await w.tick();
     expect(w.getSkipReason()).toBe('unknown_tab');
@@ -374,5 +376,81 @@ describe('Watcher races and capture limits (review fixes)', () => {
     await w.tick();
     expect(w.getState()).toBe('skipping');
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe('Watcher: window binding (third review)', () => {
+  it('skips when the browser front tab is not the window the helper named (switch in between)', async () => {
+    const w = make();
+    front = { app: 'Google Chrome', pid: 100, windowId: 7, title: 'Incognito page' };
+    probe = chrome({ title: 'paper.pdf' }); // windows[0] is already a different, normal window
+    await w.tick();
+    expect(w.getSkipReason()).toBe('window_changed');
+    expect(captures).toEqual([]);
+  });
+
+  it('drops the frame when the window or tab changed while capturing', async () => {
+    let n = 0;
+    const w = make({
+      frontWindow: async () => (++n === 1 ? front : { ...front!, title: 'Chase - Accounts' })
+    });
+    await w.tick();
+    expect(captures).toEqual([7]);
+    expect(calls).toHaveLength(0);
+    expect(w.getSkipReason()).toBe('window_changed');
+    expect(w.latestFrame(60_000)).toBeNull();
+  });
+
+  it('treats any app that opens web links as a browser, even an unknown one', async () => {
+    const w = make();
+    front = { app: 'Dia', isBrowser: true, pid: 600, windowId: 12, title: 'Bank' };
+    probe = { ok: false, reason: 'unsupported' };
+    await w.tick();
+    expect(captures).toEqual([]);
+    expect(w.getSkipReason()).toBe('unsupported_browser');
+  });
+
+  it('reuses the browser answer while the same window keeps the same title', async () => {
+    let probes = 0;
+    const w = make({ probeBrowser: async () => (probes++, probe) });
+    await w.tick();
+    frame = FRAME_B;
+    now += 8000;
+    await w.tick();
+    expect(probes).toBe(1);
+    front = { ...front!, title: 'other tab' };
+    probe = chrome({ title: 'other tab', host: 'example.edu' });
+    now += 8000;
+    await w.tick();
+    expect(probes).toBe(2);
+  });
+
+  it('is not "away" while the student is watching a video without touching anything', async () => {
+    const w = make();
+    reply = obs({ activity: 'watching_video', source: { kind: 'video', title: 'Lecture', locator: null } });
+    await w.tick();
+    idle = AWAY_SECONDS + 60;
+    frame = FRAME_B;
+    now += 8000;
+    await w.tick();
+    expect(w.getState()).toBe('watching');
+    reply = obs();
+    frame = FRAME_A;
+    now += 8000;
+    await w.tick(); // the last look was reading, so the next one counts as away
+    now += 8000;
+    await w.tick();
+    expect(w.getState()).toBe('away');
+  });
+});
+
+describe('titlesMatch', () => {
+  it('accepts unread counts, audio markers and a browser/profile suffix; rejects other pages', () => {
+    expect(titlesMatch('(1) Facebook 🔊', '(1) Facebook')).toBe(true);
+    expect(titlesMatch('Coin Change - LeetCode', 'Coin Change - LeetCode')).toBe(true);
+    expect(titlesMatch('Coin Change - LeetCode - Work', 'Coin Change - LeetCode')).toBe(true);
+    expect(titlesMatch('Google Search – chase', 'Google')).toBe(false);
+    expect(titlesMatch('Chase - Accounts', 'paper.pdf')).toBe(false);
+    expect(titlesMatch(null, 'x')).toBe(false);
   });
 });

@@ -7,7 +7,7 @@ import { renderPrompt } from '../llm/prompts/index.js';
 import { LLMError } from '../llm/provider.js';
 import type { EventType } from '../events.js';
 import type { SessionMemory } from './memory.js';
-import type { ProbeResult } from './browser-probe.js';
+import type { BrowserTab, ProbeResult } from './browser-probe.js';
 import type { FrontWindow } from './front-window.js';
 import { ObservationSchema, type Observation } from './types.js';
 
@@ -45,6 +45,8 @@ export type WatcherState = 'idle' | 'watching' | 'skipping' | 'away' | 'no_permi
 /** Why the last look was skipped, for the status note. */
 export type SkipReason =
   | 'no_window'
+  /** The window or tab changed between checking and capturing: that frame is discarded. */
+  | 'window_changed'
   | 'excluded_app'
   | 'private_window'
   | 'excluded_site'
@@ -57,6 +59,8 @@ export interface WatchTarget {
   app: string;
   windowId: number;
   title: string | null;
+  /** The helper's window title when the window was chosen (checked again after capturing). */
+  titleSeen: string | null;
   isBrowser: boolean;
   domain: string | null;
   contentUrl: string | null;
@@ -109,6 +113,8 @@ export class Watcher {
   private flaggedAnswers = new Set<string>();
   private state: WatcherState = 'idle';
   private skipReason: SkipReason | null = null;
+  /** The browser's last answer for a window, reused while its id and title stay the same. */
+  private probeCache: { windowId: number; title: string; tab: BrowserTab; at: number } | null = null;
   /** The newest frame, kept in memory briefly for questions asked right after (never written). */
   private frame: { dataUrl: string; ts: number } | null = null;
   private frameWindow: number | null = null;
@@ -162,30 +168,67 @@ export class Watcher {
     if (recent && this.frameWindow === resolved.target.windowId) return recent;
     const shot = await deps.capture(resolved.target.windowId);
     if (!shot.ok || !deps.isActive() || generation !== this.generation) return null;
+    if (!(await this.stillFront(resolved.target))) return null;
     this.frame = { dataUrl: shot.dataUrl, ts: deps.now() };
     this.frameWindow = resolved.target.windowId;
     return shot.dataUrl;
   }
 
+  /** Away: no input for a while, unless the student is watching a video (no input is normal then). */
+  private isAway(): boolean {
+    if (this.deps.idleSeconds() < AWAY_SECONDS) return false;
+    const latest = this.deps.memory.latest();
+    const watchingVideo = latest?.obs.activity === 'watching_video' && this.deps.now() - latest.ts <= 3 * 60_000;
+    return !watchingVideo;
+  }
+
+  /** Asks the browser, reusing the answer while the same window shows the same title (1 min). */
+  private async probe(front: FrontWindow): Promise<ProbeResult> {
+    const now = this.deps.now();
+    const c = this.probeCache;
+    if (c && front.title && c.windowId === front.windowId && c.title === front.title && now - c.at < 60_000) {
+      return { ok: true, tab: c.tab };
+    }
+    const result = await this.deps.probeBrowser(front.app);
+    this.probeCache =
+      result.ok && front.windowId !== null && front.title && titlesMatch(front.title, result.tab.title)
+        ? { windowId: front.windowId, title: front.title, tab: result.tab, at: now }
+        : null;
+    return result;
+  }
+
+  /** After capturing: the same window, with the same title, is still in front. */
+  private async stillFront(target: WatchTarget): Promise<boolean> {
+    const again = await this.deps.frontWindow();
+    return !!again && again.windowId === target.windowId && (again.title ?? null) === (target.titleSeen ?? null);
+  }
+
   /** Decides what may be looked at right now. Every "no" drops the stored frame. */
   private async resolveTarget(): Promise<{ ok: true; target: WatchTarget } | { ok: false; state: WatcherState; reason?: SkipReason }> {
     const { deps } = this;
-    if (deps.idleSeconds() >= AWAY_SECONDS) return { ok: false, state: 'away' };
+    if (this.isAway()) return { ok: false, state: 'away' };
     const front = await deps.frontWindow();
     if (!front || front.windowId === null || front.pid === deps.selfPid) return { ok: false, state: 'skipping', reason: 'no_window' };
     if (deps.isExcludedApp(front.app)) return { ok: false, state: 'skipping', reason: 'excluded_app' };
     const base = { app: front.app, windowId: front.windowId, title: front.title };
-    if (!deps.isBrowser(front.app)) {
-      return { ok: true, target: { ...base, isBrowser: false, domain: null, contentUrl: null } };
+    // Any app that opens web links is a browser, even one we don't know by name (deny by default)
+    if (!front.isBrowser && !deps.isBrowser(front.app)) {
+      return { ok: true, target: { ...base, titleSeen: front.title, isBrowser: false, domain: null, contentUrl: null } };
     }
 
-    const probe = await deps.probeBrowser(front.app);
+    const probe = await this.probe(front);
     if (probe.ok) {
       const { tab } = probe;
       if (tab.incognito) return { ok: false, state: 'skipping', reason: 'private_window' };
+      // The browser's front tab must be this very window's tab (titles match), so a window or tab
+      // switch between the helper and the probe can't let the wrong window through
+      if (!titlesMatch(front.title, tab.title)) return { ok: false, state: 'skipping', reason: 'window_changed' };
       if (!tab.host) return { ok: false, state: 'skipping', reason: 'unknown_tab' };
       if (deps.isExcludedDomain(tab.host)) return { ok: false, state: 'skipping', reason: 'excluded_site' };
-      return { ok: true, target: { ...base, title: tab.title ?? front.title, isBrowser: true, domain: tab.host, contentUrl: tab.contentUrl } };
+      return {
+        ok: true,
+        target: { ...base, titleSeen: front.title, title: tab.title ?? front.title, isBrowser: true, domain: tab.host, contentUrl: tab.contentUrl }
+      };
     }
     // The browser couldn't be asked: trust the extension only if its tab matches this window
     const report = deps.tabReport(front.title);
@@ -195,12 +238,13 @@ export class Watcher {
       return { ok: false, state: 'skipping', reason };
     }
     if (deps.isExcludedDomain(report.domain)) return { ok: false, state: 'skipping', reason: 'excluded_site' };
-    return { ok: true, target: { ...base, isBrowser: true, domain: report.domain, contentUrl: report.contentUrl } };
+    return { ok: true, target: { ...base, titleSeen: front.title, isBrowser: true, domain: report.domain, contentUrl: report.contentUrl } };
   }
 
   /** New session (or memory cleared): forget per-session state. */
   reset(): void {
     this.generation++;
+    this.probeCache = null;
     this.lastKey = null;
     this.lastCallAt = null;
     this.unchangedSince = null;
@@ -248,9 +292,17 @@ export class Watcher {
         return;
       }
       const fg = resolved.target;
-      if (fg.contentUrl) deps.onContentUrl(fg.contentUrl);
       const shot = await deps.capture(fg.windowId);
       if (stale()) return;
+      // The student may have switched window or tab while we captured: then this frame is dropped
+      if (shot.ok && !(await this.stillFront(fg))) {
+        this.frame = null;
+        this.skipReason = 'window_changed';
+        this.setState('skipping');
+        return;
+      }
+      if (stale()) return;
+      if (fg.contentUrl) deps.onContentUrl(fg.contentUrl);
       if (!shot.ok) {
         this.frame = null;
         // 'empty': the window couldn't be captured; the whole screen is never sent instead
@@ -378,4 +430,21 @@ export class Watcher {
 function changeKey(fg: WatchTarget, dataUrl: string): string {
   const hash = createHash('sha1').update(dataUrl).digest('hex');
   return [fg.app, fg.windowId, fg.title ?? '', fg.domain ?? '', fg.contentUrl ?? '', hash].join('|');
+}
+
+/**
+ * The browser's tab title and the OS window title describe the same tab. The window title may add
+ * an unread count "(3) " (either side), an audio/camera marker, or " - <browser or profile>".
+ */
+export function titlesMatch(windowTitle: string | null, tabTitle: string | null): boolean {
+  const norm = (t: string) => t.trim().replace(/^\(\d+\)\s+/, '').toLowerCase();
+  if (!windowTitle || !tabTitle) return false;
+  const win = norm(windowTitle);
+  const tab = norm(tabTitle);
+  if (!tab) return false;
+  if (win === tab) return true;
+  if (!win.startsWith(tab)) return false;
+  const rest = win.slice(tab.length);
+  // audio on/muted, microphone, camera, recording markers (each optionally with VS16)
+  return /^(\s*(?:\u{1F50A}|\u{1F507}|\u{1F3A4}|\u{1F4F7}|\u{23FA})\u{FE0F}?)*(\s+[-\u2013\u2014]\s.*)?$/u.test(rest);
 }
