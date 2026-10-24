@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Wolfie Sensei</title>
+  <style>
+    body {
+      width: 300px;
+      padding: 15px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    h1 {
+      font-size: 18px;
+      margin: 0 0 10px 0;
+    }
+    .status {
+      padding: 8px;
+      border-radius: 4px;
+      margin: 10px 0;
+      font-size: 14px;
+    }
+    .connected {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .disconnected {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+  </style>
+</head>
+<body>
+  <h1>🐺 Wolfie Sensei</h1>
+  <div id="status" class="status disconnected">Not connected to desktop</div>
+  <script src="dist/popup.js"></script>
+</body>
+</html>

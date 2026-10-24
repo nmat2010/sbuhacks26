@@ -1,0 +1,65 @@
+{
+  "distraction_warning": {
+    "kind": "distraction",
+    "level": 1,
+    "text": "I notice you've opened YouTube. Just checking - is this for your current task?",
+    "spokenText": "I notice you've opened YouTube. Just checking - is this for your current task?",
+    "buttons": [
+      {
+        "label": "Taking a break",
+        "action": "acknowledge"
+      },
+      {
+        "label": "I need this",
+        "action": "ignore_session"
+      }
+    ],
+    "priority": 6
+  },
+  "ai_tool_warning": {
+    "kind": "ai_tool",
+    "level": 1,
+    "text": "Opening Claude? Remember, struggling a bit first helps you learn better.",
+    "spokenText": "Opening Claude? Remember, struggling a bit first helps you learn better.",
+    "buttons": [
+      {
+        "label": "Taking a break",
+        "action": "acknowledge"
+      },
+      {
+        "label": "I need this for the task",
+        "action": "ignore_session"
+      }
+    ],
+    "priority": 7
+  },
+  "stuck_offer": {
+    "kind": "stuck",
+    "level": 3,
+    "text": "You've been on this for a while. Want a hint?",
+    "spokenText": "You've been on this for a while. Want a hint?",
+    "buttons": [
+      {
+        "label": "Yes, please",
+        "action": "accept_hint",
+        "variant": "primary"
+      },
+      {
+        "label": "Not yet",
+        "action": "decline"
+      },
+      {
+        "label": "I'm good",
+        "action": "dismiss"
+      }
+    ],
+    "priority": 8
+  },
+  "streak_celebration": {
+    "kind": "streak",
+    "level": 1,
+    "text": "🎉 3 days in a row! You're building a great habit.",
+    "spokenText": "Three days in a row! You're building a great habit.",
+    "priority": 9
+  }
+}
