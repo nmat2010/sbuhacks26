@@ -49,8 +49,9 @@ export function contentUrlFor(rawUrl: string | undefined): string | null {
   if ((host === 'arxiv.org' || host.endsWith('.arxiv.org')) && /^\/(abs|pdf)\//.test(url.pathname)) {
     return `${url.origin}${url.pathname}`;
   }
-  if ((host === 'youtube.com' || host.endsWith('.youtube.com')) && url.pathname === '/watch') {
-    const v = url.searchParams.get('v');
+  if (host === 'youtube.com' || host.endsWith('.youtube.com')) {
+    // watch?v=ID, /shorts/ID and /live/ID all become the standard watch URL Gemini can read
+    const v = url.pathname === '/watch' ? url.searchParams.get('v') : /^\/(shorts|live)\/([\w-]+)/.exec(url.pathname)?.[2];
     return v && /^[\w-]{6,20}$/.test(v) ? `https://www.youtube.com/watch?v=${v}` : null;
   }
   if (host === 'youtu.be') {

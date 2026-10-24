@@ -24,6 +24,16 @@ export interface ExtensionBridge {
   resetProblem(): void;
 }
 
+/** Same site for content URLs: www./m. prefixes and youtu.be count as the same YouTube. */
+function sameSite(a: string | null, b: string): boolean {
+  if (!a) return false;
+  const norm = (h: string) => {
+    const x = h.toLowerCase().replace(/^(www|m)\./, '');
+    return x === 'youtu.be' ? 'youtube.com' : x;
+  };
+  return norm(a) === norm(b);
+}
+
 function hostOf(url: string): string | null {
   try {
     return new URL(url).hostname.toLowerCase();
@@ -45,10 +55,17 @@ export function createExtensionBridge(deps: ExtensionBridgeDeps): ExtensionBridg
   return {
     handlers: {
       onTab({ domain, title, contentUrl }) {
-        if (!allowed(domain)) return;
+        if (!allowed(domain)) {
+          // An excluded page is in front: forget the previous one rather than keep it
+          deps.tracker.clear();
+          return;
+        }
         // The tab title and content URL are kept in memory only; app_events stores the OS window
         // title instead. A content URL must belong to the reported domain.
-        deps.tracker.set(domain, title ?? null, contentUrl && hostOf(contentUrl) === domain ? contentUrl : null);
+        deps.tracker.set(domain, title ?? null, contentUrl && sameSite(hostOf(contentUrl), domain) ? contentUrl : null);
+      },
+      onTabNone() {
+        deps.tracker.clear();
       },
       onPageSummary(summary) {
         if (!allowed(summary.domain, true)) return;

@@ -92,3 +92,12 @@ describe('contentUrlFor (Watch mode)', () => {
     expect(contentUrlFor('not a url')).toBeNull();
   });
 });
+
+describe('contentUrlFor YouTube variants', () => {
+  it('normalizes mobile, shorts and live URLs to a watch URL', () => {
+    expect(contentUrlFor('https://m.youtube.com/watch?v=aircAruvnKk')).toBe('https://www.youtube.com/watch?v=aircAruvnKk');
+    expect(contentUrlFor('https://www.youtube.com/shorts/aircAruvnKk')).toBe('https://www.youtube.com/watch?v=aircAruvnKk');
+    expect(contentUrlFor('https://youtube.com/live/aircAruvnKk?feature=share')).toBe('https://www.youtube.com/watch?v=aircAruvnKk');
+    expect(contentUrlFor('https://www.youtube.com/@3blue1brown')).toBeNull();
+  });
+});

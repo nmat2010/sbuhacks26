@@ -150,11 +150,19 @@ describe('History', () => {
 });
 
 describe('settings access', () => {
-  it('reads every setting except pairing secrets', () => {
+  it('reads every setting except pairing secrets and the Watch-mode consent keys', () => {
     const s = readPublicSettings(getSetting) as unknown as Record<string, unknown>;
+    const hidden = (k: string) => k.startsWith('pairing.') || k === 'watch.enabled' || k === 'watch.consented_at';
     expect(s['monitored.excluded_domains']).toEqual(SettingsDefaults['monitored.excluded_domains']);
-    expect(Object.keys(s).some((k) => k.startsWith('pairing.'))).toBe(false);
-    expect(Object.keys(s).length).toBe(Object.keys(SettingsDefaults).filter((k) => !k.startsWith('pairing.')).length);
+    expect(Object.keys(s).some(hidden)).toBe(false);
+    expect(Object.keys(s).length).toBe(Object.keys(SettingsDefaults).filter((k) => !hidden(k)).length);
+  });
+
+  it('refuses to turn Watch mode on or fake consent through settings-set', () => {
+    expect(writePublicSetting('watch.enabled' as never, true, setSetting).success).toBe(false);
+    expect(writePublicSetting('watch.consented_at' as never, Date.now(), setSetting).success).toBe(false);
+    expect(getSetting('watch.enabled')).toBe(false);
+    expect(getSetting('watch.consented_at')).toBeNull();
   });
 
   it('writes valid values and normalizes domains and rule lists', () => {

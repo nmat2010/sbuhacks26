@@ -116,3 +116,38 @@ describe('WatchAnswerService', () => {
     expect(res).toEqual({ success: false, error: "I've reached today's limit for questions. Try again tomorrow." });
   });
 });
+
+describe('WatchAnswerService: video problems', () => {
+  it('answers without the video when Gemini rejects it or times out, and never cites it', async () => {
+    memory.record(obs({ activity: 'watching_video', source: { kind: 'video', title: 'Private lecture', locator: null } }), videoCtx);
+    for (const code of ['BAD_REQUEST', 'TIMEOUT'] as const) {
+      calls = [];
+      let first = true;
+      const service = make({
+        llm: () => ({
+          async generate<T>(call: LlmCall<T>): Promise<T> {
+            calls.push(call as LlmCall<unknown>);
+            if (first) {
+              first = false;
+              throw new LLMError('video', code, 'gemini');
+            }
+            return call.schema.parse({ answer: 'From your notes...', grounded: true, citations: [{ n: 2, locator: '4:10' }] });
+          }
+        })
+      });
+      const res = await service.ask({ question: 'what did he say in the video?', inputMode: 'text' });
+      expect(res.success).toBe(true);
+      expect(calls[0].videos).toEqual(['https://www.youtube.com/watch?v=abcdef123']);
+      expect(calls[1].videos).toBeUndefined();
+      expect(res.data!.citations.some((c) => c.kind === 'video')).toBe(false);
+    }
+  });
+
+  it('does not retry other errors', async () => {
+    memory.record(obs({ activity: 'watching_video', source: { kind: 'video', title: 'V', locator: null } }), videoCtx);
+    reply = new LLMError('auth', 'AUTH', 'gemini');
+    const res = await make().ask({ question: 'what did he say in the video?', inputMode: 'text' });
+    expect(res.success).toBe(false);
+    expect(calls).toHaveLength(1);
+  });
+});

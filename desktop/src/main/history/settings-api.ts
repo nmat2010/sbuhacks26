@@ -15,7 +15,6 @@ const EXPLICIT: Partial<Record<SettingsKey, z.ZodTypeAny>> = {
   'watch.interval_seconds': positive(120, 5),
   'watch.calls_per_day': positive(20_000, 0),
   'watch.excluded_apps': z.array(z.string().trim().min(1).max(100)).max(200),
-  'watch.consented_at': z.number().int().positive().nullable(),
   'monitored.ai_tools': rules,
   'monitored.distractions': rules,
   'monitored.excluded_domains': domainList,
@@ -53,7 +52,14 @@ function schemaFor(key: SettingsKey): z.ZodTypeAny {
 }
 
 export function isPublicSettingKey(key: unknown): key is PublicSettingKey {
-  return typeof key === 'string' && key in SettingsDefaults && !key.startsWith('pairing.');
+  return (
+    typeof key === 'string' &&
+    key in SettingsDefaults &&
+    !key.startsWith('pairing.') &&
+    // Watch mode can only be turned on through its consent flow (watch-consent / watch-set)
+    key !== 'watch.enabled' &&
+    key !== 'watch.consented_at'
+  );
 }
 
 /** Domains are stored lower-case without a scheme, path or spaces. */

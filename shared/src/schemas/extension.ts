@@ -35,6 +35,11 @@ export const ExtensionMessageSchema = z.discriminatedUnion('type', [
       contentUrl: z.string().url().max(2048).optional()
     })
   ),
+  /**
+   * The active tab reports nothing (excluded, incognito, not a web page, or Chrome lost focus).
+   * The desktop forgets the last domain so nothing is attributed to, or captured for, it.
+   */
+  envelope('ext.tab_none', z.object({})),
   envelope('ext.page_summary', z.object({ summary: PageSummarySchema })),
   envelope('ext.signal', z.object({ signal: StruggleSignalSchema, domain: z.string() })),
   // desktop -> extension

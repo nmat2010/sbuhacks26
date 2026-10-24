@@ -359,3 +359,17 @@ describe('EscalationEngine', () => {
     expect(JSON.stringify(t.logs)).not.toContain('secret');
   });
 });
+
+describe('EscalationEngine: Watch-mode signals', () => {
+  it('a weaker model_stuck does not downgrade an active strong one', () => {
+    const t = setup({ voice: false });
+    t.bus.emit('signal', t.strong('model_stuck'));
+    t.advance(45);
+    t.bus.emit('signal', t.weak('model_stuck'));
+    t.advance(90);
+    t.bus.emit('signal', t.weak('model_stuck'));
+    t.advance(135);
+    // Weak alone would cap at "?"; the strong signal still allows the offer
+    expect(t.pushed.some((n) => n.level === 3)).toBe(true);
+  });
+});

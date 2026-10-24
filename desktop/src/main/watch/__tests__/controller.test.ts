@@ -86,6 +86,7 @@ describe('WatchController', () => {
   });
 
   it('imports each paper URL once and attaches it to memory; videos are not imported', async () => {
+    settings['watch.auto_import_papers'] = true;
     const c = make();
     memory.record(obs(), { ts: 1, appName: 'Chrome', windowTitle: null, contentUrl: 'https://example.edu/a.pdf', elapsedMs: 0 });
     c.onContentUrl('https://example.edu/a.pdf');
@@ -96,8 +97,7 @@ describe('WatchController', () => {
     expect(memory.paperIds()).toEqual(['p1']);
   });
 
-  it('does not import papers when auto-import is off', async () => {
-    settings['watch.auto_import_papers'] = false;
+  it('does not import papers unless the student opted in (off by default)', async () => {
     const c = make();
     c.onContentUrl('https://arxiv.org/abs/1706.03762');
     await new Promise((r) => setTimeout(r, 0));

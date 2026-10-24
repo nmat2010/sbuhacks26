@@ -50,6 +50,10 @@ export interface WatcherDeps {
 export class Watcher {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private running = false;
+  /** Bumped by every start(), so a tick that outlives a stop/start cannot keep an old loop going. */
+  private loopToken = 0;
+  /** Bumped by stop() and reset(): a look that finishes after either is discarded. */
+  private generation = 0;
   private busy = false;
   private lastKey: string | null = null;
   private lastCallAt: number | null = null;
@@ -66,13 +70,16 @@ export class Watcher {
   start(): void {
     if (this.running) return;
     this.running = true;
-    this.schedule(0);
+    this.schedule(0, ++this.loopToken);
   }
 
   stop(): void {
     this.running = false;
+    this.loopToken++;
+    this.generation++;
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
+    this.frame = null;
     this.setState('idle');
   }
 
@@ -97,14 +104,16 @@ export class Watcher {
     if (!fg || !this.allowed(fg)) return null;
     const recent = this.latestFrame(maxAgeMs);
     if (recent) return recent;
+    const generation = this.generation;
     const shot = await deps.capture();
-    if (!shot.ok || !deps.isActive()) return null;
+    if (!shot.ok || !deps.isActive() || generation !== this.generation) return null;
     this.frame = { dataUrl: shot.dataUrl, ts: deps.now() };
     return shot.dataUrl;
   }
 
   /** New session (or memory cleared): forget per-session state. */
   reset(): void {
+    this.generation++;
     this.lastKey = null;
     this.lastCallAt = null;
     this.unchangedSince = null;
@@ -114,10 +123,11 @@ export class Watcher {
     this.frame = null;
   }
 
-  private schedule(delayMs: number): void {
-    if (!this.running) return;
+  private schedule(delayMs: number, token: number): void {
+    if (!this.running || token !== this.loopToken) return;
     this.timer = setTimeout(() => {
-      void this.tick().finally(() => this.schedule(Math.max(1000, this.deps.intervalMs())));
+      this.timer = null;
+      void this.tick().finally(() => this.schedule(Math.max(1000, this.deps.intervalMs()), token));
     }, delayMs);
   }
 
@@ -146,13 +156,16 @@ export class Watcher {
     if (fg.contentUrl) deps.onContentUrl(fg.contentUrl);
 
     this.busy = true;
+    const generation = this.generation;
+    // Stopped, cleared or reset while we waited: drop whatever this look produced
+    const stale = () => generation !== this.generation || !deps.isActive();
     try {
       const shot = await deps.capture();
-      // The window may have changed, or watching stopped, while capturing
-      if (!deps.isActive()) return;
+      if (stale()) return;
       if (!shot.ok) {
         this.frame = null;
-        this.setState(shot.reason === 'permission' ? 'no_permission' : 'error');
+        // 'empty': the active window couldn't be matched; the whole screen is never sent instead
+        this.setState(shot.reason === 'permission' ? 'no_permission' : shot.reason === 'empty' ? 'skipping' : 'error');
         return;
       }
       const now = deps.now();
@@ -171,6 +184,7 @@ export class Watcher {
       }
 
       const obs = await this.observe(fg, shot.dataUrl, now);
+      if (stale()) return;
       this.lastCallAt = now;
       const elapsed = this.lastRecordAt === null ? 0 : Math.min(MAX_CREDIT_MS, now - this.lastRecordAt);
       this.lastRecordAt = now;

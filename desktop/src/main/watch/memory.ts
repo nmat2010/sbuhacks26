@@ -49,6 +49,8 @@ export class SessionMemory {
   private sources = new Map<string, SourceEntry>();
   private timeline: TimelineEntry[] = [];
   private last: { obs: Observation; ts: number; sourceKey: string } | null = null;
+  /** Papers imported before their source was first recorded (the import can beat the first look). */
+  private pendingPapers = new Map<string, { paperId: string; title?: string }>();
 
   record(obs: Observation, ctx: ObservationContext): SourceEntry {
     const title = (obs.source.title ?? ctx.windowTitle ?? obs.subject ?? ctx.appName).trim() || ctx.appName;
@@ -67,6 +69,11 @@ export class SessionMemory {
         locators: [],
         points: []
       };
+      const pending = ctx.contentUrl ? this.pendingPapers.get(ctx.contentUrl) : undefined;
+      if (pending) {
+        entry.paperId = pending.paperId;
+        if (pending.title && entry.kind === 'paper') entry.title = pending.title;
+      }
       this.sources.set(key, entry);
       this.evictSources();
     }
@@ -91,6 +98,7 @@ export class SessionMemory {
 
   /** The reading pipeline finished importing the paper behind `url`. */
   attachPaper(url: string, paperId: string, title?: string): void {
+    this.pendingPapers.set(url, { paperId, title });
     for (const entry of this.sources.values()) {
       if (entry.url === url) {
         entry.paperId = paperId;
@@ -139,21 +147,34 @@ export class SessionMemory {
       const min = Math.round((now - ts) / 60_000);
       return min <= 0 ? 'just now' : `${min} min ago`;
     };
-    const sourceLines = this.listSources()
-      .slice(0, 8)
-      .reverse()
-      .map((s) => {
-        const head = `- [${s.kind}] ${s.title}${s.url ? ` <${s.url}>` : ''} (last seen ${ago(s.lastSeen)}, ~${Math.max(1, Math.round(s.seconds / 60))} min${s.locators.length ? `, at ${s.locators.join(', ')}` : ''})`;
-        const points = s.points.slice(-6).map((p) => `    • ${p}`);
-        return [head, ...points].join('\n');
-      });
-    const recent = this.timeline.slice(-10).map((t) => `- ${ago(t.ts)}: ${t.summary}`);
-    let text = `Sources this session (oldest to newest):\n${sourceLines.join('\n')}\n\nRecent activity:\n${recent.join('\n')}`;
-    if (text.length > maxChars) text = `...${text.slice(text.length - maxChars + 3)}`;
-    return text;
+    // Newest sources first, so when the budget runs out it is the oldest that get dropped
+    const blocks: string[] = [];
+    let used = 0;
+    const sourceBudget = Math.floor(maxChars * 0.7);
+    for (const s of this.listSources().slice(0, 8)) {
+      const head = `- [${s.kind}] ${s.title}${s.url ? ` <${s.url}>` : ''} (last seen ${ago(s.lastSeen)}, ~${Math.max(1, Math.round(s.seconds / 60))} min${s.locators.length ? `, at ${s.locators.join(', ')}` : ''})`;
+      const lines = [head, ...s.points.slice(-6).map((p) => `    • ${p}`)];
+      while (lines.length > 1 && used + lines.join('\n').length + 1 > sourceBudget) lines.pop();
+      const block = lines.join('\n');
+      if (used + block.length + 1 > sourceBudget) break;
+      blocks.unshift(block);
+      used += block.length + 1;
+    }
+    const header = `Sources this session (oldest to newest):\n${blocks.join('\n')}\n\nRecent activity:`;
+    // Then as much of the recent timeline as fits, newest kept
+    const recent: string[] = [];
+    let room = maxChars - header.length;
+    for (const t of [...this.timeline].reverse().slice(0, 10)) {
+      const line = `\n- ${ago(t.ts)}: ${t.summary}`;
+      if (line.length > room) break;
+      recent.unshift(line);
+      room -= line.length;
+    }
+    return (header + recent.join('')).slice(0, maxChars);
   }
 
   clear(): void {
+    this.pendingPapers.clear();
     this.sources.clear();
     this.timeline = [];
     this.last = null;

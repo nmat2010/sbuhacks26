@@ -232,3 +232,73 @@ describe('Watcher', () => {
     }
   });
 });
+
+describe('Watcher races and capture limits (review fixes)', () => {
+  it('discards a look that finishes after stop(), reset() or deactivation', async () => {
+    let release: (o: Observation) => void = () => {};
+    const slow = make({
+      llm: () => ({
+        generate<T>(call: LlmCall<T>): Promise<T> {
+          calls.push(call as LlmCall<unknown>);
+          return new Promise<T>((res) => (release = (o) => res(call.schema.parse(o))));
+        }
+      })
+    });
+    reply = obs({ mode: 'homework', answer_check: { visible_answer: 'x = 9', looks_correct: false, issue: 'sign' } });
+    const pending = slow.tick();
+    await new Promise((r) => setTimeout(r, 0));
+    slow.reset(); // e.g. the session ended or memory was cleared
+    release(reply as Observation);
+    await pending;
+    expect(memory.isEmpty()).toBe(true);
+    expect(signals).toHaveLength(0);
+
+    const pending2 = slow.tick();
+    await new Promise((r) => setTimeout(r, 0));
+    active = false;
+    release(reply as Observation);
+    await pending2;
+    expect(memory.isEmpty()).toBe(true);
+  });
+
+  it('stop() then start() during a look keeps a single loop', async () => {
+    vi.useFakeTimers();
+    try {
+      let release: () => void = () => {};
+      let inFlight = 0;
+      const w = make({
+        llm: () => ({
+          async generate<T>(call: LlmCall<T>): Promise<T> {
+            calls.push(call as LlmCall<unknown>);
+            inFlight++;
+            if (inFlight === 1) await new Promise<void>((r) => (release = r));
+            return call.schema.parse(reply);
+          }
+        })
+      });
+      w.start();
+      await vi.advanceTimersByTimeAsync(1); // first look is now waiting on the model
+      w.stop();
+      w.start();
+      release();
+      await vi.advanceTimersByTimeAsync(1);
+      const before = calls.length;
+      for (let i = 0; i < 3; i++) {
+        frame = i % 2 ? FRAME_A : FRAME_B;
+        await vi.advanceTimersByTimeAsync(8000);
+      }
+      // One loop: one look per interval (two loops would give about six)
+      expect(calls.length - before).toBe(3);
+      w.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('an unmatched window is skipped, never replaced by a whole-screen capture', async () => {
+    const w = make({ capture: async () => ({ ok: false, reason: 'empty' }) });
+    await w.tick();
+    expect(w.getState()).toBe('skipping');
+    expect(calls).toHaveLength(0);
+  });
+});

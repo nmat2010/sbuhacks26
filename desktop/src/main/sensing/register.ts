@@ -147,12 +147,15 @@ export function registerSensing(): void {
     const lastForeground = (): ForegroundInfo | null => {
       const last = m.getLast();
       if (!last) return null;
+      // Trust the tab report only if it is fresh and matches the window in front (a stale domain
+      // could otherwise stand in for an excluded, incognito or other-browser page)
+      const tab = last.isBrowser && domainTracker.matchesWindow(last.windowTitle, Date.now());
       return {
         appName: last.appName,
         windowTitle: last.windowTitle,
         isBrowser: last.isBrowser,
-        domain: last.isBrowser ? domainTracker.getDomain() : null,
-        contentUrl: last.isBrowser ? domainTracker.getContentUrl() : null,
+        domain: tab ? domainTracker.getDomain() : null,
+        contentUrl: tab ? domainTracker.getContentUrl() : null,
         ts: last.ts
       };
     };

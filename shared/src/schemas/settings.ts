@@ -232,7 +232,8 @@ export const SettingsDefaults: SettingsValues = {
     'System Settings',
     'Wallet'
   ],
-  'watch.auto_import_papers': true,
+  // Opt-in: the Watch-mode consent screen asks "Let Wolfie read papers you open?" (WATCH_MODE.md §3.2)
+  'watch.auto_import_papers': false,
   'watch.calls_per_day': 2000,
   'api.call_limit_per_day': 200,
   'demo.mode': false

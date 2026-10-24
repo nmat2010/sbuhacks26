@@ -59,3 +59,27 @@ describe('SessionMemory', () => {
     expect(m.toPromptText()).toBe('');
   });
 });
+
+describe('SessionMemory: paper imported before its first observation', () => {
+  it('attaches the paper when the source is first recorded', () => {
+    const m = new SessionMemory();
+    m.attachPaper('https://example.edu/paper.pdf', 'p9', 'Already-read paper');
+    m.record(obs(), ctx(1000));
+    expect(m.paperIds()).toEqual(['p9']);
+    expect(m.listSources()[0].title).toBe('Already-read paper');
+  });
+
+  it('keeps the header and the newest sources when the budget is tight', () => {
+    const m = new SessionMemory();
+    for (let i = 0; i < 8; i++) {
+      m.record(
+        obs({ source: { kind: 'paper', title: `Paper ${i}`, locator: null }, key_points: ['p'.repeat(200)] }),
+        ctx(1000 + i * 1000, { contentUrl: `https://example.edu/${i}.pdf` })
+      );
+    }
+    const text = m.toPromptText(900, 20_000);
+    expect(text.startsWith('Sources this session')).toBe(true);
+    expect(text).toContain('Paper 7');
+    expect(text.length).toBeLessThanOrEqual(900);
+  });
+});

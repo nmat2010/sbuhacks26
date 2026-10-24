@@ -203,7 +203,8 @@ function registerWatch(): void {
       desktopCapturer,
       screenAccess: () => systemPreferences.getMediaAccessStatus('screen'),
       thumbnailSize: { width: 1024, height: 640 },
-      jpegQuality: 60
+      jpegQuality: 60,
+      windowOnly: true
     });
 
   const w = new Watcher({
@@ -220,10 +221,8 @@ function registerWatch(): void {
     capture,
     llm: () => client,
     memory,
-    emitSignal: (signal) => {
-      stuckBus.emit('signal', signal);
-      safeLog('stuck.signal', { type: signal.type, strength: signal.strength, source: 'watch' });
-    },
+    // The escalation engine logs stuck.signal itself
+    emitSignal: (signal) => stuckBus.emit('signal', signal),
     onContentUrl: (url) => watchController?.onContentUrl(url),
     onState: (state) => watchController?.onWatcherState(state),
     log: safeLog
@@ -246,11 +245,18 @@ function registerWatch(): void {
   });
   watchController = controller;
 
+  // Questions use the main budget (api.call_limit_per_day, same usage rows as hints) but a longer
+  // timeout, because Gemini may be watching a whole video to answer
+  const answerClient = new LLMClient({
+    provider: getLLMClient().provider,
+    usage: new SqliteUsageStore(),
+    dailyCap: () => getSetting('api.call_limit_per_day'),
+    timeoutMs: 45_000
+  });
   const answers = new WatchAnswerService({
     now: Date.now,
     memory,
-    // Questions are answered on the main budget (api.call_limit_per_day), like paper questions
-    llm: () => getLLMClient(),
+    llm: () => answerClient,
     excerpts: (paperId, query, limit) => getReadingService().excerpts(paperId, query, limit),
     paperTitle: (paperId) => memory.listSources().find((s) => s.paperId === paperId)?.title ?? null,
     currentFrame: (maxAgeMs) => w.captureNow(maxAgeMs),
@@ -376,6 +382,8 @@ function registerVoice(): void {
     hasOpenLadder: () => flow?.hasOpenLadder() ?? false,
     onFollowup: (utterance) => flow?.followup(utterance),
     onFreeSpeech: async (utterance) => {
+      // A follow-up to a Watch-mode explanation stays in that conversation
+      if (flow?.hasOpenExplanation() && (await flow.followupExplanation(utterance))) return true;
       // Watch mode answers from the whole session (the reading view's paper wins while it is open)
       if (!focusedPaperId && watchController?.isActive() && watchAnswers) {
         const res = await watchAnswers.ask({ question: utterance, inputMode: 'voice' });

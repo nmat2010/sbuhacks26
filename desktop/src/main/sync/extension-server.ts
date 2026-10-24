@@ -23,6 +23,8 @@ const EXTENSION_ORIGIN = /^chrome-extension:\/\/([a-p]{32})$/;
 
 export interface ExtensionHandlers {
   onTab(payload: ExtensionMessageOf<'ext.tab'>['payload']): void;
+  /** The active tab reports nothing (excluded, incognito, not a web page, Chrome unfocused). */
+  onTabNone?(): void;
   onPageSummary(summary: PageSummary): void;
   onSignal(signal: StruggleSignal, domain: string): void;
 }
@@ -184,6 +186,9 @@ export class ExtensionServer {
     switch (msg.type) {
       case 'ext.tab':
         this.opts.handlers.onTab(msg.payload);
+        break;
+      case 'ext.tab_none':
+        this.opts.handlers.onTabNone?.();
         break;
       case 'ext.page_summary':
         this.opts.handlers.onPageSummary(msg.payload.summary);

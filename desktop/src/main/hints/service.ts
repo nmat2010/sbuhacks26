@@ -115,7 +115,7 @@ export class HintService {
       response = offlineLadder(context);
     }
 
-    const imagePath = this.storeImage(context.imageDataUrl);
+    const imagePath = context.imageNoStore ? null : this.storeImage(context.imageDataUrl);
     this.deps.log('hint.requested', {
       device: context.device,
       source,

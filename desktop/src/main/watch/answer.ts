@@ -89,9 +89,8 @@ export class WatchAnswerService {
       videos_attached: videos.length
     };
 
-    let out;
-    try {
-      out = await deps.llm().generate({
+    const call = (withVideos: string[]) =>
+      deps.llm().generate({
         task: 'watch_answer',
         system: renderPrompt('watch-answer.v1', {
           mode_rules: homework ? HOMEWORK_RULES : LEARNING_RULES,
@@ -99,15 +98,28 @@ export class WatchAnswerService {
             ? 'The student asked for help without typing a question. Work out from the screen and the session what they are most likely stuck on, and address that.'
             : 'Answer the question the student asked.'
         }),
-        messages: [{ role: 'user', content: JSON.stringify(payload) }],
+        messages: [{ role: 'user', content: JSON.stringify({ ...payload, videos_attached: withVideos.length }) }],
         images: frame ? [parseImageDataUrl(frame)] : undefined,
-        videos: videos.length ? videos : undefined,
+        videos: withVideos.length ? withVideos : undefined,
         schema: WatchAnswerSchema,
         mockKey: { question, mode, sources: sources.map((s) => ({ n: s.n, title: s.title })) },
         temperature: 0.3
       });
+
+    let out;
+    let videoDropped = false;
+    try {
+      out = await call(videos);
     } catch (error) {
-      return { success: false, error: friendly(error) };
+      // A private/unlisted or very long video makes Gemini reject or time out: answer without it
+      const videoProblem = error instanceof LLMError && (error.code === 'BAD_REQUEST' || error.code === 'TIMEOUT');
+      if (!videos.length || !videoProblem) return { success: false, error: friendly(error) };
+      try {
+        out = await call([]);
+        videoDropped = true;
+      } catch (retryError) {
+        return { success: false, error: friendly(retryError) };
+      }
     }
 
     // Only citations that point at a source we actually sent count
@@ -116,6 +128,7 @@ export class WatchAnswerService {
     for (const c of out.citations) {
       const s = byN.get(c.n);
       if (!s || citations.some((x) => x.n === c.n)) continue;
+      if (videoDropped && s.kind === 'video') continue; // the model never saw it
       citations.push({ n: s.n, kind: s.kind, title: s.title, locator: c.locator ?? s.locator, url: s.url });
     }
     const grounded = !homework && out.grounded && citations.length > 0;
@@ -133,7 +146,8 @@ export class WatchAnswerService {
       inputMode: input.inputMode,
       proactive: !!input.proactive,
       sources: sources.length,
-      videos: videos.length,
+      videos: videoDropped ? 0 : videos.length,
+      videoDropped,
       screenshot: !!frame
     });
     return { success: true, data: answer };

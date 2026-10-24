@@ -47,3 +47,39 @@ describe('extension bridge: content URLs (Watch mode)', () => {
     expect(tracker.getContentUrl()).toBeNull();
   });
 });
+
+describe('stale tab reports (review fix)', () => {
+  it('an excluded tab or ext.tab_none clears the previous domain', () => {
+    const { tracker, bridge } = make();
+    bridge.handlers.onTab({ domain: 'arxiv.org', title: 'Attention', contentUrl: 'https://arxiv.org/abs/1706.03762' });
+    bridge.handlers.onTab({ domain: 'secure.chase.com', title: 'Chase' });
+    expect(tracker.getDomain()).toBeNull();
+    expect(tracker.getContentUrl()).toBeNull();
+    bridge.handlers.onTab({ domain: 'arxiv.org', title: 'Attention' });
+    bridge.handlers.onTabNone?.();
+    expect(tracker.getDomain()).toBeNull();
+  });
+
+  it('accepts m./www. YouTube hosts and youtu.be for the content URL', () => {
+    const { tracker, bridge } = make();
+    bridge.handlers.onTab({ domain: 'm.youtube.com', contentUrl: 'https://www.youtube.com/watch?v=abcdef123' });
+    expect(tracker.getContentUrl()).toBe('https://www.youtube.com/watch?v=abcdef123');
+    bridge.handlers.onTab({ domain: 'youtu.be', contentUrl: 'https://www.youtube.com/watch?v=abcdef123' });
+    expect(tracker.getContentUrl()).toBe('https://www.youtube.com/watch?v=abcdef123');
+  });
+});
+
+describe('DomainTracker.matchesWindow', () => {
+  it('trusts a fresh report whose tab title matches the window', () => {
+    let now = 1_000;
+    const tracker = new DomainTracker(() => now);
+    tracker.set('arxiv.org', 'Attention Is All You Need');
+    expect(tracker.matchesWindow('Attention Is All You Need', now)).toBe(true);
+    expect(tracker.matchesWindow(null, now)).toBe(true); // window titles turned off
+    expect(tracker.matchesWindow('Chase - Accounts', now)).toBe(false); // another tab or browser
+    now += 46_000;
+    expect(tracker.matchesWindow('Attention Is All You Need', now)).toBe(false); // stale
+    tracker.clear();
+    expect(tracker.matchesWindow('Attention Is All You Need', now)).toBe(false);
+  });
+});

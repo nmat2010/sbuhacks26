@@ -135,7 +135,14 @@ export class EscalationEngine {
     } else if (signal.problemId && signal.problemId !== this.state.currentProblemId) {
       return; // belongs to a problem that is no longer on screen
     }
-    const fresh = !this.signals.has(signal.type);
+    const existing = this.signals.get(signal.type);
+    // A weaker repeat (e.g. Watch mode's model_stuck at lower confidence) must not downgrade a
+    // strong signal that is still active
+    if (existing && existing.expiresAt > now && existing.signal.strength === 'strong' && signal.strength === 'weak') {
+      this.tick();
+      return;
+    }
+    const fresh = !existing;
     this.signals.set(signal.type, { signal, expiresAt: now + this.lifetimeMs(signal.type) });
     if (fresh) this.deps.log('stuck.signal', { type: signal.type, strength: signal.strength });
     this.tick();

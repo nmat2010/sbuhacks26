@@ -171,6 +171,12 @@ export class HintFlow {
    * logged like clicks; this returns false when there is no open ladder to answer.
    */
   answer(action: string, via: 'button' | 'voice' = 'voice'): boolean {
+    const explanation = this.explanation;
+    if (explanation) {
+      if (explanation.nudgeId) this.deps.respond({ id: explanation.nudgeId, action, via });
+      else this.applyExplanation(action);
+      return true;
+    }
     const ladder = this.ladder;
     if (!ladder) return false;
     if (ladder.nudgeId) this.deps.respond({ id: ladder.nudgeId, action, via });
@@ -272,7 +278,7 @@ export class HintFlow {
             ...base,
             sessionContext,
             ...(page ? { pageSummary: page, problemId: page.problemId } : {}),
-            ...(frame ? { imageDataUrl: frame } : {})
+            ...(frame ? { imageDataUrl: frame, imageNoStore: true } : {})
           }
         };
       }
@@ -341,7 +347,8 @@ export class HintFlow {
         spokenText: firstSentences(res.text),
         buttons: [
           { label: 'Explain more simply', action: EXPLAIN_SIMPLER, variant: 'secondary' },
-          { label: 'I got it', action: ACTIONS.GOT_IT, variant: 'primary' }
+          { label: 'I got it', action: ACTIONS.GOT_IT, variant: 'primary' },
+          { label: "I'm good", action: ACTIONS.IM_GOOD, variant: 'secondary' }
         ],
         priority: 8
       });
@@ -355,6 +362,14 @@ export class HintFlow {
     } finally {
       this.busy = false;
     }
+  }
+
+  /** A spoken follow-up ("explain that more simply", "why does that work?") while an explanation is up. */
+  async followupExplanation(utterance: string): Promise<boolean> {
+    if (!this.explanation || !this.deps.watch || this.busy) return false;
+    this.explanation = null; // replaced by the answer; offers stay held meanwhile
+    await this.explainFromSession('voice', utterance);
+    return true;
   }
 
   private applyExplanation(action: string): void {

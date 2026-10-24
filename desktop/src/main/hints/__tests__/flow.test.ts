@@ -503,7 +503,7 @@ describe('hint flow with Watch mode on', () => {
     expect(t.last().text).toContain('He gates each score with a mask.');
     expect(t.last().text).toContain('From your session');
     expect(t.last().spokenText).toBe('He gates each score with a mask. That keeps heads sparse.');
-    expect(labels(t.last())).toEqual(['explain_simpler', ACTIONS.GOT_IT]);
+    expect(labels(t.last())).toEqual(['explain_simpler', ACTIONS.GOT_IT, ACTIONS.IM_GOOD]);
     expect(t.flow.hasOpenExplanation()).toBe(true);
     expect(t.ladderOpen).toEqual([true]);
   });
@@ -591,5 +591,57 @@ describe('captureActiveWindow JPEG (Watch mode frames)', () => {
     expect(jpeg).toMatchObject({ ok: true, dataUrl: `data:image/jpeg;base64,${Buffer.from('JPG').toString('base64')}` });
     const png = await captureActiveWindow({ desktopCapturer: { getSources }, screenAccess: () => 'granted' });
     expect(png).toMatchObject({ ok: true, dataUrl: 'data:image/png;base64,UE5H' });
+  });
+});
+
+describe('Watch-mode explanation: voice and capture (review fixes)', () => {
+  const watch = (explain = vi.fn(async (_q: string | null) => ({ ok: true as const, text: 'Gated attention. It keeps heads sparse.', label: 'From your session' }))) => ({
+    explain,
+    hooks: {
+      active: () => true,
+      mode: () => 'learning' as const,
+      contextText: () => 'notes',
+      currentFrame: async () => null,
+      explain
+    }
+  });
+
+  it('"I got it" / "I\'m good" by voice act on the open explanation', async () => {
+    const w = watch();
+    const t = setup({ watch: w.hooks });
+    t.bus.emit('help-requested', 'manual');
+    await t.settle();
+    expect(t.flow.answer(ACTIONS.IM_GOOD, 'voice')).toBe(true);
+    expect(t.markImGood).toHaveBeenCalled();
+    expect(t.flow.hasOpenExplanation()).toBe(false);
+    expect(t.ladderOpen.at(-1)).toBe(false);
+  });
+
+  it('a spoken follow-up stays in the explanation (same flow, new bubble)', async () => {
+    const w = watch();
+    const t = setup({ watch: w.hooks });
+    t.bus.emit('help-requested', 'manual');
+    await t.settle();
+    expect(await t.flow.followupExplanation('why does the mask help?')).toBe(true);
+    expect(w.explain).toHaveBeenLastCalledWith('why does the mask help?');
+    expect(t.flow.hasOpenExplanation()).toBe(true);
+    expect(await setup({ session: { id: 's2', assessmentMode: false } }).flow.followupExplanation('x')).toBe(false); // nothing open
+  });
+});
+
+describe('captureActiveWindow windowOnly', () => {
+  it('never falls back to the whole screen', async () => {
+    const thumb = { isEmpty: () => false, toDataURL: () => 'data:image/png;base64,UE5H' };
+    const getSources = vi.fn(async ({ types }: { types: string[] }) =>
+      types.includes('window') ? [{ id: 'w', name: 'Other window', thumbnail: thumb }] : [{ id: 's', name: 'Screen', thumbnail: thumb }]
+    );
+    const r = await captureActiveWindow({
+      desktopCapturer: { getSources },
+      screenAccess: () => 'granted',
+      frontWindow: () => ({ title: 'homework.pdf' }),
+      windowOnly: true
+    });
+    expect(r).toEqual({ ok: false, reason: 'empty' });
+    expect(getSources.mock.calls.some(([o]) => o.types.includes('screen'))).toBe(false);
   });
 });

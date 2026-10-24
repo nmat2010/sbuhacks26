@@ -38,6 +38,11 @@ export interface CaptureDeps {
   thumbnailSize?: { width: number; height: number };
   /** JPEG (quality 0-100) instead of PNG when the thumbnail supports it. */
   jpegQuality?: number;
+  /**
+   * Only the active window, never the whole screen (Watch mode): if the window can't be matched,
+   * the result is `empty`, because a screen capture would include other apps' windows.
+   */
+  windowOnly?: boolean;
 }
 
 export type CaptureResult =
@@ -81,6 +86,7 @@ export async function captureActiveWindow(deps: CaptureDeps): Promise<CaptureRes
       }
     }
 
+    if (deps.windowOnly) return { ok: false, reason: 'empty' };
     const screens = await deps.desktopCapturer.getSources({ types: ['screen'], thumbnailSize: size });
     const screen = screens.find((s) => !s.thumbnail.isEmpty());
     if (!screen) return { ok: false, reason: 'empty' };

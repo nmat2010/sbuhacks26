@@ -89,10 +89,12 @@ export class ReadingService {
    * other links are downloaded directly, which fails for papers behind a login.
    */
   async importPdfUrl(url: string): Promise<BResult<{ paper: PaperView }>> {
+    // Already read (e.g. opened again in a later session): don't download it again
+    const ready = this.findReadableByUrl(url);
+    if (ready) return { success: true, data: { paper: ready } };
     const arxivId = parseArxivId(url);
     if (arxivId && /arxiv\.org/i.test(url)) return this.importArxiv(url);
     const existing = this.deps.papers.findDuplicate(url);
-    if (existing?.readable) return { success: true, data: { paper: existing } };
     let bytes: Uint8Array;
     try {
       const res = await this.deps.httpBinary(url);
