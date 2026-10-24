@@ -1,7 +1,7 @@
 # Report: Agent A (Sensing & Data)
 
 **Branch:** `tuan/a-sensing`, from `tuan/phase0-fixes` @ f4de16a.
-**Last updated after:** A5.
+**Last updated after:** A7.
 
 ## Status
 
@@ -11,8 +11,8 @@
 | A2 extension loopback server | done | 09a161c |
 | A3 extension background + popup | done | 83a2313 |
 | A4 rules + warnings (**M1**) | done | 32d4513 |
-| A5 PageSummary + web signals | done | A5HASH |
-| A7 demo pages | not started | |
+| A5 PageSummary + web signals | done | f9375f7 |
+| A7 demo pages | done | A7HASH |
 | A6 desktop signals (**M2**) | not started | |
 | A8 LAN sync server (**M3**) | not started | |
 | A9 streak engine | not started | |
