@@ -2,7 +2,7 @@
 
 A companion that sits on the student's laptop and iPad during study/work sessions. It notices when they are stuck, offers graduated hints (by text or voice, including while handwriting), warns when they open AI tools or distractions, keeps a daily streak, and ties sessions to semester goals through a dashboard and a generated plan.
 
-**For Claude Code:** build in the phase order below. Finish each phase, run its acceptance checks, and commit before starting the next. Do not add features that are not in this spec. If something is ambiguous, pick the simplest option, note it in `DECISIONS.md`, and continue. Each phase names an owner (Person A or B); the split and the shared contracts are in section 11.
+**For Claude Code:** build in the phase order below. Finish each phase, run its acceptance checks, and commit before starting the next. Do not add features that are not in this spec. If something is ambiguous, pick the simplest option, note it in `DECISIONS.md`, and continue. Each phase names an owner (Thu or Tuan); the split and the shared contracts are in section 11.
 
 ---
 
@@ -136,7 +136,7 @@ Window titles and page text can be sensitive. Provide a "clear history" button, 
 ## 5. Build phases
 
 ### Phase 0: Scaffold and contracts
-**Owner: A and B together (the first working session; see section 11).**
+**Owner: Thu and Tuan together (the first working session; see section 11).**
 - Monorepo with `shared/`, `desktop/`, `extension/`, `ios/`, `demo-pages/`.
 - Desktop: Electron + Vite + React + TypeScript, ESLint, Prettier, Vitest. Two windows: overlay (transparent, frameless, always-on-top, click-through except on the mascot) and dashboard. Typed IPC, SQLite with migrations, `.env` loading.
 - Extension: MV3 skeleton that builds and loads unpacked, with a popup.
@@ -147,7 +147,7 @@ Window titles and page text can be sensitive. Provide a "clear history" button, 
 **Accept:** `npm run dev` opens both desktop windows; the overlay shows a draggable placeholder mascot. The extension loads in Chrome. The iOS app runs on a device. A test IPC round trip writes and reads a DB row. Contract fixtures validate in TypeScript and decode in Swift.
 
 ### Phase 1: Mascot overlay and voice
-**Owner: B (overlay, NudgeQueue, voice UI) with A providing the speech provider implementations.**
+**Owner: Thu (overlay, NudgeQueue, voice UI) with Tuan providing the speech provider implementations.**
 
 *Overlay*
 - Sprite states: idle, talking, alert, sleeping, plus escalation states: glance, question-mark (used in Phase 4).
@@ -168,7 +168,7 @@ Window titles and page text can be sensitive. Provide a "clear history" button, 
 **Accept:** A debug command pushes a nudge and the bubble appears; 10 quick nudges show at most the configured number; snooze suppresses them. With mock providers, a typed utterance produces a spoken-style response in the bubble; with real keys, speech in and out works. Talking over Wolfie stops playback and the new utterance is processed; Wolfie's own speech is not transcribed back as input. "Stop", "snooze", and "another hint" work without any LLM call.
 
 ### Phase 2: Session monitoring and extension connection
-**Owner: A.**
+**Owner: Tuan.**
 - Start/stop sessions manually; optionally auto-start when a user-chosen "study app" is focused.
 - Poll the active window every 2 seconds: app name and window title. Detect idle time with Electron `powerMonitor.getSystemIdleTime()`.
 - Write `app_events` only when the app or title changes, plus idle flag changes.
@@ -179,7 +179,7 @@ Window titles and page text can be sensitive. Provide a "clear history" button, 
 **Accept:** After a 5-minute test session switching between apps and sites, the DB shows correct time per app and per domain and idle periods. With the extension disconnected the app keeps working using window titles. Denying permissions shows a helpful message and does not crash. A WebSocket client without the token is rejected.
 
 ### Phase 3: AI-tool and distraction warnings
-**Owner: A (rules, message pools reviewed by B for tone).**
+**Owner: Tuan (rules, message pools reviewed by Thu for tone).**
 - Settings lists with defaults: **AI tools** (Claude, ChatGPT, Gemini, Copilot, Perplexity) and **distractions** (YouTube, Netflix, Instagram, TikTok, Reddit, games). Users can add, remove, and toggle entries.
 - Matching: when the extension is connected, match on the tab's domain; otherwise fall back to app name and window title. Domain matching is the primary path because titles are unreliable.
 - During an active session, when a matched app or domain comes to the front, Wolfie speaks up through the `NudgeQueue`. Tone is a warm teacher voice, not a scolding one. Message pools per kind with variation. Spoken if voice mode is on.
@@ -190,7 +190,7 @@ Window titles and page text can be sensitive. Provide a "clear history" button, 
 **Accept:** In a session, opening a listed site triggers a nudge within 3 seconds with the extension connected and within 5 seconds with only window titles. Cooldowns and ignores work. Outside a session, nothing fires. Every nudge and response is logged.
 
 ### Phase 4: Stuck detection, escalation, and hints
-**Owner: A (signals, escalation engine, hint service, extension page understanding, demo scenarios). B (escalation sprite states, spoken hint conversation UI).**
+**Owner: Tuan (signals, escalation engine, hint service, extension page understanding, demo scenarios). Thu (escalation sprite states, spoken hint conversation UI).**
 
 **4a. Page understanding (extension).**
 - The content script builds a compact `PageSummary`: URL and domain, title, headings, visible text (about 2,500 characters, viewport first), up to 120 interactive controls with role, label, state and a stable id, visible error messages, open dialogs, and any detected "problem region". No raw DOM is ever sent.
@@ -239,7 +239,7 @@ Window titles and page text can be sensitive. Provide a "clear history" button, 
 **Accept:** Unit tests for `computeLevel` pass on the shared fixtures, including cooldowns, declines, "I'm good", and the voice-off cap at level 3. In demo scenario A, two wrong answers escalate through the levels to the offer; accepting shows five distinct ladder levels one at a time and "Show the answer" appears only outside assessment mode. A `PageSummary` never contains password or payment field values. With the network disabled and `DEMO_MODE=0`, the offline ladder appears. In voice mode, "I'm stuck" starts the flow and "I don't get step 2" gets a contextual reply. With image storage off, no image file remains after a call.
 
 ### Phase 5: Goals and plan generation
-**Owner: A (generation logic), B (onboarding and plan UI).**
+**Owner: Tuan (generation logic), Thu (onboarding and plan UI).**
 - Dashboard onboarding: semester dates, courses (name, credits, important dates), weekly hours available, and goals (research, job applications, projects, courses) with target dates.
 - "Generate plan" calls the LLM with a JSON schema and returns weekly milestones, `plan_items` with due dates, and a short rationale. The user can edit, delete, reorder, and regenerate any item.
 - Plan view: this week and a timeline. Checking off an item updates status.
@@ -248,7 +248,7 @@ Window titles and page text can be sensitive. Provide a "clear history" button, 
 **Accept:** From a sample input (3 courses, 10 free hours per week, goal "get into a research lab by spring") the app produces a valid, editable plan saved in the DB. Invalid LLM JSON is retried once, then shows a clear error.
 
 ### Phase 6: Project ideas and paper recommendations
-**Owner: A.**
+**Owner: Tuan.**
 - For a goal of type research or project, a "Suggest" action returns 3 to 5 project ideas, each with scope, required skills, and a first-week task, plus a starter reading list with title, authors, year, one-line why, and a link.
 - **Do not trust model-generated citations.** Use arXiv and/or Semantic Scholar to find and verify each recommended paper. Drop any that cannot be verified and show the verified link.
 - Adding a paper creates a `papers` row and can create a plan item ("Read paper X by date").
@@ -256,7 +256,7 @@ Window titles and page text can be sensitive. Provide a "clear history" button, 
 **Accept:** Suggestions return only papers that resolve through the search API. Adding a paper creates the paper row and an optional plan item.
 
 ### Phase 7: Paper reading mode
-**Owner: A (extraction, grounding), B (reading view UI, voice questions).**
+**Owner: Tuan (extraction, grounding), Thu (reading view UI, voice questions).**
 - Add a paper by PDF upload or arXiv URL. Extract text locally and chunk it.
 - Reading view with the paper beside a chat panel. The user asks about a concept, selects text and clicks "Explain", or asks by voice. Answers are grounded in the paper's chunks with section references. If the paper does not cover it, the answer says so and gives a short general explanation, clearly labeled.
 - Options: "Explain simply", "Give me a question to check my understanding", "Show me where this is in the paper".
@@ -265,7 +265,7 @@ Window titles and page text can be sensitive. Provide a "clear history" button, 
 **Accept:** On a sample arXiv paper, selecting a paragraph and asking "what does this mean?" returns an answer citing the correct section, by text and by voice. A question outside the paper is labeled as general knowledge.
 
 ### Phase 8: Dashboard
-**Owner: B (UI), A (queries and data).**
+**Owner: Thu (UI), Tuan (queries and data).**
 - **Today:** active goal, plan items due, session start/stop, current streak.
 - **Goals and plan:** from Phase 5.
 - **Papers:** list, status, questions asked.
@@ -275,7 +275,7 @@ Window titles and page text can be sensitive. Provide a "clear history" button, 
 **Accept:** After several test sessions, History totals match the raw `app_events`. Export produces a JSON file and "Clear all data" empties every table.
 
 ### Phase 9: Daily streak (first resilience feature)
-**Owner: A (engine), B (streak UI and Wolfie reactions).**
+**Owner: Tuan (engine), Thu (streak UI and Wolfie reactions).**
 A Duolingo-style streak that tracks consecutive days the student showed up and did focused work.
 
 - **Qualifying day:** at least one session totaling at least 20 focused minutes that day (desktop and iPad combined; focused means work-category time, excluding idle, AI-tool and distraction time). The threshold is a setting. The rule is a single swappable function `dayQualifies(day) -> boolean` in `streak/rules.ts`.
@@ -289,7 +289,7 @@ A Duolingo-style streak that tracks consecutive days the student showed up and d
 **Accept:** Unit tests with simulated multi-day histories cover qualifying and non-qualifying days, freeze earn and consume, reset, longest streak, timezone change, DST transition, and late-synced iPad sessions. In the app, finishing a 20-minute session triggers the celebration once and updates the dashboard.
 
 ### Phase 10: Pairing and sync
-**Owner: A (desktop server), B (iPad client).**
+**Owner: Tuan (desktop server), Thu (iPad client).**
 - Desktop advertises a Bonjour service and runs a WebSocket server on the LAN for the iPad (separate from the loopback endpoint used by the extension). Settings shows a 6-digit pairing code and paired devices with "Unpair."
 - The iPad finds the desktop, enters the code, and both store a shared secret. All messages are authenticated; unauthenticated connections are rejected.
 - Message types: `session.start/end`, `ipad.activity` (batched), `nudge.log`, `hint.request`, `hint.followup`, `hint.response`, `plan.snapshot` and `streak.snapshot` (desktop to iPad, read-only).
@@ -299,7 +299,7 @@ A Duolingo-style streak that tracks consecutive days the student showed up and d
 **Accept:** Pairing works with the correct code and fails with a wrong one. An iPad session created offline appears in the desktop History after reconnect with no duplicates. Unpairing stops all traffic. All message fixtures validate on both sides.
 
 ### Phase 11: iPad notebook, Wolfie, and voice
-**Owner: B.**
+**Owner: Thu.**
 - Notebooks and pages with a PencilKit canvas: pen, highlighter, eraser, lasso, undo/redo, colors, page add/delete, thumbnails. Pencil double-tap switches tools or opens Wolfie (user setting).
 - Wolfie widget in a screen corner: draggable, sprite states (including glance and question-mark), speech bubbles, same `NudgeQueue` rules.
 - Sessions: start/stop in the notebook, or auto-start on the first stroke after a gap (configurable). Session time counts toward the streak.
@@ -310,7 +310,7 @@ A Duolingo-style streak that tracks consecutive days the student showed up and d
 **Accept:** On a real iPad, handwriting is smooth with Pencil, pages persist after restart, a session logs correctly and appears on the desktop, and backgrounding the app past the threshold triggers the return message. Voice works with push-to-talk, "stop" cuts speech immediately, and a spoken follow-up while offline shows the unreachable message.
 
 ### Phase 12: Handwriting stuck detection, hints, and camera check
-**Owner: B (stroke signals, UI, camera), A (hint service support for handwriting and camera sources).**
+**Owner: Thu (stroke signals, UI, camera), Tuan (hint service support for handwriting and camera sources).**
 
 **Stroke-activity signals** (on-device; raw strokes are never uploaded):
 - `idle_on_page` (weak): no strokes for N minutes (default 4) on a page that has content.
@@ -390,20 +390,20 @@ Freeze these in Phase 0 so the two tracks can build against stubs:
 5. Settings keys and the DB schema in section 4.
 6. `shared/fixtures/escalation.json` with the expected levels.
 
-### Person A: Desktop and intelligence
+### Tuan: Desktop and intelligence
 Phases 2, 3, 4 (signals, escalation, hint service, extension, demo pages), 5 and 7 (logic), 6, 9 (engine), 10 (desktop server), plus the speech provider implementations from Phase 1, the LLM client and prompts, mock/demo mode, and desktop-side support for the handwriting and camera sources in Phase 12.
 
-### Person B: Experience and iPad
+### Thu: Experience and iPad
 Phases 1 (overlay, NudgeQueue, voice UI), 5, 7 and 8 (all dashboard and reading UI), 9 (streak UI and reactions), 10 (iPad client), 11, and 12 (stroke signals, lasso, camera, Swift escalation port), plus mascot animation and demo scripting on the iPad.
 
-Whoever is more comfortable with Swift should take Person B's iPad work and trade smaller desktop UI pieces to the other person if the load feels uneven.
+Whoever is more comfortable with Swift should take Thu's iPad work and trade smaller desktop UI pieces to the other person if the load feels uneven.
 
 ### Milestones and integration checkpoints
 - **M0, together:** Phase 0 and the contracts. Exit: both tracks can run against mocks.
-- **M1:** A builds monitoring, extension connection, and warnings; B builds the overlay, NudgeQueue, and dashboard shell. **Integrate:** a distraction warning appears on the overlay, spoken in voice mode.
-- **M2:** A builds the signals, escalation engine, and hint service; B builds the iPad notebook and Wolfie widget (no sync yet) and the escalation sprite states. **Integrate:** desktop demo scenario A runs end to end.
-- **M3:** A builds plan, papers, and the sync server; B builds dashboard screens and the sync client. **Integrate:** an iPad hint request round-trips through the desktop.
-- **M4:** A builds the streak engine, voice pipeline polish, and handwriting source support; B builds streak UI, iPad stroke signals, camera, and iPad voice. **Integrate:** the iPad stall demo and a streak update across both devices.
+- **M1:** Tuan builds monitoring, extension connection, and warnings; Thu builds the overlay, NudgeQueue, and dashboard shell. **Integrate:** a distraction warning appears on the overlay, spoken in voice mode.
+- **M2:** Tuan builds the signals, escalation engine, and hint service; Thu builds the iPad notebook and Wolfie widget (no sync yet) and the escalation sprite states. **Integrate:** desktop demo scenario A runs end to end.
+- **M3:** Tuan builds plan, papers, and the sync server; Thu builds dashboard screens and the sync client. **Integrate:** an iPad hint request round-trips through the desktop.
+- **M4:** Tuan builds the streak engine, voice pipeline polish, and handwriting source support; Thu builds streak UI, iPad stroke signals, camera, and iPad voice. **Integrate:** the iPad stall demo and a streak update across both devices.
 - **M5, together:** demo mode polish, all demo scenarios offline, full test pass, privacy review, and the pitch walkthrough.
 
 ### Working agreements
