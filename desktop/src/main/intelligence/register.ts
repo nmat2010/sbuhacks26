@@ -15,6 +15,7 @@ import { requestPageSummary } from '../sync/context.js';
 import { captureActiveWindow } from '../hints/capture.js';
 import { HintFlow } from '../hints/flow.js';
 import { configureHintService, getHintService } from '../hints/index.js';
+import { getPlanService } from '../plan/index.js';
 import { registerHelpHotkey } from './hotkey.js';
 import { handle, broadcast } from '../ipc.js';
 import { getNudgeQueue } from '../nudge/index.js';
@@ -50,6 +51,7 @@ export function registerIntelligence(): void {
   registerVoice();
   registerEscalation();
   registerHintFlow();
+  registerPlan();
 }
 
 function registerEscalation(): void {
@@ -146,6 +148,19 @@ function registerHintFlow(): void {
 
   // Any nudge with spokenText is spoken in voice mode (hint bubbles carry the first two sentences)
   cleanups.push(attachNudgeSpeech(queue, (text) => voice?.speakIfVoice(text) ?? false));
+}
+
+function registerPlan(): void {
+  const plan = () => getPlanService();
+  handle('plan-onboarding-get', async () => plan().getOnboarding());
+  handle('plan-onboarding-save', async (input) => plan().saveOnboarding(input));
+  handle('plan-get', async () => plan().view());
+  handle('plan-generate', async (opts) => plan().generate(opts ?? {}));
+  handle('plan-item-add', async (goalId, item) => plan().addItem(goalId, item));
+  handle('plan-item-update', async (id, patch) => plan().updateItem(id, patch));
+  handle('plan-item-delete', async (id) => plan().deleteItem(id));
+  handle('plan-reorder', async (goalId, ids) => plan().reorder(goalId, ids));
+  handle('plan-item-regenerate', async (id) => plan().regenerateItem(id));
 }
 
 function registerVoice(): void {

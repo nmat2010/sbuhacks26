@@ -11,7 +11,7 @@
 | B3a Hint service | done |
 | B3b Hint flow (M2) | done (M2-int pending A7) |
 | B4 Handwriting + camera | done |
-| B6 Plan | not started |
+| B6 Plan | done |
 | B5b ElevenLabs | not started |
 | B7 Ideas + papers | not started |
 | B8 Paper reading | not started |
@@ -60,3 +60,9 @@ WOLFIE_USER_DATA=/tmp/wolfie-b npm run smoke
 - Tests: `hints/__tests__/handwriting.test.ts` (8): mock round trip for handwriting and camera (demo and unknown ids) returns five distinct levels with the image passed to the model; illegible demo asks for clarification; illegible-writing instructions are in the prompt for handwriting/camera only; assessment mode and follow-ups; webapp device logged against its session; no image on disk with storage off.
 - Verified: typecheck, tests, lint (workaround).
 - Not verified: a real Gemini read of real handwriting (no key).
+
+## B6 details
+- Files: `desktop/src/main/plan/{dates,schemas,store,service,index}.ts`, `llm/mock-plan.ts`, prompts `plan.v1.md` / `plan-item.v1.md`, migration `202_b_plan`, IPC types in `common/ipc-intelligence.ts`, handlers in `intelligence/register.ts`.
+- Tests: `plan/__tests__/plan.test.ts` (15): the sample input (3 courses, 10 h/week, research lab by spring) produces a valid plan in the DB (milestones, items inside the window, hours within the weekly limit, sorted, contiguous positions); the model sees today, courses and hours; retry once on an invalid date; two invalid replies give a clear error and change nothing; no onboarding, past target, offline and daily cap messages; bad goal_id rejected; onboarding validation and goal archiving; check off, edit, add, delete, reorder; regenerate keeps completed, edited and user items; single-item regenerate; snapshot and "Today's goal".
+- Verified: typecheck, 165 tests, lint (workaround), smoke OK (migration 202 runs).
+- Not verified: plan quality from the real Gemini (mock only).

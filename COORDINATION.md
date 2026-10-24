@@ -94,6 +94,17 @@ Model failures never throw: they come back as `offline: true` (the labeled rule-
 ### Integration Note: clear-all-data (for Agent A, A10)
 Agent B tables are in `migrations-b.ts` `tables` (already included in `DATA_TABLES`). Stored hint images live in `<userData>/images/`; "Clear all data" should delete that folder too.
 
+### Integration Offer: plan (for Agent A, A8 / A4 optional hook)
+**By:** Agent B
+```typescript
+import { getPlanSnapshot, getTodayPlanContext } from '../plan/index.js';
+getPlanSnapshot();      // PlanSnapshotType for the `plan.snapshot` sync message (items from 7 days ago to 14 days ahead)
+getTodayPlanContext();  // { text: "Today's goal: ...", title, dueDate, goalTitle, itemId } | null, for nudge copy
+```
+
+### Integration Offer: plan IPC for Thu (onboarding and plan UI)
+**By:** Agent B. Types are in `desktop/src/common/ipc-intelligence.ts` (`PlanOnboardingInput`, `PlanView`, ...). Channels: `plan-onboarding-get`, `plan-onboarding-save` (validates; returns a friendly `error` string), `plan-get`, `plan-generate` (slow, show a spinner; optional `{goalId}`), `plan-item-add`, `plan-item-update` (status/title/dueDate/notes; checking off = `status: 'completed'`), `plan-item-delete`, `plan-reorder`, `plan-item-regenerate`. All results are `{ success, error?, data? }`. Dates are `YYYY-MM-DD`.
+
 ### Integration Offer: IPC for Thu (voice and hint bubbles)
 **By:** Agent B. Channels are typed in `desktop/src/common/ipc-intelligence.ts`.
 - `voice-audio-in` (invoke, mic frames, 16 kHz 16-bit mono PCM; the preload has no generic `send`, so this is an invoke), `voice-audio-out` / `voice-stop-playback` (events: play or drop encoded audio), `voice-mic` (green dot), `voice-trouble` (message for a bubble), `voice-utterance` (invoke: typed text as if spoken, for the developer panel), `voice-status`.
