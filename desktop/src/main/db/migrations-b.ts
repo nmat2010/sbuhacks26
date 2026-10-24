@@ -56,6 +56,39 @@ export function migrations(db: Database.Database): Migration[] {
           CREATE INDEX IF NOT EXISTS idx_plan_milestones_goal ON plan_milestones(goal_id);
         `);
       }
+    },
+    {
+      // B7: lookup cache for paper verification, and extra paper fields core `papers` lacks
+      name: '203_b_papers',
+      up: () => {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS paper_lookup_cache (
+            key TEXT PRIMARY KEY,
+            found INTEGER NOT NULL,
+            result_json TEXT,
+            checked_at INTEGER NOT NULL
+          );
+
+          CREATE TABLE IF NOT EXISTS paper_meta (
+            paper_id TEXT PRIMARY KEY,
+            authors_json TEXT,
+            year INTEGER,
+            arxiv_id TEXT,
+            source TEXT
+          );
+
+          -- B8 fills this: the paper's text, split into sections / chunks for retrieval
+          CREATE TABLE IF NOT EXISTS paper_chunks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            paper_id TEXT NOT NULL,
+            position INTEGER NOT NULL,
+            section TEXT,
+            page INTEGER,
+            text TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_paper_chunks_paper ON paper_chunks(paper_id);
+        `);
+      }
     }
   ];
 }
@@ -66,5 +99,8 @@ export const tables: readonly string[] = [
   'plan_onboarding',
   'plan_goal_meta',
   'plan_milestones',
-  'plan_item_meta'
+  'plan_item_meta',
+  'paper_lookup_cache',
+  'paper_meta',
+  'paper_chunks'
 ];

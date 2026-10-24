@@ -105,6 +105,9 @@ getTodayPlanContext();  // { text: "Today's goal: ...", title, dueDate, goalTitl
 ### Integration Offer: plan IPC for Thu (onboarding and plan UI)
 **By:** Agent B. Types are in `desktop/src/common/ipc-intelligence.ts` (`PlanOnboardingInput`, `PlanView`, ...). Channels: `plan-onboarding-get`, `plan-onboarding-save` (validates; returns a friendly `error` string), `plan-get`, `plan-generate` (slow, show a spinner; optional `{goalId}`), `plan-item-add`, `plan-item-update` (status/title/dueDate/notes; checking off = `status: 'completed'`), `plan-item-delete`, `plan-reorder`, `plan-item-regenerate`. All results are `{ success, error?, data? }`. Dates are `YYYY-MM-DD`.
 
+### Integration Offer: ideas and papers IPC for Thu
+**By:** Agent B. `ideas-suggest(goalId)` (slow: up to ~15 s because paper checks are rate limited; show a spinner) returns `IdeasResult` (3-5 ideas, up to 5 verified papers with links, how many were dropped, and `verificationUnavailable`). `paper-add({title, url, goalId?, authors?, year?, arxivId?, planItemDueDate?})` creates the paper and optionally the plan item "Read: ...". `papers-list`, `paper-set-status`, `paper-delete`. Types are in `ipc-intelligence.ts`.
+
 ### Integration Offer: IPC for Thu (voice and hint bubbles)
 **By:** Agent B. Channels are typed in `desktop/src/common/ipc-intelligence.ts`.
 - `voice-audio-in` (invoke, mic frames, 16 kHz 16-bit mono PCM; the preload has no generic `send`, so this is an invoke), `voice-audio-out` / `voice-stop-playback` (events: play or drop encoded audio), `voice-mic` (green dot), `voice-trouble` (message for a bubble), `voice-utterance` (invoke: typed text as if spoken, for the developer panel), `voice-status`.

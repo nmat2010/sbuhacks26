@@ -1,6 +1,7 @@
 import { HINT_LEVEL_KEYS, type HintResponse } from '@wolfie/shared';
 import type { LLMProvider, LlmRequest } from './provider.js';
 import { mockPlan } from './mock-plan.js';
+import { mockIdeas } from './mock-ideas.js';
 
 // Deterministic provider for DEMO_MODE=1, dev without a key, and tests. Hints are keyed by the
 // demo problem ids (data-problem-id on the demo pages; SPEC 4f). It never touches the network.
@@ -149,8 +150,10 @@ export class MockLLMProvider implements LLMProvider {
         return this.followup(req);
       case 'plan':
         return mockPlan(req.mockKey);
+      case 'ideas':
+        return mockIdeas(req.mockKey);
       default:
-        // Ideas and reading mocks are added by the packages that need them.
+        // The reading mock is added with the package that needs it (B8).
         return {};
     }
   }

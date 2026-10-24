@@ -13,7 +13,7 @@
 | B4 Handwriting + camera | done |
 | B6 Plan | done |
 | B5b ElevenLabs | done (no real call verified) |
-| B7 Ideas + papers | not started |
+| B7 Ideas + papers | done |
 | B8 Paper reading | not started |
 | M2-int | pending (needs A7) |
 
@@ -73,3 +73,9 @@ WOLFIE_USER_DATA=/tmp/wolfie-b npm run smoke
 - Verified: typecheck, 180 tests, lint (workaround), smoke OK.
 - **Not verified: any real ElevenLabs call** (no key in this environment). The protocol follows the docs fetched on 2026-10-24: https://elevenlabs.io/docs/api-reference/text-to-speech/stream and .../speech-to-text/v-1-speech-to-text-realtime. Worth a 5-minute hand test with a real key: set `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID` in `desktop/.env`, run `npm run dev`, turn voice on, and send mic frames through `voice-audio-in` once Thu's capture exists.
 - For Thu: TTS audio arrives on `voice-audio-out` as `audio/pcm;rate=16000` (16-bit LE mono); schedule chunks as they come and drop them on `voice-stop-playback`.
+
+## B7 details
+- Files: `desktop/src/main/papers/{types,arxiv,semantic-scholar,verify,demo-catalog,store,service,index}.ts`, `llm/mock-ideas.ts`, prompt `ideas.v1.md`, migration `203_b_papers`, IPC in `ipc-intelligence.ts` / `register.ts`.
+- Tests: `papers/__tests__/papers.test.ts` (21, HTTP and model faked, no network): Atom parsing (multi-line titles, entities, ids), request URL and 3 s spacing even for overlapping callers, HTTP/network failures; Semantic Scholar mapping, API key header, 429 retry once; verifier: arXiv then Semantic Scholar then drop, similar-but-different titles rejected, unavailable vs not found, caching (memory + SQLite, negative expiry), sequential checks with a cap of 5 and dedupe; ideas: unverifiable papers dropped with the verified link and API metadata, 5-paper cap, "could not verify" state, goal type rules, bad model output, and the DEMO_MODE offline path (5 verified, 1 invented dropped, no network); adding papers: row + metadata + "Read:" plan item, dedupe by link, validation, list/status/delete cleanup.
+- Verified: typecheck, tests, lint (workaround).
+- Not verified: the live arXiv and Semantic Scholar APIs (no network calls were made in tests). The request and Atom format match the arXiv API user manual (https://info.arxiv.org/help/api/user-manual.html, read 2026-10-24); the Semantic Scholar response shape is from my knowledge of their Graph API, not re-read. Worth one real request by hand: `curl 'https://export.arxiv.org/api/query?search_query=ti:%22attention%20is%20all%20you%20need%22&max_results=5'`.

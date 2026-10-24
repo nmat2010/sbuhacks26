@@ -17,6 +17,7 @@ import { captureActiveWindow } from '../hints/capture.js';
 import { HintFlow } from '../hints/flow.js';
 import { configureHintService, getHintService } from '../hints/index.js';
 import { getPlanService } from '../plan/index.js';
+import { getIdeasService, getPapersService } from '../papers/index.js';
 import { registerHelpHotkey } from './hotkey.js';
 import { handle, broadcast } from '../ipc.js';
 import { getNudgeQueue } from '../nudge/index.js';
@@ -163,6 +164,12 @@ function registerPlan(): void {
   handle('plan-item-delete', async (id) => plan().deleteItem(id));
   handle('plan-reorder', async (goalId, ids) => plan().reorder(goalId, ids));
   handle('plan-item-regenerate', async (id) => plan().regenerateItem(id));
+
+  handle('ideas-suggest', async (goalId) => getIdeasService().suggest(goalId));
+  handle('paper-add', async (input) => getPapersService().add(input));
+  handle('papers-list', async () => getPapersService().list());
+  handle('paper-set-status', async (id, status) => getPapersService().setStatus(id, status));
+  handle('paper-delete', async (id) => getPapersService().delete(id));
 }
 
 function registerVoice(): void {

@@ -92,6 +92,67 @@ export interface PlanItemPatch {
   notes?: string | null;
 }
 
+// ---- Ideas and papers (SPEC Phase 6) ---------------------------------------------------------
+
+export interface ProjectIdea {
+  title: string;
+  scope: string;
+  skills: string[];
+  firstWeekTask: string;
+}
+
+/** A recommended paper that was found through arXiv or Semantic Scholar (never an unverified one). */
+export interface SuggestedPaper {
+  title: string;
+  authors: string[];
+  year: number | null;
+  /** One line on why it is worth reading (from the model). */
+  why: string;
+  /** The verified link. */
+  url: string;
+  source: 'arxiv' | 'semantic_scholar' | 'demo_catalog';
+  arxivId: string | null;
+}
+
+export interface IdeasResult {
+  goalId: string;
+  ideas: ProjectIdea[];
+  papers: SuggestedPaper[];
+  /** How many recommended papers could not be verified and were dropped. */
+  dropped: number;
+  /** True when papers could not be checked at all (offline or rate limited), so none are shown. */
+  verificationUnavailable: boolean;
+}
+
+export type PaperStatus = 'pending' | 'reading' | 'completed';
+
+export interface PaperView {
+  id: string;
+  goalId: string | null;
+  title: string;
+  /** Link, or a local file path for uploaded PDFs. */
+  urlOrPath: string;
+  status: PaperStatus;
+  addedAt: number;
+  authors: string[];
+  year: number | null;
+  arxivId: string | null;
+  questionCount: number;
+  /** True once the text has been extracted and the paper can be read with Wolfie. */
+  readable: boolean;
+}
+
+export interface AddPaperInput {
+  title: string;
+  url: string;
+  goalId?: string;
+  authors?: string[];
+  year?: number;
+  arxivId?: string;
+  /** If set (YYYY-MM-DD) and a goal is given, also creates the plan item "Read: <title>". */
+  planItemDueDate?: string;
+}
+
 // ---- Channels --------------------------------------------------------------------------------
 
 /** renderer -> main, request/response: 'channel': { args: [...]; result: ... } */
@@ -124,6 +185,14 @@ export interface IntelligenceInvoke {
   'plan-reorder': { args: [goalId: string, orderedItemIds: string[]]; result: BResult };
   /** Asks for a replacement for one item. */
   'plan-item-regenerate': { args: [id: string]; result: BResult<PlanItemView> };
+
+  /** Slow (paper checks are rate limited to one request per 3 s): show a spinner. */
+  'ideas-suggest': { args: [goalId: string]; result: BResult<IdeasResult> };
+  /** Adds a paper (and optionally the plan item "Read: <title>"). Adding the same link twice returns the existing paper. */
+  'paper-add': { args: [input: AddPaperInput]; result: BResult<{ paper: PaperView; planItemId: string | null }> };
+  'papers-list': { args: []; result: PaperView[] };
+  'paper-set-status': { args: [id: string, status: PaperStatus]; result: BResult<PaperView> };
+  'paper-delete': { args: [id: string]; result: BResult };
 }
 
 /** renderer -> main, fire-and-forget: 'channel': [...args] */
