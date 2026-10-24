@@ -7,7 +7,7 @@
 |---|---|
 | B1 LLM client | done |
 | B5a Voice core | done |
-| B2 Escalation runtime | not started |
+| B2 Escalation runtime | done |
 | B3a Hint service | not started |
 | B3b Hint flow (M2) | not started |
 | B4 Handwriting + camera | not started |
@@ -36,3 +36,9 @@ WOLFIE_USER_DATA=/tmp/wolfie-b npm run smoke
 - Tests: `voice/__tests__/voice.test.ts` (46): intents incl. negatives and speed, echo, first-two-sentences, speaker barge-in and TTS failure, router (intents with no model call, follow-up only with an open ladder, paused drop, echo drop, barge-in), controller (STT closes on pause, drops frames, trouble).
 - Verified: typecheck, tests, lint (workaround), `npm run smoke` OK with the register wiring.
 - Not verified: real microphone or ElevenLabs (B5b).
+
+## B2 details
+- Files: `desktop/src/main/stuck/{engine,actions}.ts`, `intelligence/hotkey.ts`, wiring in `intelligence/register.ts` (engine, hotkey, voice `im_good` handler).
+- Tests: `stuck/__tests__/engine.test.ts` (17, fake clock, `push` and `setMascotState` mocked): climb glance, "?", offer; dead_control_clicks window outlived by the 90 s climb; refresh on re-emit; weak cap; accept -> `help-requested('auto')` and ladder hold; decline -> 3 min cooldown -> penalized re-escalation -> full after 10 min; null push not counted and retried; level 4 spoken only with voice and 60 s unanswered; "I'm good" with `session:<id>` key and per-problem; dismissed vs timeout; input guard, snooze, pause; session reset; problem change; signal logging without content. `intelligence/__tests__/hotkey.test.ts` (2).
+- Verified: typecheck, tests, lint (workaround), smoke OK.
+- Not verified: the hotkey in a real Electron session (`globalShortcut` may be refused on some machines; it degrades with a log line).

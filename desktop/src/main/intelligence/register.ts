@@ -3,7 +3,13 @@
 // NudgeQueue are ready. Only register files may import `electron` or `../ipc.js`; logic modules
 // get them injected.
 
+import { globalShortcut } from 'electron';
+import type { NudgeResponse } from '@wolfie/shared';
 import { stuckBus } from '../stuck/bus.js';
+import { EscalationEngine } from '../stuck/engine.js';
+import { logEvent } from '../events.js';
+import { setMascotState } from '../overlay/state.js';
+import { registerHelpHotkey } from './hotkey.js';
 import { handle, broadcast } from '../ipc.js';
 import { getNudgeQueue } from '../nudge/index.js';
 import { getActiveSession, isPaused, sessionEvents } from '../session/index.js';
@@ -17,6 +23,7 @@ import type { VoiceIntent } from '../voice/intents.js';
 
 const cleanups: Array<() => void> = [];
 let voice: VoiceService | null = null;
+let engine: EscalationEngine | null = null;
 
 /** Voice intent handlers other packages fill in (B2: im_good; B3b: another_hint, got_it, show_answer). */
 const voiceHandlers: Partial<Record<Exclude<VoiceIntent, 'stop' | 'repeat' | 'stuck'>, IntentHandler>> = {};
@@ -24,6 +31,48 @@ const voiceHandlers: Partial<Record<Exclude<VoiceIntent, 'stop' | 'repeat' | 'st
 export function registerIntelligence(): void {
   initLLMClient();
   registerVoice();
+  registerEscalation();
+}
+
+function registerEscalation(): void {
+  const queue = getNudgeQueue();
+  engine = new EscalationEngine({
+    now: Date.now,
+    bus: stuckBus,
+    getSession: getActiveSession,
+    onSessionChange: (fn) => sessionEvents.on('change', fn),
+    isPaused,
+    isSnoozed: () => queue.isSnoozed(),
+    voiceMode: () => getSetting('voice.enabled'),
+    thresholds: () => getSetting('stuck.thresholds'),
+    idleMinutes: () => getSetting('stuck.idle_minutes'),
+    push: (nudge) => queue.push(nudge),
+    onNudgeResponse: (fn) => {
+      const listener = (response: NudgeResponse) => fn(response);
+      queue.on('response', listener);
+      return () => void queue.off('response', listener);
+    },
+    setMascotState,
+    speak: (text) => void voice?.speakIfVoice(text),
+    log: (type, payload) => {
+      try {
+        logEvent(type, payload);
+      } catch (error) {
+        console.error('[engine] could not log event:', error);
+      }
+    }
+  });
+  engine.start();
+
+  // "I'm good" by voice applies to an open offer or an open ladder
+  voiceHandlers.im_good = () => {
+    if (!engine || (!engine.hasOpenOffer() && !engine.isLadderOpen())) return false;
+    engine.imGood();
+    return true;
+  };
+
+  const off = registerHelpHotkey(globalShortcut, (trigger) => stuckBus.emit('help-requested', trigger));
+  if (off) cleanups.push(off);
 }
 
 function registerVoice(): void {
@@ -90,6 +139,8 @@ function registerVoice(): void {
 /** Called on quit. */
 export function unregisterIntelligence(): void {
   while (cleanups.length) cleanups.pop()!();
+  engine?.stop();
+  engine = null;
   voice?.stop();
   voice = null;
 }

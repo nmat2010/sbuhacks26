@@ -106,3 +106,21 @@ _(Agent B appends decisions here.)_
 - **Logs** carry only task, provider, attempt, duration and a scrubbed error (keys and URLs removed). Prompt text, page text and titles are never logged.
 - **Tests touched outside B's folders:** `db.test.ts` asserted the exact migration list; it now filters to core `0xx_` names so agent migrations don't break it (Agent A probably needs the same one-line change).
 - **Lint in nested worktrees:** `npm run lint` fails here because ESLint also finds the parent repo's `.eslintrc.json` (the worktree lives inside `sbuhacks26/.claude/worktrees/`). Equivalent check: `cd desktop && npx eslint --no-eslintrc -c ../.eslintrc.json src electron`.
+
+### B5a: voice core
+- Local intents match the **whole utterance** (plus polite filler like "Wolfie," / "please"), never a substring, so "I don't get step 2" or "I can't stop at step two" are not commands. Intent list: stop/wait/hold on/quiet, snooze, mute, I'm good, another hint, I got it, repeat that, I'm stuck, show the answer, taking a break, I need this, ignore.
+- Recognized intents are announced on `voice/bus.ts` (`voiceBus`). B handles snooze, mute, I'm good, another hint, I got it, show the answer, stop, repeat and I'm stuck; Agent A's rules (A4) can listen for the Phase 3 answers (`taking_a_break`, `need_this`, `ignore`).
+- Echo suppression: a transcript is an echo when at least 75% of its words are in what Wolfie just said (while speaking and for 4 s after). Under 3 words it must appear verbatim, and a command is never treated as an echo, so "stop" always works as barge-in.
+- Speech that is not an echo stops playback first, even before the transcript is final (partial results are used for barge-in only).
+- Mic frames come in through the invoke channel `voice-audio-in` because the preload only exposes a generic `invoke`, not `send`.
+- Speaking is skipped unless voice mode is on and monitoring is not paused. STT is opened only while a session is active, voice mode is on, and not paused.
+
+### B2: escalation runtime
+- **Signal lifetime** is `max(detection window, 5 min)` and re-emitting a signal refreshes it. Windows come from `stuck.thresholds` (dead clicks 20 s, validation 120 s, ...), `stuck.idle_minutes` for `idle_on_work`. Signals are cleared on accept, decline, "I'm good", help-requested, a real problem change, and session change. Signals that carry a different `problemId` than the one on screen are dropped.
+- The engine's problem key is `session:<id>` until a real `problemId` is known ("I'm good" with no `currentProblemId` therefore still works). A signal that carries a `problemId` while the key is still the fallback adopts it.
+- Accepting the offer does not call the hint flow directly: the engine emits `stuckBus 'help-requested' ('auto')`, and the engine's own listener plus the hint flow (B3b) both react to that one event, same as hotkey, mascot click and "I'm stuck".
+- Offer buttons: `accept_hint` ("Yes, give me a hint"), `decline` ("Not now"), `im_good`. Response mapping: `accept_hint` accept; `decline` and `dismissed` decline; `im_good` I'm good; `timeout` is nothing (the offer stays open so level 4 can still follow).
+- A level-3 `push()` that returns null is not applied as shown; the engine stays at level 2 and retries after 5 s.
+- Level 4 speaks the same offer text; the text includes "say I'm stuck" so it works when the bubble has already faded. Level 4 only happens with voice mode on (the shared engine caps otherwise).
+- While paused the engine does not touch the sprite (main.ts owns "sleeping"). `setLadderOpen(true)` (called by the hint flow) clears signals, ignores new ones and holds level 0.
+- Hotkey `Alt+Shift+H` emits `help-requested('manual')`; if the key is taken the app logs it and continues.
