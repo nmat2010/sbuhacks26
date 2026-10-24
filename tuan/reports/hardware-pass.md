@@ -21,3 +21,19 @@ Checked with the same `getHistory()` that `history-get` uses, against the dev DB
 
 ## Next
 - Steps 6–12 of the TESTING.md hardware pass: demo pages, assessment mode, capture, voice, papers, streak, sleep/multi-monitor.
+
+## Tuan's app-usage feedback (after the first real run)
+Fixed on `tuan/fix-self-window`:
+- **Overlay hidden behind full-screen apps and other desktops.** The window was "always on top" only at the normal level. It's now a macOS panel at the `floating` level, visible on all workspaces and over full-screen apps.
+- **Bubble cut off.** The window was 300×300 with the mascot centered, so the bubble (140 px above the mascot, up to 300 px wide) ran out of the window. The window is now 360×520, bottom-right of the work area, and the mascot is bottom-aligned, so the bubble fits above it. The extra area stays transparent and click-through.
+- **Bubble buttons didn't work.** The window ignores the mouse outside hover areas, and the bubble wasn't inside one, so clicks went through to the app behind. The bubble now takes the mouse while hovered. This is probably why the two warnings had no `user_response`.
+
+Left for Thu (already in the plan, `NEXT_STEPS.md` section 3):
+- **Drag the mascot** (SPEC Phase 0 accept, Phase 11). Not implemented: the mascot is `no-drag` and nothing moves the window.
+- **Talk button, mic capture, and TTS playback.** The backend produces audio on `voice-audio-out`, but the overlay doesn't play it or capture the mic.
+- **Close the bubble when its warning no longer applies,** and send `dismissed`/`timeout`.
+- The Settings screen (per-site on/off for warnings), the rest of the dashboard, and the reading view.
+- `HintConversation` (Thu's mock) opens on mascot click alongside the real hint flow. It should render the real ladder bubbles instead.
+
+Not in the spec (needs a scope decision):
+- Opening a YouTube video on a topic for the student.

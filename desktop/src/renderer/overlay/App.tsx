@@ -103,6 +103,16 @@ function App() {
     setShowHoverMenu(false);
   };
 
+  const handleBubbleEnter = () => {
+    window.electronAPI.setIgnoreMouseEvents(false);
+  };
+
+  const handleBubbleLeave = () => {
+    if (!isDragging) {
+      window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
+    }
+  };
+
   const handleMouseDown = () => {
     setIsDragging(true);
   };
@@ -161,8 +171,11 @@ function App() {
         width: '100vw',
         height: '100vh',
         display: 'flex',
-        alignItems: 'center',
+        // Mascot sits at the bottom of the window so bubbles have room above it
+        alignItems: 'flex-end',
         justifyContent: 'center',
+        paddingBottom: '12px',
+        boxSizing: 'border-box',
         pointerEvents: 'none',
         position: 'relative'
       }}
@@ -207,11 +220,14 @@ function App() {
           />
         </div>
 
-        <SpeechBubble
-          nudge={currentNudge}
-          onButtonClick={handleButtonClick}
-          onDismiss={dismissNudge}
-        />
+        {/* The window ignores the mouse outside hover areas; take clicks while over the bubble */}
+        <div onMouseEnter={handleBubbleEnter} onMouseLeave={handleBubbleLeave}>
+          <SpeechBubble
+            nudge={currentNudge}
+            onButtonClick={handleButtonClick}
+            onDismiss={dismissNudge}
+          />
+        </div>
       </div>
 
       {/* Hint Conversation Modal */}

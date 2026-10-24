@@ -39,17 +39,25 @@ function loadPage(win: BrowserWindow, page: string) {
   }
 }
 
+// Room for the mascot at the bottom plus a bubble or hint above it; transparent and
+// click-through outside the mascot and bubble, so the extra size doesn't block other apps.
+const OVERLAY_WIDTH = 360;
+const OVERLAY_HEIGHT = 520;
+
 function createOverlayWindow() {
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  const { x: areaX, y: areaY, width, height } = screen.getPrimaryDisplay().workArea;
 
   overlayWindow = new BrowserWindow({
-    width: 300,
-    height: 300,
-    x: width - 350,
-    y: height - 350,
+    width: OVERLAY_WIDTH,
+    height: OVERLAY_HEIGHT,
+    x: areaX + width - OVERLAY_WIDTH - 16,
+    y: areaY + height - OVERLAY_HEIGHT - 8,
     frame: false,
     transparent: true,
+    hasShadow: false,
     alwaysOnTop: true,
+    // macOS: an NSPanel can float above other apps' full-screen windows
+    ...(process.platform === 'darwin' ? { type: 'panel' } : {}),
     skipTaskbar: false, // Show in taskbar for easier debugging
     resizable: false,
     webPreferences: {
@@ -58,6 +66,10 @@ function createOverlayWindow() {
       nodeIntegration: false
     }
   });
+
+  // Above normal windows, on every desktop (Space), and over full-screen apps
+  overlayWindow.setAlwaysOnTop(true, 'floating');
+  overlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
   // Click-through except on mascot
   overlayWindow.setIgnoreMouseEvents(true, { forward: true });
