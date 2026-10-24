@@ -230,6 +230,8 @@ export interface WatchStatus {
   activity: string | null;
   subject: string | null;
   lastObservedAt: number | null;
+  /** Why nothing is being watched right now, in words for the student; null when watching normally. */
+  note: string | null;
   intervalSeconds: number;
   autoImportPapers: boolean;
   excludedApps: string[];

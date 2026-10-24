@@ -120,7 +120,7 @@ describe('WatchAnswerService', () => {
 describe('WatchAnswerService: video problems', () => {
   it('answers without the video when Gemini rejects it or times out, and never cites it', async () => {
     memory.record(obs({ activity: 'watching_video', source: { kind: 'video', title: 'Private lecture', locator: null } }), videoCtx);
-    for (const code of ['BAD_REQUEST', 'TIMEOUT'] as const) {
+    for (const code of ['BAD_REQUEST', 'TIMEOUT', 'RATE_LIMITED', 'NETWORK'] as const) {
       calls = [];
       let first = true;
       const service = make({

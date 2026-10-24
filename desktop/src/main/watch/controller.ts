@@ -58,10 +58,24 @@ export class WatchController {
       activity: latest?.obs.activity ?? null,
       subject: latest?.obs.subject ?? null,
       lastObservedAt: latest?.ts ?? null,
+      note: this.note(),
       intervalSeconds: deps.getSetting('watch.interval_seconds'),
       autoImportPapers: deps.getSetting('watch.auto_import_papers'),
       excludedApps: deps.getSetting('watch.excluded_apps')
     };
+  }
+
+  private note(): string | null {
+    const { deps } = this;
+    if (!this.isActive()) return null;
+    const state = deps.watcher.getState();
+    if (state === 'no_permission') return 'Allow Screen Recording for Wolfie in System Settings so I can see your screen.';
+    if (state === 'limit_reached') return "I've reached today's watching limit; I'll pick up again tomorrow.";
+    if (state === 'skipping' && !deps.getSetting('monitoring.capture_window_titles')) {
+      return 'Turn on window titles in Settings so I can follow browser pages.';
+    }
+    if (state === 'skipping') return 'Not looking: this window is private, excluded, or I can\'t tell which tab it is.';
+    return null;
   }
 
   set(patch: WatchPatch): BResult<WatchStatus> {

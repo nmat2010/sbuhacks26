@@ -165,6 +165,7 @@ export class Monitor {
     }
 
     if (paused) {
+      this.selfFront = false;
       if (!this.pauseMarked) {
         this.pauseMarked = true;
         this.lastKey = null;
@@ -177,7 +178,10 @@ export class Monitor {
 
     const includeTitle = deps.settings.captureTitles();
     const info = await this.readWindow(includeTitle);
-    if (!info) return;
+    if (!info) {
+      this.selfFront = false;
+      return;
+    }
     // The session may have ended or paused while osascript ran.
     if (deps.getSession()?.id !== session.id || deps.isPaused()) return;
     this.selfFront = !!deps.isSelf?.(info);
@@ -230,6 +234,7 @@ export class Monitor {
 
   /** Not in a session: forget per-session state so the next session writes a fresh first row. */
   private resetForNoSession(): void {
+    this.selfFront = false;
     this.lastSessionId = null;
     this.lastKey = null;
     this.last = null;

@@ -119,7 +119,9 @@ export class WatchAnswerService {
       out = await call(videos);
     } catch (error) {
       // A private/unlisted or very long video makes Gemini reject or time out: answer without it
-      const videoProblem = error instanceof LLMError && (error.code === 'BAD_REQUEST' || error.code === 'TIMEOUT');
+      // (the video attempt has no transport retry, so blips like 429/network also fall back here)
+      const videoProblem =
+        error instanceof LLMError && ['BAD_REQUEST', 'TIMEOUT', 'RATE_LIMITED', 'NETWORK'].includes(error.code);
       if (!videos.length || !videoProblem) return { success: false, error: friendly(error) };
       try {
         out = await call([]);

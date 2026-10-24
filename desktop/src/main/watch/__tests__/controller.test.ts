@@ -135,3 +135,18 @@ describe('WatchController: imports vs clearing (re-review)', () => {
     expect(memory.paperIds()).toEqual([]);
   });
 });
+
+describe('WatchController status note', () => {
+  it('tells the student why browser pages are skipped when window titles are off', () => {
+    settings['monitoring.capture_window_titles'] = false;
+    watcher.getState = () => 'skipping';
+    const c = make();
+    c.consent(true);
+    c.set({ enabled: true });
+    expect(c.status().note).toContain('window titles');
+    settings['monitoring.capture_window_titles'] = true;
+    expect(c.status().note).toContain('private');
+    watcher.getState = () => 'watching';
+    expect(c.status().note).toBeNull();
+  });
+});
