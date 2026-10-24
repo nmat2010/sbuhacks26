@@ -5,7 +5,8 @@
   "workspaces": [
     "shared",
     "desktop",
-    "extension"
+    "extension",
+    "web"
   ],
   "scripts": {
     "dev": "npm run dev --workspace=desktop",
