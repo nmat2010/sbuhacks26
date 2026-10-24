@@ -14,7 +14,7 @@
 | A5 PageSummary + web signals | done | f9375f7 |
 | A7 demo pages | done | b12c5af |
 | A6 desktop signals (**M2**) | done | 0538f24 |
-| A8 LAN sync server (**M3**) | done | A8HASH |
+| A8 LAN sync server (**M3**) | done | b0a2dec |
 | A9 streak engine | not started | |
 | A10 history / settings / data controls | not started | |
 
