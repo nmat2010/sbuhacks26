@@ -4,6 +4,7 @@
 // get them injected.
 
 import { join } from 'path';
+import WebSocket from 'ws';
 import { app, desktopCapturer, dialog, globalShortcut, nativeImage, systemPreferences } from 'electron';
 import type { NudgeResponse } from '@wolfie/shared';
 import { stuckBus } from '../stuck/bus.js';
@@ -23,7 +24,8 @@ import { getActiveSession, isPaused, sessionEvents } from '../session/index.js';
 import { getSetting, setSetting, settingsEvents } from '../settings.js';
 import { initLLMClient } from '../llm/client.js';
 import { voiceBus } from '../voice/bus.js';
-import { MockSttProvider, MockTtsProvider } from '../voice/mock.js';
+import { selectVoiceProviders, type VoiceProviderChoice } from '../voice/providers.js';
+import type { SocketFactory } from '../voice/elevenlabs-stt.js';
 import { attachNudgeSpeech } from '../voice/nudge-speech.js';
 import { createVoiceService, type VoiceService } from '../voice/service.js';
 import type { IntentHandler } from '../voice/router.js';
@@ -164,9 +166,15 @@ function registerPlan(): void {
 }
 
 function registerVoice(): void {
-  // B5b swaps these for ElevenLabs providers when a key is present.
-  const stt = new MockSttProvider();
-  const tts = new MockTtsProvider();
+  // ElevenLabs when a key is set (and not DEMO_MODE), mock otherwise; `ws` is used so the
+  // xi-api-key header can be sent.
+  const socketFactory: SocketFactory = (url, headers) => new WebSocket(url, { headers }) as unknown as ReturnType<SocketFactory>;
+  const choose = (): VoiceProviderChoice =>
+    selectVoiceProviders(process.env, { stt: getSetting('voice.stt_provider'), tts: getSetting('voice.tts_provider') }, { socketFactory });
+  let providers = choose();
+  const announceNote = () => {
+    if (providers.note && getSetting('voice.enabled')) broadcast('voice-trouble', providers.note);
+  };
 
   voiceHandlers.snooze = () => getNudgeQueue().snooze();
   voiceHandlers.mute = () => {
@@ -176,8 +184,8 @@ function registerVoice(): void {
 
   voice = createVoiceService({
     now: Date.now,
-    stt: () => stt,
-    tts: () => tts,
+    stt: () => providers.stt,
+    tts: () => providers.tts,
     voiceEnabled: () => getSetting('voice.enabled'),
     sessionActive: () => getActiveSession() !== null,
     isPaused,
@@ -198,7 +206,15 @@ function registerVoice(): void {
   cleanups.push(sessionEvents.on('pause', refresh));
   cleanups.push(
     settingsEvents.on('change', (key) => {
-      if (key === 'voice.enabled') refresh();
+      if (key === 'voice.enabled') {
+        announceNote();
+        refresh();
+      }
+      if (key === 'voice.stt_provider' || key === 'voice.tts_provider') {
+        voice?.controller.stop();
+        providers = choose();
+        refresh();
+      }
     })
   );
 
@@ -214,13 +230,15 @@ function registerVoice(): void {
   });
   handle('voice-status', async () => ({
     enabled: getSetting('voice.enabled'),
-    sttProvider: stt.name,
-    ttsProvider: tts.name,
+    sttProvider: providers.stt.name,
+    ttsProvider: providers.tts.name,
     micLive: voice!.controller.micLive,
-    hasVoiceKey: Boolean(process.env.ELEVENLABS_API_KEY)
+    hasVoiceKey: providers.hasKey,
+    note: providers.note
   }));
   handle('voice-audio-in', async (pcm) => voice?.writeAudio(pcm));
 
+  announceNote();
   refresh();
 }
 

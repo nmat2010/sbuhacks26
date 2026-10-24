@@ -12,7 +12,7 @@
 | B3b Hint flow (M2) | done (M2-int pending A7) |
 | B4 Handwriting + camera | done |
 | B6 Plan | done |
-| B5b ElevenLabs | not started |
+| B5b ElevenLabs | done (no real call verified) |
 | B7 Ideas + papers | not started |
 | B8 Paper reading | not started |
 | M2-int | pending (needs A7) |
@@ -66,3 +66,10 @@ WOLFIE_USER_DATA=/tmp/wolfie-b npm run smoke
 - Tests: `plan/__tests__/plan.test.ts` (15): the sample input (3 courses, 10 h/week, research lab by spring) produces a valid plan in the DB (milestones, items inside the window, hours within the weekly limit, sorted, contiguous positions); the model sees today, courses and hours; retry once on an invalid date; two invalid replies give a clear error and change nothing; no onboarding, past target, offline and daily cap messages; bad goal_id rejected; onboarding validation and goal archiving; check off, edit, add, delete, reorder; regenerate keeps completed, edited and user items; single-item regenerate; snapshot and "Today's goal".
 - Verified: typecheck, 165 tests, lint (workaround), smoke OK (migration 202 runs).
 - Not verified: plan quality from the real Gemini (mock only).
+
+## B5b details
+- Files: `voice/{elevenlabs-tts,elevenlabs-stt,providers}.ts`, wiring in `intelligence/register.ts` (`ws` socket factory, `fetch`), `.env.example` comments.
+- Tests: `voice/__tests__/elevenlabs.test.ts` (15): TTS URL/headers/body and sample alignment, abort on barge-in cancels the stream and drops late chunks, errors never contain the key; STT URL/header/audio message shape, transcripts and partials, reconnect x3 then a single failure, attempts counted when the socket cannot even be created, counter reset after a good session, connect timeout, fatal auth error without retry or key leak, transient errors reconnect while quiet-audio notices do not, manual commit fallback, close stops reconnects; provider selection (DEMO_MODE, no key, no voice id, settings).
+- Verified: typecheck, 180 tests, lint (workaround), smoke OK.
+- **Not verified: any real ElevenLabs call** (no key in this environment). The protocol follows the docs fetched on 2026-10-24: https://elevenlabs.io/docs/api-reference/text-to-speech/stream and .../speech-to-text/v-1-speech-to-text-realtime. Worth a 5-minute hand test with a real key: set `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID` in `desktop/.env`, run `npm run dev`, turn voice on, and send mic frames through `voice-audio-in` once Thu's capture exists.
+- For Thu: TTS audio arrives on `voice-audio-out` as `audio/pcm;rate=16000` (16-bit LE mono); schedule chunks as they come and drop them on `voice-stop-playback`.

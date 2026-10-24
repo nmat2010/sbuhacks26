@@ -21,6 +21,8 @@ export interface VoiceStatus {
   micLive: boolean;
   /** False when no ElevenLabs key is set: voice falls back to typed utterances (mock). */
   hasVoiceKey: boolean;
+  /** Something to tell the student (missing key or voice id); null when voice is fully set up. */
+  note: string | null;
 }
 
 // ---- Goals and plan (SPEC Phase 5) -----------------------------------------------------------
