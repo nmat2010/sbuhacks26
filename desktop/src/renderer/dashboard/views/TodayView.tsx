@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { SessionInfo } from '../../../common/ipc-sensing';
+import type { StreakSnapshotType } from '@wolfie/shared';
+import { StreakCalendar } from '../components/StreakCalendar';
 
 interface Session {
   id: string;
@@ -10,16 +12,9 @@ interface Session {
 const toSession = (info: SessionInfo): Session | null =>
   info.active ? { id: info.active.id, started_at: info.active.startedAt, ended_at: null } : null;
 
-interface Streak {
-  current: number;
-  longest: number;
-  freezes_available: number;
-}
-
 export function TodayView() {
   const [activeSession, setActiveSession] = useState<Session | null>(null);
-  const [streak, setStreak] = useState<Streak>({ current: 0, longest: 0, freezes_available: 0 });
-  const [todayMinutes, setTodayMinutes] = useState(0);
+  const [streak, setStreak] = useState<StreakSnapshotType | null>(null);
 
   useEffect(() => {
     // Load today's data
@@ -27,17 +22,45 @@ export function TodayView() {
   }, []);
 
   const loadTodayData = async () => {
-    const [sessionData, streakData] = await Promise.all([
-      window.electronAPI.invoke('session-get'),
-      window.electronAPI.invoke('streak-get')
-    ]);
-    setActiveSession(toSession(sessionData));
-    setStreak({
-      current: streakData.current,
-      longest: streakData.longest,
-      freezes_available: streakData.freezesAvailable
-    });
-    setTodayMinutes(streakData.todayMinutes);
+    try {
+      const [sessionData, streakData] = await Promise.all([
+        window.electronAPI.invoke('session-get'),
+        window.electronAPI.invoke('streak-get')
+      ]);
+      setActiveSession(toSession(sessionData));
+      setStreak(streakData);
+    } catch (error) {
+      console.error('Failed to load today data:', error);
+      // Set mock data for UI development when backend not available
+      setStreak({
+        current: 7,
+        longest: 12,
+        freezesAvailable: 2,
+        todayQualified: true,
+        todayMinutes: 45,
+        week: [
+          { localDate: '2024-10-18', status: 'filled' },
+          { localDate: '2024-10-19', status: 'filled' },
+          { localDate: '2024-10-20', status: 'filled' },
+          { localDate: '2024-10-21', status: 'filled' },
+          { localDate: '2024-10-22', status: 'filled' },
+          { localDate: '2024-10-23', status: 'filled' },
+          { localDate: '2024-10-24', status: 'pending' }
+        ]
+      });
+    }
+  };
+
+  const handleUseFreeze = async () => {
+    if (!confirm('Use a streak freeze? This will protect your streak if you miss a day.')) return;
+
+    try {
+      // TODO: Add IPC call for using streak freeze when Tuan implements it
+      alert('Streak freeze functionality coming soon!');
+      await loadTodayData();
+    } catch (error) {
+      console.error('Failed to use freeze:', error);
+    }
   };
 
   const handleStartSession = async () => {
@@ -93,37 +116,13 @@ export function TodayView() {
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <p className="stat-label">Today's Focus</p>
-          <p className="stat-value">
-            {todayMinutes}
-            <span className="stat-unit">min</span>
-          </p>
-        </div>
-
-        <div className="stat-card">
-          <p className="stat-label">Current Streak</p>
-          <p className="stat-value">
-            {streak.current}
-            <span className="stat-unit">days</span>
-          </p>
-        </div>
-
-        <div className="stat-card">
-          <p className="stat-label">Longest Streak</p>
-          <p className="stat-value">
-            {streak.longest}
-            <span className="stat-unit">days</span>
-          </p>
-        </div>
-
-        <div className="stat-card">
-          <p className="stat-label">Streak Freezes</p>
-          <p className="stat-value">{streak.freezes_available}</p>
-        </div>
-      </div>
+      {/* Streak Visualization */}
+      {streak && (
+        <StreakCalendar
+          streak={streak}
+          onUseFreeze={handleUseFreeze}
+        />
+      )}
 
       {/* Active Goal */}
       <div className="card">

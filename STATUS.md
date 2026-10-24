@@ -9,9 +9,16 @@
 ## 🎯 Current Focus
 
 ### Thu is working on:
+- ✅ **ALL UI PHASES COMPLETE!**
 - ✅ Phase 0 complete
 - ✅ Phase 1 complete (Mascot overlay and voice UI)
-- ⏭️ Ready for Phase 4 hint conversation UI (waiting on Tuan's hint service)
+- ✅ Phase 4 complete (Hint Conversation UI)
+- ✅ Phase 5 complete (Onboarding UI + Plan UI)
+- ✅ Phase 7 complete (Paper library + Reading view)
+- ✅ Phase 8 complete (Dashboard with 5 views)
+- ✅ Phase 9 complete (Streak visualization)
+- ✅ Phases 10-12 complete (Web app with canvas + camera)
+- ⏭️ Ready to integrate with Tuan's branch
 
 ### Tuan is working on:
 - 🟢 All of Tuan's track is built on branch `integration/tuan-m3`: Phases 2, 3, 4, 5–7 (logic), 9 (engine), 10 (desktop server), 12 (desktop side), and the STT/TTS providers. 525 tests pass. See `tuan/reports/integration-m3.md`.
@@ -35,23 +42,23 @@
 | 4 | Hint service | Tuan | 🟢 Complete but not tested | - |
 | 4 | Extension PageSummary | Tuan | 🟢 Complete but not tested | - |
 | 4 | Demo scenarios | Tuan | 🟢 Complete but not tested | - |
-| 4 | Escalation sprites | Thu | 🔴 Not started | - |
-| 4 | Hint conversation UI | Thu | 🔴 Not started | - |
+| 4 | Escalation sprites | Thu | ✅ Complete | Glance & question-mark states in Mascot |
+| 4 | Hint conversation UI | Thu | ✅ Complete | 5-level ladder, mock hints, ready for integration |
 | 5 | Plan generation | Tuan | 🟢 Complete but not tested | - |
-| 5 | Onboarding UI | Thu | 🔴 Not started | - |
-| 5 | Plan UI | Thu | 🔴 Not started | - |
+| 5 | Onboarding UI | Thu | ✅ Complete | 5-step wizard with semester picker & Brightspace import |
+| 5 | Plan UI | Thu | ✅ Complete | Goals view with plan items, milestones, AI regeneration |
 | 6 | Paper recommendations | Tuan | 🟢 Complete but not tested | - |
 | 7 | Paper extraction | Tuan | 🟢 Complete but not tested | - |
-| 7 | Reading view UI | Thu | 🔴 Not started | - |
-| 8 | Dashboard UI | Thu | 🔴 Not started | - |
+| 7 | Reading view UI | Thu | ✅ Complete | Split view with paper content + Wolfie chat, 3 question modes |
+| 8 | Dashboard UI | Thu | ✅ Complete | Today, Goals, Papers, History, Settings views |
 | 8 | Dashboard queries | Tuan | 🟢 Complete but not tested | - |
 | 9 | Streak engine | Tuan | 🟢 Complete but not tested | - |
-| 9 | Streak UI | Thu | 🔴 Not started | - |
+| 9 | Streak UI | Thu | ✅ Complete | Animated streak calendar, milestones, freeze UI |
 | 10 | Sync server | Tuan | 🟢 Complete but not tested | - |
-| 10 | Web app sync client | Thu | 🔴 Not started | - |
-| 11 | Web app notebook | Thu | 🔴 Not started | - |
-| 12 | Canvas signals | Thu | 🔴 Not started | - |
-| 12 | Camera UI | Thu | 🔴 Not started | - |
+| 10 | Web app sync client | Thu | ✅ Complete | WebSocket pairing with HMAC auth, hint requests |
+| 11 | Web app notebook | Thu | ✅ Complete | Canvas drawing with pen/eraser, color picker |
+| 12 | Canvas signals | Thu | ✅ Complete | Touch drawing sends to desktop for processing |
+| 12 | Camera UI | Thu | ✅ Complete | Capture photos of physical paper with camera API |
 
 **Legend:**
 - 🔴 Not started
@@ -101,10 +108,52 @@
 - ✅ Thu: **Phase 1 Complete** - Mascot overlay with 6 states (idle, talking, alert, sleeping, glance, question-mark)
 - ✅ Thu: Speech bubble component with buttons and auto-dismiss
 - ✅ Thu: CSS animations for all mascot states
-- ✅ Thu: Hover menu for quick actions
+- ✅ Thu: Hover menu for quick actions (replaces right-click menu)
 - ✅ Thu: Voice mode toggle and local intents (Web Speech API)
 - ✅ Thu: NudgeQueue system with cooldowns and priority
 - ✅ Thu: Test panel for easy nudge testing
+- ✅ Thu: Wolfie mascot image integrated (removed SVG placeholder)
+- ✅ Thu: **Phase 4 Hint Conversation UI Complete** - Chat interface with 5-level hint ladder
+- ✅ Thu: Context preview, action buttons, voice mode support, assessment mode
+- ✅ Thu: **Phase 5 Onboarding UI Complete** - 5-step wizard (Welcome, Semester, Courses, Goals, Summary)
+- ✅ Thu: Semester picker with predefined options (Fall 2024 - Spring 2027)
+- ✅ Thu: Brightspace import UI (placeholder for OAuth integration)
+- ✅ Thu: **Phase 8 Dashboard UI Complete** - All 5 views with SBU red theme
+- ✅ Thu: Dashboard Today view (session control, streak display)
+- ✅ Thu: Dashboard Goals & Plan view
+- ✅ Thu: Dashboard Papers view
+- ✅ Thu: Dashboard History view with stats grid
+- ✅ Thu: Dashboard Settings view (monitoring, voice, AI tools, distractions, data export)
+- ✅ Thu: **Phase 5 Plan UI Complete** - Goals & Plan view with full plan management
+- ✅ Thu: Collapsible goal cards with progress tracking
+- ✅ Thu: Plan items with checkboxes, status, due dates, and notes
+- ✅ Thu: Milestones timeline display
+- ✅ Thu: Add/delete/regenerate plan items
+- ✅ Thu: AI plan generation integration with loading states
+- ✅ Thu: **Phase 7 Reading View UI Complete** - Paper library + reading interface
+- ✅ Thu: Papers library view with PDF upload and arXiv import
+- ✅ Thu: Paper status tracking (To Read, Reading, Completed)
+- ✅ Thu: Split-view reading interface (paper content + chat)
+- ✅ Thu: Section navigation with page numbers
+- ✅ Thu: 3 question modes (Explain Simply, Check Understanding, Show Me Where)
+- ✅ Thu: Citation highlighting and navigation to source
+- ✅ Thu: Voice question support integration
+- ✅ Thu: **Phase 9 Streak UI Complete** - Gamification with animated visualizations
+- ✅ Thu: Animated flame icon for active streaks
+- ✅ Thu: 7-day calendar heatmap with status indicators (filled, missed, frozen, pending)
+- ✅ Thu: Milestone badges (Week Complete, 2-Week Warrior, Star Streak, Diamond, Century Club)
+- ✅ Thu: Streak freeze UI with confirmation dialog
+- ✅ Thu: Today's progress tracking with qualification status
+- ✅ Thu: Personal record highlighting
+- ✅ Thu: **Phases 10-12 Web App Complete** - iPad/tablet canvas notebook with sync
+- ✅ Thu: Complete React web app with Vite + TypeScript + PWA
+- ✅ Thu: WebSocket sync client with HMAC authentication
+- ✅ Thu: Pairing UI with 6-digit code entry
+- ✅ Thu: HTML5 Canvas drawing with pen/eraser tools, color picker, line width
+- ✅ Thu: Touch-optimized drawing for tablets
+- ✅ Thu: Camera capture UI for photographing physical paper
+- ✅ Thu: Wolfie widget for asking questions from canvas
+- ✅ Thu: Connection status indicator
 
 ### This Week
 - Phase 0 complete

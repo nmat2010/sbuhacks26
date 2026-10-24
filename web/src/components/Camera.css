@@ -1,0 +1,100 @@
+.camera-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.camera-container {
+  width: 100%;
+  max-width: 800px;
+  max-height: 90vh;
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.camera-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: #f5f5f7;
+  border-bottom: 1px solid #e8e8ed;
+}
+
+.camera-header h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1d1d1f;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6e6e73;
+}
+
+.camera-viewport {
+  flex: 1;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: 400px;
+}
+
+.camera-viewport video,
+.camera-viewport canvas {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.camera-error {
+  padding: 40px;
+  text-align: center;
+}
+
+.camera-error p {
+  color: #ff3b30;
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.camera-controls {
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  background: #f5f5f7;
+}
+
+.btn-capture {
+  padding: 16px 32px;
+  font-size: 18px;
+  background: #CC0000;
+  color: white;
+  border: none;
+  border-radius: 24px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(204, 0, 0, 0.3);
+  transition: all 0.2s;
+}
+
+.btn-capture:hover {
+  background: #a30000;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(204, 0, 0, 0.4);
+}

@@ -1,0 +1,97 @@
+.pairing-screen {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #CC0000 0%, #a30000 100%);
+  padding: 20px;
+}
+
+.pairing-container {
+  max-width: 500px;
+  width: 100%;
+}
+
+.pairing-header {
+  text-align: center;
+  color: white;
+  margin-bottom: 32px;
+}
+
+.wolfie-logo {
+  font-size: 80px;
+  margin-bottom: 16px;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.pairing-header h1 {
+  font-size: 36px;
+  margin-bottom: 8px;
+}
+
+.pairing-header p {
+  font-size: 18px;
+  opacity: 0.9;
+}
+
+.pairing-card {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.pairing-card h2 {
+  font-size: 24px;
+  margin-bottom: 12px;
+  color: #1d1d1f;
+}
+
+.pairing-instructions {
+  color: #6e6e73;
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1d1d1f;
+  margin-bottom: 8px;
+}
+
+.code-input {
+  font-size: 32px;
+  text-align: center;
+  letter-spacing: 8px;
+  font-weight: 700;
+}
+
+.error-message {
+  background: #fff3cd;
+  border: 1px solid #ff3b30;
+  color: #ff3b30;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.pairing-footer {
+  text-align: center;
+  color: white;
+  margin-top: 24px;
+  font-size: 14px;
+  opacity: 0.8;
+}
