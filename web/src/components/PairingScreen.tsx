@@ -30,10 +30,14 @@ export function PairingScreen({ onPaired }: PairingScreenProps) {
         console.log('[Pairing] Connected to desktop');
 
         // Send pairing request
-        const message: SyncMessage = {
-          type: 'pair.request',
-          code,
-          deviceName
+        const message = {
+          type: 'pair.request' as const,
+          id: generateId(),
+          ts: Date.now(),
+          payload: {
+            code,
+            deviceName
+          }
         };
 
         ws.send(JSON.stringify(message));
@@ -44,12 +48,12 @@ export function PairingScreen({ onPaired }: PairingScreenProps) {
           const message: SyncMessage = JSON.parse(event.data);
 
           if (message.type === 'pair.result') {
-            if (message.ok && message.deviceId && message.secret) {
+            if (message.payload.ok && message.payload.deviceId && message.payload.secret) {
               console.log('[Pairing] Paired successfully!');
-              onPaired(message.deviceId, message.secret);
+              onPaired(message.payload.deviceId, message.payload.secret);
               ws.close();
             } else {
-              setError(message.reason || 'Pairing failed');
+              setError(message.payload.reason || 'Pairing failed');
               setPairing(false);
               ws.close();
             }
@@ -143,4 +147,8 @@ export function PairingScreen({ onPaired }: PairingScreenProps) {
       </div>
     </div>
   );
+}
+
+function generateId(): string {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }

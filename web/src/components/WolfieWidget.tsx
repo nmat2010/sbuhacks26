@@ -1,10 +1,21 @@
 import { useState, useEffect } from 'react';
-import type { HintResponseSchema } from '@wolfie/shared';
 import './WolfieWidget.css';
+
+type HintResponse = {
+  what_i_see: string;
+  hint_levels: {
+    nudge: string;
+    hint: string;
+    explanation: string;
+    analogous_example: string;
+    direct_step: string;
+  };
+  offline: boolean;
+} | null;
 
 interface WolfieWidgetProps {
   onAsk: (question: string) => void;
-  lastResponse: HintResponseSchema | null;
+  lastResponse: HintResponse;
   onClose: () => void;
 }
 
@@ -36,8 +47,8 @@ export function WolfieWidget({ onAsk, lastResponse, onClose }: WolfieWidgetProps
       <div className="widget-body">
         {lastResponse && (
           <div className="hint-response">
-            <div className="hint-level">Level {lastResponse.level}</div>
-            <p className="hint-text">{lastResponse.text}</p>
+            <div className="hint-level">Hint Response</div>
+            <p className="hint-text">{lastResponse.hint_levels.hint || lastResponse.what_i_see}</p>
           </div>
         )}
 

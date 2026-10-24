@@ -21,7 +21,7 @@ export function useNudge() {
   const dismissNudge = (action?: 'dismissed' | 'timeout') => {
     // Send nudge-response for dismissals and timeouts
     if (currentNudge?.id && action) {
-      window.electronAPI.invoke('nudge-response', { id: currentNudge.id, action, via: action === 'dismissed' ? 'close_button' : 'auto' });
+      window.electronAPI.invoke('nudge-response', { id: currentNudge.id, action, via: action === 'dismissed' ? 'button' : 'auto' });
     }
     setCurrentNudge(null);
   };

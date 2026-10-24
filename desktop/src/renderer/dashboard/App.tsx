@@ -12,7 +12,6 @@ type ViewType = 'today' | 'goals' | 'papers' | 'history' | 'settings';
 function App() {
   const [currentView, setCurrentView] = useState<ViewType>('today');
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [isOnboarded, setIsOnboarded] = useState(false);
 
   useEffect(() => {
     // Check if user has completed onboarding
@@ -20,7 +19,6 @@ function App() {
       // TODO: Check from settings or database
       // For now, show onboarding by default
       const onboarded = localStorage.getItem('wolfie_onboarded');
-      setIsOnboarded(!!onboarded);
       setShowOnboarding(!onboarded);
     };
     checkOnboarding();
@@ -34,7 +32,6 @@ function App() {
 
       // Mark as onboarded
       localStorage.setItem('wolfie_onboarded', 'true');
-      setIsOnboarded(true);
       setShowOnboarding(false);
     } catch (error) {
       console.error('Failed to save onboarding data:', error);

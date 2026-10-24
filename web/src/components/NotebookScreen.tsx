@@ -13,9 +13,8 @@ interface NotebookScreenProps {
 export function NotebookScreen({ connected, sync, onUnpair }: NotebookScreenProps) {
   const [showCamera, setShowCamera] = useState(false);
   const [showWolfie, setShowWolfie] = useState(true);
-  const [canvasData, setCanvasData] = useState<ImageData | null>(null);
 
-  const handleCameraCapture = (imageDataUrl: string) => {
+  const handleCameraCapture = (_imageDataUrl: string) => {
     console.log('[Notebook] Photo captured');
     setShowCamera(false);
     // TODO: Send to desktop for processing
@@ -56,7 +55,7 @@ export function NotebookScreen({ connected, sync, onUnpair }: NotebookScreenProp
 
       {/* Main Canvas */}
       <div className="notebook-main">
-        <Canvas onDataChange={setCanvasData} />
+        <Canvas onDataChange={() => {/* TODO: Handle canvas data changes */}} />
       </div>
 
       {/* Wolfie Widget */}
