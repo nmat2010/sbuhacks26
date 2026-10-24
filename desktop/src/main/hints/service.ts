@@ -18,6 +18,7 @@ import { parseImageDataUrl } from '../llm/data-url.js';
 import { redactForLog } from '../llm/redact.js';
 import type { LlmImage } from '../llm/provider.js';
 import type { EventType } from '../events.js';
+import { SHOW_ANSWER_UTTERANCE } from './constants.js';
 import { limitLadder, limitWords, wordLimitForLevel } from './limits.js';
 import { offlineFollowupText, offlineLadder } from './offline.js';
 import { buildSystemPrompt, describeContext } from './prompt.js';
@@ -150,8 +151,10 @@ export class HintService {
         schema: LlmFollowupOutput,
         mockKey: { problemId: this.problemId(context), assessment, source, currentLevel: current, utterance: followup.utterance }
       });
-      // "At the current level or one up" (SPEC 4e.4)
-      const level = Math.min(5, Math.max(current, Math.min(out.level, current + 1)));
+      // "At the current level or one up" (SPEC 4e.4); the explicit "Show the answer" jumps to 5
+      // outside assessment mode.
+      const asksForAnswer = !assessment && followup.utterance === SHOW_ANSWER_UTTERANCE;
+      const level = asksForAnswer ? 5 : Math.min(5, Math.max(current, Math.min(out.level, current + 1)));
       result = { requestId: followup.requestId, text: limitWords(out.text, wordLimitForLevel(level)), level, offline: false };
     } catch (error) {
       this.say(`[hints] follow-up fell back to offline: ${redactForLog(error, 120)}`);

@@ -104,6 +104,11 @@ export class EscalationEngine {
     return this.offer !== null;
   }
 
+  /** Id of the offer bubble on screen, for answering it by voice through NudgeQueue.respond. */
+  offerId(): string | null {
+    return this.offer?.id ?? null;
+  }
+
   /** "I'm good": suppress offers for this problem for the rest of the session. */
   imGood(): void {
     const now = this.deps.now();
@@ -236,8 +241,8 @@ export class EscalationEngine {
     return {
       kind: 'stuck',
       level: 3,
+      // No spokenText: level 3 is visual only. Level 4 speaks OFFER_TEXT itself.
       text: OFFER_TEXT,
-      spokenText: OFFER_TEXT,
       priority: 7,
       buttons: [
         { label: 'Yes, give me a hint', action: ACTIONS.ACCEPT_HINT, variant: 'primary' },

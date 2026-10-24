@@ -69,6 +69,38 @@ _(Agent A: status notes, integration offers, proposals.)_
 ## Agent B
 _(Agent B: status notes, integration offers, proposals.)_
 
+**Status (Agent B, branch `tuan/b-intelligence`):** B1, B5a, B2, B3a, B3b done; details in `tuan/reports/agent-b.md`.
+
+### Integration Offer: hint service (for Agent A, A8)
+**By:** Agent B
+**Provides:** the web app hint round trip.
+```typescript
+import { requestHints, requestFollowup, getHintService } from '../hints/index.js';
+const res = await requestHints(request.context, request.source, request.assessment);       // HintResponse
+const reply = await requestFollowup(followup, context, source, assessment);                // HintFollowupResponse
+```
+Model failures never throw: they come back as `offline: true` (the labeled rule-based ladder). `assessment` may be false; the service also checks the stored session's `assessment_mode` and `assessment.domains`. With `DEMO_MODE=1` (or no key) the deterministic mock answers, keyed by `context.problemId`.
+
+### Integration Offer: voice intents (for Agent A, A4)
+**By:** Agent B
+**Provides:** `voiceBus` (`desktop/src/main/voice/bus.ts`) announces every local intent. Listen for `taking_a_break`, `need_this` and `ignore` to answer an open distraction/AI-tool nudge by voice; use `getNudgeQueue().respond({ id, action, via: 'voice' })` with your buttons' action strings so the answer is logged like a click.
+**Also:** any nudge with `spokenText` is spoken when voice mode is on (hook in `voice/nudge-speech.ts`, wired in `intelligence/register.ts`). Set `spokenText` on distraction and streak nudges and they get voice with no extra code. Do not set it on nudges where you do not want speech.
+
+### Integration Note: front window (for Agent A, A1)
+**By:** Agent B
+**What I need:** the frontmost window's app name and title, so the screenshot fallback can capture the right window instead of the primary screen.
+**API:** `setFrontWindowProvider(() => ({ app, title }))` in `desktop/src/main/hints/capture.ts`. Optional; without it the primary screen is captured.
+
+### Integration Note: clear-all-data (for Agent A, A10)
+Agent B tables are in `migrations-b.ts` `tables` (already included in `DATA_TABLES`). Stored hint images live in `<userData>/images/`; "Clear all data" should delete that folder too.
+
+### Integration Offer: IPC for Thu (voice and hint bubbles)
+**By:** Agent B. Channels are typed in `desktop/src/common/ipc-intelligence.ts`.
+- `voice-audio-in` (invoke, mic frames, 16 kHz 16-bit mono PCM; the preload has no generic `send`, so this is an invoke), `voice-audio-out` / `voice-stop-playback` (events: play or drop encoded audio), `voice-mic` (green dot), `voice-trouble` (message for a bubble), `voice-utterance` (invoke: typed text as if spoken, for the developer panel), `voice-status`.
+- Bubble button actions the overlay will see on `nudge-response`: `accept_hint`, `decline`, `im_good` (offer), `another_hint`, `got_it`, `show_answer` (ladder).
+- **Please send** `nudge-response {id, action: 'dismissed'}` when the student closes a bubble with the X and `{action: 'timeout'}` when a bubble fades on its own. A dismissal counts as a decline and closes a hint ladder; a timeout is neither.
+- Escalation levels 1 and 2 arrive as `overlay-state` (`glance`, `question-mark`). The level-3 offer and every ladder level are `kind: 'stuck', level: 3` bubbles with buttons. A `stuck` bubble with `spokenText` is spoken by main, so the renderer does not need to call TTS for it.
+
 ---
 
 ## Integration Checkpoints

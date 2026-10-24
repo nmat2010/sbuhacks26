@@ -132,3 +132,14 @@ _(Agent B appends decisions here.)_
 - **Offline ladder:** any `LLMError` after the client's one retry (network, invalid output, daily cap, no key) produces the rule-based ladder with `offline: true` and a `what_i_see` that says "offline hints". If the page had an error message, level 2 quotes it (truncated).
 - **Images** are decoded for the model and written to `<userData>/images` only when `image.storage_enabled`; otherwise nothing touches disk, so nothing needs deleting.
 - Follow-up conversation is sent as one user message (context, transcript, current level, the new utterance), which avoids role-alternation problems with Gemini.
+
+### B3b: hint flow
+- Every entry point is `stuckBus 'help-requested'` (offer accepted -> `'auto'`, hotkey and mascot click -> `'manual'`, "I'm stuck" -> `'voice'`). The flow ignores it while paused. If a ladder is already open, a manual or voice request means "another hint".
+- **Context order:** a page summary is used if it is fresh (under 2 minutes old, since a stale one means the browser was probably not in front) and has content; otherwise a `desktopCapturer` screenshot (frontmost window if a provider is set, else the primary screen). Screen Recording permission is checked first; without it the bubble explains how to enable it and no model call is made.
+- **First capture per session** shows a native confirm dialog with the thumbnail (`dialog.showMessageBox`, injected). Declining ends gently without a model call.
+- Ladder bubbles are `kind: 'stuck', level: 3` pushed with `userInitiated: true`. The ladder position lives in `HintFlow`, keyed by the id of the bubble on screen. Buttons: Another hint (not at level 5), I got it, I'm good, Show the answer (absent in assessment mode, and ignored if asked by voice).
+- "Show the answer" sends the fixed utterance `Please show me the answer.` as a follow-up; outside assessment mode the service jumps to level 5 and the follow-up prompt allows the worked answer. In assessment mode the assessment rules override it.
+- Voice answers go through `NudgeQueue.respond` (`via: 'voice'`), so they are logged in `nudges.user_response` exactly like clicks.
+- Closing: "I got it", "I'm good" (also marks the problem for the engine), dismissing the bubble, a real problem change, a session change, or 5 minutes without interaction (checked every 5 s). A bubble fading ('timeout') keeps the ladder open. The engine is held at level 0 while a ladder is open.
+- Spoken output: ladder bubbles carry `spokenText` (first two sentences); main speaks any nudge with `spokenText` when voice mode is on and monitoring is not paused. The level-3 offer has no `spokenText` on purpose (level 4 speaks it).
+- "Let me take a look..." appears only if the model call takes longer than 0.8 s.

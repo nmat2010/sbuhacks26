@@ -9,7 +9,7 @@
 | B5a Voice core | done |
 | B2 Escalation runtime | done |
 | B3a Hint service | done |
-| B3b Hint flow (M2) | not started |
+| B3b Hint flow (M2) | done (M2-int pending A7) |
 | B4 Handwriting + camera | not started |
 | B6 Plan | not started |
 | B5b ElevenLabs | not started |
@@ -48,3 +48,9 @@ WOLFIE_USER_DATA=/tmp/wolfie-b npm run smoke
 - Tests: `hints/__tests__/hints.test.ts` (21): mock returns 5 distinct levels for each demo id; assessment rules reach the prompt (flag, active session, stored session, domain list); offline ladder after 1 retry (also invalid output and daily cap); word limits; `hint_requests` only with a session row, events always, no page text in events; images: nothing on disk when storage is off (also after an offline fallback), file + `image_path` when on; follow-ups: level clamp, conversation sent, offline reply, logging.
 - Verified: typecheck, 119 tests, lint (workaround), `npm run smoke` OK (main bundle builds with the `?raw` prompt imports).
 - For Agent A (A8): call `requestHints(context, source, assessment)` / `requestFollowup(followup, context, source, assessment)` from `desktop/src/main/hints/index.ts`; both can throw only on programmer error (model failures become `offline: true` responses). `assessment` may be false: the service also checks the stored session and domain list.
+
+## B3b details (M2)
+- Files: `desktop/src/main/hints/{flow,capture,constants}.ts`, `voice/nudge-speech.ts`, `stuck/engine.ts` (offer id, no spokenText on the offer), wiring in `intelligence/register.ts` (dialog, desktopCapturer, systemPreferences, nativeImage injected there only).
+- Tests: `hints/__tests__/flow.test.ts` (21): accept -> five distinct levels shown one at a time with the right buttons and `hint_requests` rows 1-5; spoken text is the first two sentences; "Show the answer" present outside assessment mode (returns the mock answer at level 5) and absent at all five levels in assessment mode (and ignored if requested); page summary preferred, screenshot fallback for empty/stale/missing summaries, confirm only once per session, decline and denied permission end gently with no model call; paused ignored; offline ladder labeled; closing paths (got it, I'm good, dismissed vs timeout, idle, problem change); help again = another hint; voice answers via `respond`; follow-ups keep at most 6 turns; the real `EscalationEngine` accepting the offer starts the flow; `captureActiveWindow` (permission, title match, blank, error). Plus `voice.test.ts` nudge speech.
+- Verified: typecheck, 141 tests, lint (workaround), `npm run smoke` OK.
+- Not verified in a real app: the Electron dialog, `desktopCapturer` and the overlay showing the bubbles (needs Thu's overlay to send `dismissed`/`timeout`, see COORDINATION.md). To try the loop by hand in dev: `WOLFIE_USER_DATA=/tmp/wolfie-b DEMO_MODE=1 npm run dev`, start a session from the mascot menu, click Wolfie (or Alt+Shift+H); with no extension connected, expect the screenshot confirm dialog (needs Screen Recording permission for the terminal/VS Code).

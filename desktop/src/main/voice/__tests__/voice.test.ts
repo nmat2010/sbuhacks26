@@ -373,3 +373,22 @@ describe('VoiceController', () => {
     expect(s.stt.closes).toBe(1);
   });
 });
+
+describe('attachNudgeSpeech', () => {
+  it('speaks nudges that carry spokenText and ignores the rest', async () => {
+    const { EventEmitter } = await import('events');
+    const { attachNudgeSpeech } = await import('../nudge-speech.js');
+    const queue = new EventEmitter();
+    const spoken: string[] = [];
+    const off = attachNudgeSpeech(queue, (t) => {
+      spoken.push(t);
+      return true;
+    });
+    queue.emit('show', { kind: 'stuck', level: 3, text: 'Full text here. More.', spokenText: 'Full text here.' });
+    queue.emit('show', { kind: 'stuck', level: 3, text: 'Offer without speech' });
+    expect(spoken).toEqual(['Full text here.']);
+    off();
+    queue.emit('show', { kind: 'stuck', level: 3, text: 'x', spokenText: 'y' });
+    expect(spoken).toHaveLength(1);
+  });
+});
