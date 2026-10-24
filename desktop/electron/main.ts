@@ -1,9 +1,14 @@
 import { app, BrowserWindow, ipcMain, screen, Menu } from 'electron';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { config } from 'dotenv';
 import { initDatabase, getDatabase, closeDatabase } from '../src/main/db/index.js';
 import { initNudgeQueue, getNudgeQueue } from '../src/main/nudge/index.js';
 import { Nudge } from '@wolfie/shared';
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Load environment variables
 config();
@@ -22,17 +27,17 @@ function createOverlayWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
   overlayWindow = new BrowserWindow({
-    width: 200,
-    height: 200,
-    x: width - 250,
-    y: height - 250,
+    width: 300,
+    height: 300,
+    x: width - 350,
+    y: height - 350,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
-    skipTaskbar: true,
+    skipTaskbar: false, // Show in taskbar for easier debugging
     resizable: false,
     webPreferences: {
-      preload: join(__dirname, 'preload.js'),
+      preload: join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false
     }
@@ -131,7 +136,7 @@ function createDashboardWindow() {
     width: 1200,
     height: 800,
     webPreferences: {
-      preload: join(__dirname, 'preload.js'),
+      preload: join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false
     }
@@ -161,7 +166,7 @@ function createTestWindow() {
     height: 700,
     title: 'Wolfie Test Panel',
     webPreferences: {
-      preload: join(__dirname, 'preload.js'),
+      preload: join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false
     }
@@ -229,6 +234,13 @@ app.on('before-quit', () => {
 // IPC handlers (will be expanded in later phases)
 ipcMain.handle('ping', async () => {
   return 'pong';
+});
+
+ipcMain.on('set-ignore-mouse-events', (event, ignore: boolean, options?: { forward: boolean }) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) {
+    win.setIgnoreMouseEvents(ignore, options);
+  }
 });
 
 // Test database IPC handler
@@ -307,6 +319,11 @@ ipcMain.handle('nudge-status', async () => {
     console.error('Failed to get status:', error);
     throw error;
   }
+});
+
+ipcMain.handle('open-test-panel', async () => {
+  createTestWindow();
+  return { success: true };
 });
 
 // Export for other modules
