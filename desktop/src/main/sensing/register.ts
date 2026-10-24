@@ -2,11 +2,140 @@
 // LAN servers, streak, history IPC. main.ts calls this once after the DB and NudgeQueue are ready.
 // Only register files may import `electron` or `../ipc.js`; logic modules get them injected.
 
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+import { powerMonitor, shell, systemPreferences } from 'electron';
+import type { SessionInfo } from '../../common/ipc-sensing.js';
+import { getDatabase } from '../db/index.js';
+import { broadcast, handle } from '../ipc.js';
+import { Monitor } from '../monitor/monitor.js';
+import { getPermissionsStatus, requestPermission, type PermissionDeps } from '../monitor/permissions.js';
+import { createOsascriptWindowSource } from '../monitor/window-source.js';
+import {
+  closeOrphanedSessions,
+  getActiveSession,
+  isMicAllowed,
+  isPaused,
+  sessionEvents,
+  setAssessmentMode,
+  startSession,
+  stopSession
+} from '../session/index.js';
+import { getSetting, settingsEvents } from '../settings.js';
+
+const execFileAsync = promisify(execFile);
+
+let stops: Array<() => void> = [];
+let monitor: Monitor | null = null;
+
+function sessionInfo(): SessionInfo {
+  const s = getActiveSession();
+  return {
+    active: s ? { id: s.id, startedAt: s.startedAt, assessmentMode: s.assessmentMode, goalId: s.goalId } : null,
+    paused: isPaused()
+  };
+}
+
+/** One module failing to start must not take the app down: log and carry on. */
+function guarded(name: string, start: () => void | (() => void)): void {
+  try {
+    const stop = start();
+    if (stop) stops.push(stop);
+  } catch (error) {
+    console.error(`[sensing] ${name} failed to start:`, error instanceof Error ? error.message : error);
+  }
+}
+
 export function registerSensing(): void {
-  // A1..A10 add their start-up calls here.
+  // ---- A1: sessions, monitor, permissions -------------------------------------------------
+  guarded('sessions', () => {
+    const closed = closeOrphanedSessions();
+    if (closed) console.log(`[sensing] closed ${closed} session(s) left open by a previous run`);
+
+    handle('session-start', async (opts) => {
+      startSession(opts ?? {});
+      return sessionInfo();
+    });
+    handle('session-stop', async () => {
+      stopSession();
+      return sessionInfo();
+    });
+    handle('session-get', async () => sessionInfo());
+    handle('session-set-assessment', async (value) => {
+      setAssessmentMode(value);
+      return sessionInfo();
+    });
+
+    // Tell every window, and the mic flag (SPEC 7: pause mutes the mic)
+    let lastMic: boolean | null = null;
+    const publish = () => {
+      broadcast('session-changed', sessionInfo());
+      const mic = isMicAllowed();
+      if (mic !== lastMic) {
+        lastMic = mic;
+        broadcast('mic-allowed', mic);
+      }
+    };
+    const offs = [
+      sessionEvents.on('change', publish),
+      sessionEvents.on('pause', publish),
+      settingsEvents.on('change', (key) => {
+        if (key === 'voice.enabled') publish();
+      })
+    ];
+    return () => offs.forEach((off) => off());
+  });
+
+  guarded('monitor', () => {
+    monitor = new Monitor({
+      source: createOsascriptWindowSource((file, args, opts) => execFileAsync(file, args, opts)),
+      db: getDatabase,
+      now: Date.now,
+      getSession: getActiveSession,
+      isPaused,
+      getIdleSeconds: () => powerMonitor.getSystemIdleTime(),
+      getDomain: () => null, // A2 replaces this with the extension's active tab domain
+      settings: {
+        captureTitles: () => getSetting('monitoring.capture_window_titles'),
+        idleTimeoutSeconds: () => getSetting('session.idle_timeout_seconds'),
+        autoStartApp: () => getSetting('session.auto_start_app')
+      },
+      startSession: () => void startSession()
+    });
+    const m = monitor;
+    m.start(2000);
+    const off = sessionEvents.on('change', (s) => {
+      if (s) void m.poke();
+    });
+    return () => {
+      off();
+      m.stop();
+    };
+  });
+
+  guarded('permissions', () => {
+    const deps: PermissionDeps = {
+      platform: process.platform,
+      getMediaAccessStatus: (kind) => systemPreferences.getMediaAccessStatus(kind),
+      isTrustedAccessibilityClient: (prompt) => systemPreferences.isTrustedAccessibilityClient(prompt),
+      askForMediaAccess: (kind) => systemPreferences.askForMediaAccess(kind),
+      openExternal: (url) => shell.openExternal(url),
+      getAutomationState: () => monitor?.getAutomationState() ?? 'unknown'
+    };
+    handle('permissions-get', async () => getPermissionsStatus(deps));
+    handle('permissions-request', async (kind) => requestPermission(kind, deps));
+  });
 }
 
 /** Called on quit: close servers, stop pollers. */
 export function unregisterSensing(): void {
-  // A1..A10 add their shutdown calls here.
+  for (const stop of stops.reverse()) {
+    try {
+      stop();
+    } catch (error) {
+      console.error('[sensing] shutdown error:', error instanceof Error ? error.message : error);
+    }
+  }
+  stops = [];
+  monitor = null;
 }

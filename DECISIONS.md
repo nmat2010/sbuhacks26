@@ -93,7 +93,19 @@ This document tracks decisions made during implementation where the spec was amb
 - **Ports:** extension loopback 45678 (`EXTENSION_WS_PORT`), web app LAN 45679 (`SYNC_WS_PORT`).
 
 ## Agent A
-_(Agent A appends decisions here.)_
+
+### A1: sessions + monitor
+- **`session/index.ts` keeps its public API.** `startSession`/`stopSession` now insert/update the `sessions` row (`device='desktop'`) and log `session.start`/`session.end`. `setActiveSession` stays state-only (existing NudgeQueue tests rely on that).
+- **Assessment toggle (`setAssessmentMode`) mutates the active session in place and does not emit `change`**, because B2 resets the engine on every `change`. Readers (B3a) call `getActiveSession()` per request.
+- **Crash recovery:** `closeOrphanedSessions()` runs at startup; open desktop sessions end at their last `app_events` ts (or start).
+- **Pause marker:** while paused, the monitor writes one `app_events` row with `app_name='(paused)'` (`PAUSED_APP`) and nothing else. History/streak code must treat the time from a `(paused)` row to the next row as paused, not work. A session's last row runs to `sessions.ended_at`.
+- **Mic flag:** `isMicAllowed()` = session active && !paused && `voice.enabled`. register.ts broadcasts `mic-allowed` on change (Thu's voice UI listens). Also `session-changed` is broadcast on session/pause changes.
+- **Auto-start** fires on the *transition* to the `session.auto_start_app` app, so a manual Stop sticks while that app stays frontmost. With no session and no auto-start app set, the window source is not polled at all.
+- **Window source:** JXA via `osascript` + System Events (Automation permission; titles also need Accessibility, otherwise the title is null). Automation can't be queried, so its status is learned from the poll result (`unknown` -> `granted`/`denied`). Screen Recording is reported but is not needed by this source.
+- **Idle:** `is_idle = getSystemIdleTime() >= session.idle_timeout_seconds` (default 60 s). A flip writes a row.
+- **Title capture off:** the source is not asked for the title, and `window_title` is NULL.
+- **Browser list** (`monitor/browsers.ts`) is the set of Chromium-family app names; the tab domain is attached to `app_events.url_domain` only when one of them is frontmost.
+- **Lint in nested worktrees:** a worktree under `.claude/worktrees/` sees the parent repo's `.eslintrc.json` too and `npm run lint` fails with "couldn't determine the plugin uniquely". Not a repo bug; run `eslint --no-eslintrc -c <root>/.eslintrc.json` there.
 
 ## Agent B
 _(Agent B appends decisions here.)_
