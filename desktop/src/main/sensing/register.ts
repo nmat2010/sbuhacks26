@@ -135,7 +135,9 @@ export function registerSensing(): void {
         idleTimeoutSeconds: () => getSetting('session.idle_timeout_seconds'),
         autoStartApp: () => getSetting('session.auto_start_app')
       },
-      startSession: () => void startSession()
+      startSession: () => void startSession(),
+      // macOS reports the Electron main process as the frontmost app for any Wolfie window
+      isSelf: (info) => info.pid === process.pid
     });
     const m = monitor;
     m.start(2000);

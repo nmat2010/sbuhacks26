@@ -184,6 +184,39 @@ describe('Monitor app_events', () => {
     expect(perSession).toHaveLength(2);
   });
 
+  it("skips Wolfie's own windows: no row, no foreground event, previous app keeps the time", async () => {
+    startSession();
+    const m = makeMonitor({ isSelf: (info) => info.pid === 4242 });
+    const foreground: string[] = [];
+    m.events.on('foreground', (snap) => foreground.push(snap.appName));
+    front = { appName: 'Google Chrome', windowTitle: null, pid: 100 };
+    await m.tick();
+    clock += 2000;
+    front = { appName: 'Electron', windowTitle: 'Wolfie Overlay', pid: 4242 };
+    await m.tick();
+    clock += 2000;
+    front = { appName: 'Google Chrome', windowTitle: null, pid: 100 };
+    await m.tick();
+    expect(rows().map((r) => r.app_name)).toEqual(['Google Chrome']);
+    expect(foreground).toEqual(['Google Chrome']);
+  });
+
+  it('a long stretch on Wolfie itself is not mistaken for sleep', async () => {
+    startSession();
+    const m = makeMonitor({ isSelf: (info) => info.pid === 4242 });
+    front = win('Xcode');
+    await m.tick();
+    for (let i = 0; i < 30; i++) {
+      clock += 2000;
+      front = { appName: 'Electron', windowTitle: 'Wolfie Overlay', pid: 4242 };
+      await m.tick();
+    }
+    clock += 2000;
+    front = win('Xcode');
+    await m.tick();
+    expect(rows().map((r) => [r.app_name, r.is_idle])).toEqual([['Xcode', 0]]);
+  });
+
   it('emits foreground only on change and tick every poll', async () => {
     startSession();
     const m = makeMonitor();

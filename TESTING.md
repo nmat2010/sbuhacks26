@@ -7,7 +7,7 @@ npm install          # Node >= 22 (better-sqlite3 13 has Node-API prebuilds; no 
 npm run typecheck    # all workspaces
 npm test             # shared contract + escalation tests, desktop DB/settings/NudgeQueue tests
 npm run lint
-npm run smoke        # launches Electron, does a renderer -> preload -> main -> SQLite round trip, quits
+npm run smoke        # launches Electron, does a renderer-to-SQLite round trip, quits
 npm run build:extension   # then load extension/dist unpacked in chrome://extensions
 ```
 

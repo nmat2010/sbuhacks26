@@ -6,6 +6,8 @@
 export interface WindowInfo {
   appName: string;
   windowTitle: string | null;
+  /** Unix pid of the frontmost process, when known. Used to skip Wolfie's own windows. */
+  pid?: number;
 }
 
 export type WindowSourceErrorKind = 'automation_denied' | 'unavailable';
@@ -34,7 +36,7 @@ export type ExecFile = (
 const JXA_APP_ONLY = `
 const se = Application('System Events');
 const p = se.applicationProcesses.whose({ frontmost: true })[0];
-JSON.stringify({ appName: p.name(), windowTitle: null });
+JSON.stringify({ appName: p.name(), windowTitle: null, pid: p.unixId() });
 `;
 
 const JXA_WITH_TITLE = `
@@ -42,7 +44,7 @@ const se = Application('System Events');
 const p = se.applicationProcesses.whose({ frontmost: true })[0];
 let title = null;
 try { title = p.windows[0].name(); } catch (e) {}
-JSON.stringify({ appName: p.name(), windowTitle: title });
+JSON.stringify({ appName: p.name(), windowTitle: title, pid: p.unixId() });
 `;
 
 /** Parses osascript output; returns null for empty output or an unnamed process. */
@@ -55,10 +57,11 @@ export function parseWindowInfo(stdout: string): WindowInfo | null {
   } catch {
     throw new WindowSourceError('unavailable', 'unparseable osascript output');
   }
-  const obj = raw as { appName?: unknown; windowTitle?: unknown };
+  const obj = raw as { appName?: unknown; windowTitle?: unknown; pid?: unknown };
   if (typeof obj.appName !== 'string' || !obj.appName) return null;
   const title = typeof obj.windowTitle === 'string' && obj.windowTitle ? obj.windowTitle : null;
-  return { appName: obj.appName, windowTitle: title };
+  const pid = typeof obj.pid === 'number' && Number.isInteger(obj.pid) ? { pid: obj.pid } : {};
+  return { appName: obj.appName, windowTitle: title, ...pid };
 }
 
 /** Maps an osascript failure to a typed error. -1743 is "not authorized to send Apple events". */

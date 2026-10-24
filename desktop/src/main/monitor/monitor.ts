@@ -2,7 +2,7 @@ import type Database from 'better-sqlite3';
 import type { PermissionState } from '../../common/ipc-sensing.js';
 import { TypedEmitter } from '../typed-emitter.js';
 import { isBrowserApp } from './browsers.js';
-import { WindowSourceError, type WindowSource } from './window-source.js';
+import { WindowSourceError, type WindowInfo, type WindowSource } from './window-source.js';
 
 // Session monitor (SPEC Phase 2): polls the active window every 2 s during a session and writes
 // `app_events` rows only when the app, title, tab domain or idle flag changes. Everything OS- or
@@ -49,6 +49,12 @@ export interface MonitorDeps {
   getDomain: () => string | null;
   settings: MonitorSettings;
   startSession: () => void;
+  /**
+   * True when the frontmost window is Wolfie itself (overlay, dashboard, dialogs). Those polls
+   * are skipped, so clicking Wolfie is not an app switch: no row, no context-switch signal, and
+   * the browser keeps counting as frontmost for the extension.
+   */
+  isSelf?: (info: WindowInfo) => boolean;
 }
 
 export class Monitor {
@@ -167,6 +173,11 @@ export class Monitor {
     if (!info) return;
     // The session may have ended or paused while osascript ran.
     if (deps.getSession()?.id !== session.id || deps.isPaused()) return;
+    if (deps.isSelf?.(info)) {
+      // Still a poll, so a long stretch on Wolfie's own window is not mistaken for sleep.
+      this.markSleepGap(session.id, deps.now());
+      return;
+    }
 
     const study = deps.settings.autoStartApp();
     this.studyAppFront = !!study && info.appName.trim().toLowerCase() === study.trim().toLowerCase();

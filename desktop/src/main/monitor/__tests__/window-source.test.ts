@@ -13,6 +13,11 @@ describe('window source', () => {
   it('parses osascript output', () => {
     expect(parseWindowInfo('{"appName":"Safari","windowTitle":"Home"}\n')).toEqual({ appName: 'Safari', windowTitle: 'Home' });
     expect(parseWindowInfo('{"appName":"Finder","windowTitle":null}')).toEqual({ appName: 'Finder', windowTitle: null });
+    expect(parseWindowInfo('{"appName":"Electron","windowTitle":null,"pid":4242}')).toEqual({
+      appName: 'Electron',
+      windowTitle: null,
+      pid: 4242
+    });
     expect(parseWindowInfo('')).toBeNull();
     expect(() => parseWindowInfo('not json')).toThrow(WindowSourceError);
   });
