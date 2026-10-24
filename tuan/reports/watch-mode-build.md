@@ -94,3 +94,17 @@
 - **To check on the next run:**
   - macOS asks "Electron wants to control Google Chrome": choose OK.
   - Ask for Automation on the consent screen (Thu, U1), so the prompt doesn't appear mid-session.
+
+## Update: chat panel wired (93a8205)
+- **Problem:** Thu's `HintConversation` was mock data. It sat inside the click-through overlay, so it couldn't be clicked or typed in, and a click on Wolfie also started the bubble help flow.
+- **Fix:**
+  - A click opens or closes the chat only.
+  - "Help me with this" runs the help flow, and its steps and buttons appear in the chat.
+  - Typed messages go to `chat-send`: a follow-up to the open hint or explanation, otherwise an answer from the session or general knowledge.
+  - "What I see" comes from `watch-get`.
+  - The overlay takes the mouse while the chat is open, and the CSS fits the 360×520 window.
+- **Verified:**
+  - `WOLFIE_SMOKE_SHOT` ran the real app in demo mode: it opened the chat, sent a question and got the answer.
+  - The captured picture shows the panel above the mascot.
+  - 621 tests pass; typecheck and lint are clean.
+- **Not verified:** the "Help me with this" flow inside the chat on Tuan's screen. Without Watch mode it opens the macOS screenshot prompt, so the automated run skipped it.
