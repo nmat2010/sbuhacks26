@@ -12,6 +12,14 @@
 >
 > Please review it before building more overlay or voice UI.
 >
+> **Chat panel (Thu's `HintConversation`): wired by Tuan on request** (branch `tuan/watch-mode`). Clicking Wolfie now opens/closes the chat only:
+> - "Help me with this" starts the help flow, and its steps (with their buttons) show up in the chat instead of as bubbles.
+> - Typed messages go to the new `chat-send` channel (a follow-up to the open hint, or a question answered from the session).
+> - "What I see" comes from `watch-get`.
+> - The CSS was compacted to fit the 360×520 overlay window, and the window takes the mouse while the chat is open.
+>
+> Thu, restyle freely, but please keep the IPC calls.
+>
 > **Web app: settled.** Thu has already built `web/` (88bdd1b), so Thu keeps it and section 2 below is closed. Tuan won't touch `web/`.
 >
 > **Still unwired on `main` (as of 1410a5c), from Tuan's first real run:**

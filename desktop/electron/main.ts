@@ -1,6 +1,7 @@
 import { app, BrowserWindow, screen, Menu } from 'electron';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { writeFileSync } from 'fs';
 import { config } from 'dotenv';
 import { initDatabase, getDatabase, closeDatabase } from '../src/main/db/index.js';
 import { initNudgeQueue, getNudgeQueue } from '../src/main/nudge/index.js';
@@ -258,6 +259,24 @@ app.whenReady().then(() => {
           "Promise.all([window.electronAPI.ping(), window.electronAPI.invoke('db-test')]).then(JSON.stringify)"
         );
         console.log(`[smoke] OK ${result}`);
+        // WOLFIE_SMOKE_SHOT=<png path>: open the chat, ask a question, save a picture of the overlay
+        if (process.env.WOLFIE_SMOKE_SHOT && overlayWindow) {
+          const ui = (js: string) => overlayWindow!.webContents.executeJavaScript(js);
+          await ui("document.querySelector('.mascot').click()");
+          await new Promise((r) => setTimeout(r, 500));
+          await ui(`(() => {
+            const input = document.querySelector('.hint-input');
+            const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+            set.call(input, 'What is attention in a transformer?');
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            document.querySelector('.send-btn').click();
+          })()`);
+          await new Promise((r) => setTimeout(r, 2500));
+          const texts = await ui("[...document.querySelectorAll('.message-text')].map((e) => e.textContent).join(' | ')");
+          console.log(`[smoke] chat: ${texts}`);
+          const image = await overlayWindow.webContents.capturePage();
+          writeFileSync(process.env.WOLFIE_SMOKE_SHOT, image.toPNG());
+        }
       } catch (error) {
         console.log(`[smoke] FAIL ${error}`);
         process.exitCode = 1;

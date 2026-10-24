@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Mascot, MascotState } from './components/Mascot';
 import { SpeechBubble } from './components/SpeechBubble';
 import { HoverMenu } from './components/HoverMenu';
-import { HintConversation, HintLevel } from './components/HintConversation';
+import { HintConversation } from './components/HintConversation';
 import { useNudge } from './hooks/useNudge';
 import { useVoiceIntents } from './hooks/useVoiceIntents';
 
@@ -19,6 +19,19 @@ function App() {
   const [baseState, setBaseState] = useState<MascotState>('idle');
 
   useEffect(() => window.electronAPI.on('overlay-state', setBaseState), []);
+
+  // While the chat is open it takes the mouse, and help steps are shown in it instead of a bubble
+  const chatOpenRef = React.useRef(false);
+  useEffect(() => {
+    chatOpenRef.current = showHintConversation;
+    window.electronAPI.setIgnoreMouseEvents(!showHintConversation, { forward: true });
+  }, [showHintConversation]);
+  useEffect(() => {
+    if (showHintConversation && currentNudge?.kind === 'stuck') dismissNudge();
+  }, [showHintConversation, currentNudge, dismissNudge]);
+  const releaseMouse = () => {
+    if (!isDragging && !chatOpenRef.current) window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
+  };
 
   // Listen for voice toggle from context menu
   useEffect(() => {
@@ -95,10 +108,8 @@ function App() {
   };
 
   const handleMouseLeave = () => {
-    // Re-enable click-through when not hovering
-    if (!isDragging) {
-      window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
-    }
+    // Re-enable click-through when not hovering (not while the chat is open)
+    releaseMouse();
     // Hide hover menu
     setShowHoverMenu(false);
   };
@@ -108,9 +119,7 @@ function App() {
   };
 
   const handleBubbleLeave = () => {
-    if (!isDragging) {
-      window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
-    }
+    releaseMouse();
   };
 
   const handleMouseDown = () => {
@@ -119,28 +128,12 @@ function App() {
 
   const handleMouseUp = () => {
     setIsDragging(false);
-    window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
+    if (!chatOpenRef.current) window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
   };
 
+  // Clicking Wolfie opens (or closes) the chat; help starts from its "Help me with this" button
   const handleMascotClick = () => {
-    // Manual hint entry point (SPEC 4d); main routes it to the escalation engine
-    window.electronAPI.invoke('mascot-click');
-    // Also open hint conversation UI for demo/testing
-    setShowHintConversation(true);
-  };
-
-  const handleRequestHint = (level: HintLevel) => {
-    console.log(`Requesting hint level ${level}`);
-    // TODO: Call IPC to get actual hint from LLM
-    // await window.electronAPI.invoke('request-hint', { level, context });
-  };
-
-  const handleDismissHint = (action: 'got-it' | 'not-needed' | 'show-answer') => {
-    console.log(`Hint dismissed with action: ${action}`);
-    // TODO: Log to database
-    setTimeout(() => {
-      setShowHintConversation(false);
-    }, 500);
+    setShowHintConversation((open) => !open);
   };
 
   const handleOpenTestPanel = () => {
@@ -232,16 +225,7 @@ function App() {
 
       {/* Hint Conversation Modal */}
       {showHintConversation && (
-        <HintConversation
-          onClose={() => setShowHintConversation(false)}
-          onRequestHint={handleRequestHint}
-          onDismiss={handleDismissHint}
-          voiceMode={voiceActive}
-          contextPreview={{
-            type: 'page',
-            description: 'I can see you\'re working on a data structures problem about linked lists.'
-          }}
-        />
+        <HintConversation onClose={() => setShowHintConversation(false)} voiceMode={voiceActive} />
       )}
     </div>
   );

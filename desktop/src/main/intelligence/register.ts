@@ -325,6 +325,18 @@ function registerWatch(): void {
   handle('watch-consent', async (accepted) => controller.consent(accepted === true));
   handle('watch-memory-get', async () => controller.memoryView());
   handle('watch-memory-clear', async () => controller.clearMemory());
+  handle('chat-send', async (text) => {
+    const message = String(text ?? '').trim();
+    if (!message) return { kind: 'error' as const, error: 'Type a question first.' };
+    // Follow-ups stay in the conversation that is open (the reply comes back as a bubble/nudge)
+    if (flow?.hasOpenExplanation() && (await flow.followupExplanation(message))) return { kind: 'followup' as const };
+    if (flow?.hasOpenLadder()) {
+      void flow.followup(message);
+      return { kind: 'followup' as const };
+    }
+    const res = await answers.ask({ question: message, inputMode: 'text' });
+    return res.success && res.data ? { kind: 'answer' as const, answer: res.data } : { kind: 'error' as const, error: res.error ?? FALLBACK_WATCH_ERROR };
+  });
   handle('watch-ask', async (input) => {
     if (!controller.isOn()) return { success: false, error: 'Turn on Watch mode first, so I can follow what you are studying.' };
     return answers.ask({ question: String(input?.question ?? ''), inputMode: input?.inputMode === 'voice' ? 'voice' : 'text' });

@@ -296,6 +296,15 @@ export interface IntelligenceInvoke {
   'watch-consent': { args: [accepted: boolean]; result: WatchStatus };
   'watch-memory-get': { args: []; result: WatchMemoryView };
   'watch-memory-clear': { args: []; result: WatchStatus };
+  /**
+   * The overlay chat panel. With a hint ladder or an explanation open, the text is a follow-up to
+   * it (the reply arrives as a 'stuck' nudge, like the ladder). Otherwise it is a question,
+   * answered from the session when Watch mode is on, or from general knowledge when it is off.
+   */
+  'chat-send': {
+    args: [text: string];
+    result: { kind: 'answer'; answer: WatchAnswer } | { kind: 'followup' } | { kind: 'error'; error: string };
+  };
   /** A question about what the student is studying, answered from the whole session. */
   'watch-ask': { args: [input: { question: string; inputMode: 'text' | 'voice' }]; result: BResult<WatchAnswer> };
   'voice-status': { args: []; result: VoiceStatus };
