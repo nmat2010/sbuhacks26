@@ -1,4 +1,4 @@
-import { ipcMain, type WebContents } from 'electron';
+import { ipcMain, webContents, type WebContents } from 'electron';
 import type {
   EventChannel,
   EventChannels,
@@ -28,4 +28,9 @@ export function sendTo<C extends EventChannel>(
   payload: EventChannels[C]
 ): void {
   if (target && !target.isDestroyed()) target.send(channel, payload);
+}
+
+/** Send to every open window (overlay, dashboard, test panel). */
+export function broadcast<C extends EventChannel>(channel: C, payload: EventChannels[C]): void {
+  for (const target of webContents.getAllWebContents()) sendTo(target, channel, payload);
 }

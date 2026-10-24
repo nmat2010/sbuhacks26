@@ -20,7 +20,9 @@ export type EventType =
   | 'plan.item_completed'
   | 'streak.qualified'
   | 'streak.frozen'
-  | 'streak.reset';
+  | 'streak.reset'
+  // Agents may add new dotted types without editing this union.
+  | `${string}.${string}`;
 
 export function logEvent(
   type: EventType,

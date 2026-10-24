@@ -91,3 +91,9 @@ This document tracks decisions made during implementation where the spec was amb
 - **Preload is built as CommonJS** (`preload.cjs`); sandboxed preloads cannot be ESM. The main bundle stays ESM and derives `__dirname` from `import.meta.url`.
 - **Extension build uses esbuild** (`extension/build.mjs`): the background worker is ESM, content and popup scripts are IIFE. Load unpacked from `extension/dist`.
 - **Ports:** extension loopback 45678 (`EXTENSION_WS_PORT`), web app LAN 45679 (`SYNC_WS_PORT`).
+
+## Agent A
+_(Agent A appends decisions here.)_
+
+## Agent B
+_(Agent B appends decisions here.)_

@@ -14,19 +14,24 @@
     "smoke": "env -u ELECTRON_RUN_AS_NODE WOLFIE_SMOKE=1 DEMO_MODE=1 vite"
   },
   "dependencies": {
+    "@google/genai": "^2.28.0",
     "@wolfie/shared": "*",
     "better-sqlite3": "^13.0.3",
     "dotenv": "^16.4.1",
     "electron-store": "^8.1.0",
+    "pdfjs-dist": "^6.4.299",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "zod": "^3.22.4"
+    "ws": "^8.22.0",
+    "zod": "^3.22.4",
+    "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.11.5",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
+    "@types/ws": "^8.18.2",
     "@vitejs/plugin-react": "^4.2.1",
     "electron": "44.7.0",
     "electron-builder": "^24.9.1",

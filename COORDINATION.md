@@ -63,6 +63,14 @@ Each developer should update their section at the start and end of each work ses
 
 ---
 
+## Agent A
+_(Agent A: status notes, integration offers, proposals.)_
+
+## Agent B
+_(Agent B: status notes, integration offers, proposals.)_
+
+---
+
 ## Integration Checkpoints
 
 Track when features from both tracks need to come together.

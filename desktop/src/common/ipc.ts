@@ -1,7 +1,10 @@
 import type { MascotStateType, Nudge, NudgeInput, NudgeResponse } from '@wolfie/shared';
+import type { SensingEvents, SensingInvoke, SensingSend } from './ipc-sensing.js';
+import type { IntelligenceEvents, IntelligenceInvoke, IntelligenceSend } from './ipc-intelligence.js';
 
 // Typed IPC contract between the main process and renderers (SPEC 3: "typed IPC only").
-// Add channels here first; preload.ts and src/main/ipc.ts are typed from these maps.
+// Core channels live here; Agent A adds to ipc-sensing.ts and Agent B to ipc-intelligence.ts.
+// preload.ts and src/main/ipc.ts are typed from the combined maps.
 
 export interface NudgeQueueStatus {
   paused: boolean;
@@ -18,7 +21,7 @@ export interface Result {
 }
 
 /** renderer -> main, request/response (ipcRenderer.invoke / ipcMain.handle) */
-export interface InvokeChannels {
+export interface CoreInvoke {
   ping: { args: []; result: string };
   'db-test': { args: []; result: unknown };
   'nudge-push': { args: [nudge: NudgeInput]; result: Result & { id?: string } };
@@ -32,18 +35,22 @@ export interface InvokeChannels {
 }
 
 /** renderer -> main, fire-and-forget (ipcRenderer.send / ipcMain.on) */
-export interface SendChannels {
+export interface CoreSend {
   'set-ignore-mouse-events': [ignore: boolean, options?: { forward: boolean }];
 }
 
 /** main -> renderer events (webContents.send / ipcRenderer.on) */
-export interface EventChannels {
+export interface CoreEvents {
   'nudge-show': Nudge;
   /** Escalation levels 1-2 and pause (sleeping) are sprite states, not bubbles. */
   'overlay-state': MascotStateType;
   'session-control': 'start' | 'stop';
   'voice-toggle': boolean;
 }
+
+export interface InvokeChannels extends CoreInvoke, SensingInvoke, IntelligenceInvoke {}
+export interface SendChannels extends CoreSend, SensingSend, IntelligenceSend {}
+export interface EventChannels extends CoreEvents, SensingEvents, IntelligenceEvents {}
 
 export type InvokeChannel = keyof InvokeChannels;
 export type SendChannel = keyof SendChannels;

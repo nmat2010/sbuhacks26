@@ -32,3 +32,26 @@ Verified:
 
 ## Next
 A feasibility review of `tuan/PLAN.md` by a separate agent, then launch Agents A and B from this branch.
+
+---
+
+## Update: feasibility review + P0.5 pre-split
+- A separate review agent checked `tuan/PLAN.md` and found 4 blockers:
+  1. Both agents edit `main.ts`, the IPC maps, the migrations list, and the dependency files.
+  2. Modules that import `electron` won't load in Vitest.
+  3. Strong signals expire before escalation reaches level 3.
+  4. Two worktrees would collide on ports, the dev URL, and the userData folder.
+
+  It also listed coverage gaps and ordering fixes.
+- **P0.5, done:**
+  - Wiring: `sensing/register.ts` and `intelligence/register.ts`, called from `main.ts`. Agents no longer edit `main.ts`.
+  - IPC: per-agent channel maps (`ipc-sensing.ts`, `ipc-intelligence.ts`) plus `broadcast()`.
+  - Migrations: per-agent files (`migrations-a.ts` with `1xx_a`, `migrations-b.ts` with `2xx_b`).
+  - Dependencies installed up front (desktop `ws`, `@google/genai`, `pdfjs-dist`, `zod-to-json-schema`; extension `jsdom`, `vitest`), with Vite externals.
+  - Collisions: `VITE_DEV_SERVER_URL` and `WOLFIE_USER_DATA` support.
+  - Controls: `startSession`/`stopSession`/`setPaused`, with the menu and the pause IPC routed through them.
+  - Logging: `EventType` accepts any dotted string.
+  - Docs: per-agent headings in DECISIONS and COORDINATION.
+- **Verified:** typecheck, 58 tests, lint, and `npm run smoke` with `WOLFIE_USER_DATA` (round trip OK, DB written to the custom dir).
+- **Plan rewritten:** P0.5 and new ground rules, the A and B packages with the review's coverage lines (B5a/B5b split, B3a/B3b split, M2-int demo test, B2 runtime rules), the new order (A5→A7→A6; B1→B5a→B2→B3→B4→…), and Gotchas.
+- **Next:** launch Agent A and Agent B (Sonnet, high effort) in separate worktrees.

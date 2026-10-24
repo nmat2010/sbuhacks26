@@ -8,8 +8,11 @@ import { handle, onSend, sendTo } from '../src/main/ipc.js';
 import { overlayStateEvents, setMascotState } from '../src/main/overlay/state.js';
 import { stuckBus } from '../src/main/stuck/bus.js';
 import { logEvent } from '../src/main/events.js';
-import { getSetting } from '../src/main/settings.js';
+import { getSetting, setSetting } from '../src/main/settings.js';
 import { startFeatures, stopFeatures } from '../src/main/features/index.js';
+import { isPaused, sessionEvents, setPaused, startSession, stopSession } from '../src/main/session/index.js';
+import { registerSensing, unregisterSensing } from '../src/main/sensing/register.js';
+import { registerIntelligence, unregisterIntelligence } from '../src/main/intelligence/register.js';
 import { Nudge } from '@wolfie/shared';
 
 // The main bundle is ESM ("type": "module"), so __dirname does not exist; derive it.
@@ -18,11 +21,23 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Load environment variables
 config();
 
+// Separate data dirs let two worktrees run side by side (WOLFIE_USER_DATA=/tmp/wolfie-a ...)
+if (process.env.WOLFIE_USER_DATA) app.setPath('userData', process.env.WOLFIE_USER_DATA);
+
 let overlayWindow: BrowserWindow | null = null;
 let dashboardWindow: BrowserWindow | null = null;
 let testWindow: BrowserWindow | null = null;
 
-const isDev = process.env.NODE_ENV === 'development';
+// Set by vite-plugin-electron in dev; follows Vite if it had to pick another port
+const devServerUrl = process.env.VITE_DEV_SERVER_URL;
+
+function loadPage(win: BrowserWindow, page: string) {
+  if (devServerUrl) {
+    win.loadURL(new URL(page, devServerUrl).toString());
+  } else {
+    win.loadFile(join(__dirname, `../dist/${page}`));
+  }
+}
 
 function createOverlayWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
@@ -52,13 +67,15 @@ function createOverlayWindow() {
     {
       label: 'Start Session',
       click: () => {
-        overlayWindow?.webContents.send('session-control', 'start');
+        startSession();
+        sendTo(overlayWindow?.webContents, 'session-control', 'start');
       }
     },
     {
       label: 'Stop Session',
       click: () => {
-        overlayWindow?.webContents.send('session-control', 'stop');
+        stopSession();
+        sendTo(overlayWindow?.webContents, 'session-control', 'stop');
       }
     },
     { type: 'separator' },
@@ -88,25 +105,17 @@ function createOverlayWindow() {
     {
       label: 'Pause Monitoring',
       type: 'checkbox',
-      checked: false,
-      click: (menuItem) => {
-        const queue = getNudgeQueue();
-        if (menuItem.checked) {
-          queue.pause();
-          setMascotState('sleeping');
-        } else {
-          queue.resume();
-          setMascotState('idle');
-        }
-      }
+      checked: isPaused(),
+      click: (menuItem) => setPaused(menuItem.checked)
     },
     { type: 'separator' },
     {
       label: 'Voice',
       type: 'checkbox',
-      checked: false,
+      checked: getSetting('voice.enabled'),
       click: (menuItem) => {
-        overlayWindow?.webContents.send('voice-toggle', menuItem.checked);
+        setSetting('voice.enabled', menuItem.checked);
+        sendTo(overlayWindow?.webContents, 'voice-toggle', menuItem.checked);
       }
     },
     { type: 'separator' },
@@ -122,12 +131,8 @@ function createOverlayWindow() {
     contextMenu.popup();
   });
 
-  if (isDev) {
-    overlayWindow.loadURL('http://localhost:5173/overlay.html');
-    overlayWindow.webContents.openDevTools({ mode: 'detach' });
-  } else {
-    overlayWindow.loadFile(join(__dirname, '../dist/overlay.html'));
-  }
+  loadPage(overlayWindow, 'overlay.html');
+  if (devServerUrl && process.env.WOLFIE_SMOKE !== '1') overlayWindow.webContents.openDevTools({ mode: 'detach' });
 
   overlayWindow.on('closed', () => {
     overlayWindow = null;
@@ -145,12 +150,8 @@ function createDashboardWindow() {
     }
   });
 
-  if (isDev) {
-    dashboardWindow.loadURL('http://localhost:5173/dashboard.html');
-    dashboardWindow.webContents.openDevTools({ mode: 'detach' });
-  } else {
-    dashboardWindow.loadFile(join(__dirname, '../dist/dashboard.html'));
-  }
+  loadPage(dashboardWindow, 'dashboard.html');
+  if (devServerUrl && process.env.WOLFIE_SMOKE !== '1') dashboardWindow.webContents.openDevTools({ mode: 'detach' });
 
   dashboardWindow.on('closed', () => {
     dashboardWindow = null;
@@ -175,11 +176,7 @@ function createTestWindow() {
     }
   });
 
-  if (isDev) {
-    testWindow.loadURL('http://localhost:5173/test-nudge.html');
-  } else {
-    testWindow.loadFile(join(__dirname, '../dist/test-nudge.html'));
-  }
+  loadPage(testWindow, 'test-nudge.html');
 
   testWindow.on('closed', () => {
     testWindow = null;
@@ -213,7 +210,18 @@ app.whenReady().then(() => {
     sendTo(overlayWindow?.webContents, 'overlay-state', state);
   });
 
-  // Feature modules register their own startup here (one registerX() call per module).
+  // Pause monitoring (SPEC 7): queue + sleeping sprite here; A1 adds mic and extension
+  sessionEvents.on('pause', (paused) => {
+    const queue = getNudgeQueue();
+    if (paused) queue.pause();
+    else queue.resume();
+    setMascotState(paused ? 'sleeping' : 'idle');
+  });
+
+  // Each agent wires its modules in its own register file; do not add calls to main.ts
+  registerSensing();
+  registerIntelligence();
+
   startFeatures({
     pushNudge: (nudge) => getNudgeQueue().push(nudge),
     logEvent,
@@ -263,6 +271,8 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   stopFeatures();
+  unregisterIntelligence();
+  unregisterSensing();
   closeDatabase();
 });
 
@@ -313,18 +323,8 @@ handle('nudge-push', async (nudge) => {
   }
 });
 handle('nudge-snooze', async () => guarded(() => getNudgeQueue().snooze()));
-handle('nudge-pause', async () =>
-  guarded(() => {
-    getNudgeQueue().pause();
-    setMascotState('sleeping');
-  })
-);
-handle('nudge-resume', async () =>
-  guarded(() => {
-    getNudgeQueue().resume();
-    setMascotState('idle');
-  })
-);
+handle('nudge-pause', async () => guarded(() => setPaused(true)));
+handle('nudge-resume', async () => guarded(() => setPaused(false)));
 handle('nudge-status', async () => getNudgeQueue().getStatus());
 handle('nudge-response', async (response) => guarded(() => getNudgeQueue().respond(response)));
 

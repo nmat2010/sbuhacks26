@@ -1,6 +1,9 @@
 import Database from 'better-sqlite3';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
+import { migrations as sensingMigrations, tables as sensingTables } from './migrations-a.js';
+import { migrations as intelligenceMigrations, tables as intelligenceTables } from './migrations-b.js';
+import type { Migration } from './migration.js';
 
 let db: Database.Database | null = null;
 
@@ -47,7 +50,7 @@ function runMigrations(database: Database.Database) {
     )
   `);
 
-  const migrations = [
+  const migrations: Migration[] = [
     {
       name: '001_initial_schema',
       up: () => {
@@ -223,8 +226,8 @@ function runMigrations(database: Database.Database) {
     },
   ];
 
-  // Run pending migrations
-  for (const migration of migrations) {
+  // Run pending migrations: core first, then each agent's own list (see migrations-a/b.ts)
+  for (const migration of [...migrations, ...sensingMigrations(database), ...intelligenceMigrations(database)]) {
     const exists = database
       .prepare('SELECT name FROM migrations WHERE name = ?')
       .get(migration.name);
@@ -270,5 +273,7 @@ export const DATA_TABLES = [
   'streak_days',
   'streak_state',
   'settings',
-  'events'
+  'events',
+  ...sensingTables,
+  ...intelligenceTables
 ] as const;

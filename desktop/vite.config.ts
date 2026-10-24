@@ -17,7 +17,8 @@ export default defineConfig({
           build: {
             outDir: 'dist-electron',
             rollupOptions: {
-              external: ['better-sqlite3', 'electron']
+              // Native, Node-only, or browser-field packages load from node_modules at runtime
+              external: ['better-sqlite3', 'electron', 'ws', 'bufferutil', 'utf-8-validate', '@google/genai', 'pdfjs-dist']
             }
           }
         }
