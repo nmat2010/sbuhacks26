@@ -1,0 +1,77 @@
+{
+  "$comment": "One valid example per message type, plus invalid examples that must be rejected. Validated by shared/src/__tests__/contracts.test.ts.",
+  "pageSummary": {
+    "url": "http://localhost:5174/algebra.html",
+    "domain": "localhost",
+    "title": "Practice: Linear equations",
+    "headings": ["Solve for x"],
+    "visibleText": "Solve for x: 2x + 5 = 13. Your answer: 9. Incorrect, try again.",
+    "controls": [
+      { "id": "c1", "role": "textbox", "label": "Your answer", "state": "enabled", "type": "input" },
+      { "id": "c2", "role": "button", "label": "Check", "state": "enabled", "type": "button" }
+    ],
+    "errorMessages": ["Incorrect, try again."],
+    "openDialogs": [],
+    "problemRegion": "Solve for x: 2x + 5 = 13",
+    "problemId": "demo-algebra-problem",
+    "timestamp": 1761300000000
+  },
+  "signal": { "type": "wrong_answer_loop", "strength": "strong", "timestamp": 1761300000000, "problemId": "demo-algebra-problem", "metadata": { "attempts": 2 } },
+  "nudgeResponse": { "id": "n-1", "action": "ignore_session", "via": "button" },
+  "hintContext": {
+    "sessionId": "s-1",
+    "device": "desktop",
+    "trigger": "manual",
+    "problemId": "demo-algebra-problem"
+  },
+  "hintResponse": {
+    "what_i_see": "An equation 2x + 5 = 13 with an incorrect answer of 9.",
+    "hint_levels": {
+      "nudge": "What is being added to 2x?",
+      "hint": "Undo the +5 first.",
+      "explanation": "Inverse operations isolate a variable: subtraction undoes addition, division undoes multiplication.",
+      "analogous_example": "For 3y + 2 = 11, subtract 2 to get 3y = 9, then divide by 3.",
+      "direct_step": "Subtract 5 from both sides to get 2x = 8."
+    },
+    "offline": false
+  },
+  "sync": [
+    { "id": "m1", "type": "auth.challenge", "ts": 1, "payload": { "nonce": "abc123" } },
+    { "id": "m2", "type": "auth.hello", "ts": 2, "payload": { "deviceId": "d-1", "hmac": "deadbeef" } },
+    { "id": "m3", "type": "auth.result", "ts": 3, "payload": { "ok": true } },
+    { "id": "m4", "type": "pair.request", "ts": 4, "payload": { "code": "123456", "deviceName": "Tuan's iPad" } },
+    { "id": "m5", "type": "pair.result", "ts": 5, "payload": { "ok": true, "deviceId": "d-1", "secret": "s3cr3t" } },
+    { "id": "m6", "type": "ack", "ts": 6, "payload": { "ackId": "m7" } },
+    { "id": "m7", "type": "session.start", "ts": 7, "payload": { "sessionId": "w-1", "device": "webapp", "startedAt": 7, "assessmentMode": false } },
+    { "id": "m8", "type": "session.end", "ts": 8, "payload": { "sessionId": "w-1", "endedAt": 1200007 } },
+    { "id": "m9", "type": "webapp.activity", "ts": 9, "payload": { "sessionId": "w-1", "activities": [{ "type": "canvas_stroke", "ts": 9 }, { "type": "undo", "ts": 10 }, { "type": "tab_hidden", "ts": 11 }] } },
+    { "id": "m10", "type": "nudge.log", "ts": 10, "payload": { "sessionId": "w-1", "ts": 10, "kind": "stuck", "level": 3, "text": "Want a hint?", "userResponse": "accept_hint" } },
+    { "id": "m11", "type": "hint.request", "ts": 11, "payload": { "requestId": "h-1", "context": { "sessionId": "w-1", "device": "webapp", "trigger": "manual", "imageDataUrl": "data:image/png;base64,iVBORw0KGgo=" }, "source": "handwriting", "assessment": false, "timestamp": 11 } },
+    { "id": "m12", "type": "hint.followup", "ts": 12, "payload": { "followup": { "requestId": "h-1", "utterance": "I don't get step 2", "currentLevel": 2, "conversationHistory": [{ "role": "assistant", "content": "Undo the +5 first." }] }, "context": { "sessionId": "w-1", "device": "webapp", "trigger": "voice" }, "source": "handwriting", "assessment": false } },
+    { "id": "m13", "type": "hint.response", "ts": 13, "payload": { "requestId": "h-1", "response": { "what_i_see": "A handwritten equation.", "hint_levels": { "nudge": "a", "hint": "b", "explanation": "c", "analogous_example": "d", "direct_step": "e" }, "offline": false } } },
+    { "id": "m14", "type": "hint.followup_response", "ts": 14, "payload": { "requestId": "h-1", "text": "Step 2 means subtracting 5 from both sides.", "level": 2 } },
+    { "id": "m15", "type": "hint.error", "ts": 15, "payload": { "requestId": "h-1", "message": "LLM unavailable" } },
+    { "id": "m16", "type": "plan.snapshot", "ts": 16, "payload": { "items": [{ "id": "p-1", "title": "Read section 2", "dueDate": "2026-10-25", "status": "pending" }] } },
+    { "id": "m17", "type": "streak.snapshot", "ts": 17, "payload": { "current": 3, "longest": 5, "freezesAvailable": 1, "todayQualified": false, "todayMinutes": 12, "week": [{ "localDate": "2026-10-24", "status": "pending" }] } }
+  ],
+  "extension": [
+    { "id": "e1", "type": "ext.hello", "ts": 1, "payload": { "token": "tok-abc", "extensionVersion": "1.0.0" } },
+    { "id": "e2", "type": "ext.tab", "ts": 2, "payload": { "domain": "youtube.com", "title": "Lo-fi beats" } },
+    { "id": "e3", "type": "ext.page_summary", "ts": 3, "payload": { "summary": { "url": "https://leetcode.com/problems/two-sum", "domain": "leetcode.com", "title": "Two Sum", "headings": [], "visibleText": "", "controls": [], "errorMessages": [], "openDialogs": [], "timestamp": 3 } } },
+    { "id": "e4", "type": "ext.signal", "ts": 4, "payload": { "signal": { "type": "dead_control_clicks", "strength": "strong", "timestamp": 4 }, "domain": "localhost" } },
+    { "id": "e5", "type": "desk.hello_result", "ts": 5, "payload": { "ok": false, "reason": "bad token" } },
+    { "id": "e6", "type": "desk.state", "ts": 6, "payload": { "reporting": true, "paused": false, "capturePageText": true, "excludedDomains": ["chase.com"] } },
+    { "id": "e7", "type": "desk.request_summary", "ts": 7, "payload": { "requestId": "r-1" } }
+  ],
+  "invalid": {
+    "sync": [
+      { "id": "x1", "type": "session.start", "ts": 1, "payload": { "sessionId": "w-1", "device": "ipad", "startedAt": 1 } },
+      { "id": "x2", "type": "pair.request", "ts": 2, "payload": { "code": "12345", "deviceName": "iPad" } },
+      { "id": "x3", "type": "ipad.activity", "ts": 3, "payload": {} }
+    ],
+    "extension": [
+      { "id": "y1", "type": "ext.hello", "ts": 1, "payload": {} },
+      { "id": "y2", "type": "ext.tab", "ts": 2 }
+    ]
+  }
+}

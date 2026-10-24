@@ -29,7 +29,17 @@ export default defineConfig({
         },
         vite: {
           build: {
-            outDir: 'dist-electron'
+            outDir: 'dist-electron',
+            // Sandboxed preload scripts must be CommonJS
+            lib: {
+              entry: 'electron/preload.ts',
+              formats: ['cjs'],
+              // The plugin's default 'es' format is merged in too; keep its output out of the way
+              fileName: (format) => (format === 'cjs' ? 'preload.cjs' : 'preload.mjs')
+            },
+            rollupOptions: {
+              external: ['electron']
+            }
           }
         }
       }

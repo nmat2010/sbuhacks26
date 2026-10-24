@@ -3,9 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "build": "tsc && npm run copy-files",
-    "copy-files": "cp manifest.json dist/ && cp popup.html dist/ && cp -r icons dist/ 2>/dev/null || true",
-    "watch": "tsc --watch",
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit -p .",
     "lint": "eslint src"
   },
   "dependencies": {
@@ -13,6 +12,7 @@
   },
   "devDependencies": {
     "@types/chrome": "^0.0.258",
-    "@types/node": "^20.11.5"
+    "@types/node": "^20.11.5",
+    "esbuild": "^0.21.5"
   }
 }

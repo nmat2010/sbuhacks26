@@ -1,19 +1,11 @@
-import { HintResponse } from '@wolfie/shared';
+import type { HintContext, HintResponse, HintSourceType } from '@wolfie/shared';
+
+export type { HintContext };
 
 export interface LLMProvider {
   name: string;
-  requestHints(context: HintContext): Promise<HintResponse>;
-  chatCompletion(messages: ChatMessage[], schema?: any): Promise<any>;
-}
-
-export interface HintContext {
-  sessionId: string;
-  source: 'screen' | 'page' | 'handwriting' | 'camera';
-  trigger: 'auto' | 'manual' | 'voice';
-  assessment: boolean;
-  imagePath?: string;
-  pageSummary?: any;
-  conversationHistory?: ChatMessage[];
+  requestHints(context: HintContext, source: HintSourceType, assessment: boolean): Promise<HintResponse>;
+  chatCompletion(messages: ChatMessage[], schema?: unknown): Promise<unknown>;
 }
 
 export interface ChatMessage {

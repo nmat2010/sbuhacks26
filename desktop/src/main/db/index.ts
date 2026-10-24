@@ -1,14 +1,13 @@
 import Database from 'better-sqlite3';
-import { app } from 'electron';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 
 let db: Database.Database | null = null;
 
-export function initDatabase(): Database.Database {
+/** Opens the app database under `<userDataPath>/data/wolfie.db` (main.ts passes app.getPath('userData')). */
+export function initDatabase(userDataPath: string): Database.Database {
   if (db) return db;
 
-  const userDataPath = app.getPath('userData');
   const dbDir = join(userDataPath, 'data');
 
   // Ensure directory exists
@@ -16,16 +15,26 @@ export function initDatabase(): Database.Database {
     mkdirSync(dbDir, { recursive: true });
   }
 
-  const dbPath = join(dbDir, 'wolfie.db');
-  db = new Database(dbPath);
+  db = openDatabase(join(dbDir, 'wolfie.db'));
+  return db;
+}
+
+/** Opens and migrates a database at `path`. Tests pass ':memory:'. Does not touch the singleton. */
+export function openDatabase(path: string): Database.Database {
+  const database = new Database(path);
 
   // Enable foreign keys
-  db.pragma('foreign_keys = ON');
+  database.pragma('foreign_keys = ON');
 
   // Run migrations
-  runMigrations(db);
+  runMigrations(database);
 
-  return db;
+  return database;
+}
+
+/** Test helper: make getDatabase() return `database`. */
+export function setDatabaseForTesting(database: Database.Database | null): void {
+  db = database;
 }
 
 function runMigrations(database: Database.Database) {
@@ -186,6 +195,32 @@ function runMigrations(database: Database.Database) {
         `);
       },
     },
+    {
+      // nudges.session_id becomes nullable (streak reminders can fire outside a session) and
+      // nudges get the NudgeQueue's string id (uid) so responses can be matched to their row.
+      name: '002_nudges_uid_nullable_session',
+      up: () => {
+        database.exec(`
+          CREATE TABLE nudges_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uid TEXT UNIQUE,
+            session_id TEXT,
+            ts INTEGER NOT NULL,
+            device TEXT NOT NULL CHECK(device IN ('desktop', 'webapp')),
+            kind TEXT NOT NULL CHECK(kind IN ('distraction', 'ai_tool', 'stuck', 'streak', 'other')),
+            level INTEGER NOT NULL,
+            payload_json TEXT NOT NULL,
+            user_response TEXT,
+            FOREIGN KEY (session_id) REFERENCES sessions(id)
+          );
+          INSERT INTO nudges_new (id, session_id, ts, device, kind, level, payload_json, user_response)
+            SELECT id, session_id, ts, device, kind, level, payload_json, user_response FROM nudges;
+          DROP TABLE nudges;
+          ALTER TABLE nudges_new RENAME TO nudges;
+          CREATE INDEX IF NOT EXISTS idx_nudges_session ON nudges(session_id);
+        `);
+      },
+    },
   ];
 
   // Run pending migrations
@@ -196,10 +231,12 @@ function runMigrations(database: Database.Database) {
 
     if (!exists) {
       console.log(`Running migration: ${migration.name}`);
-      migration.up();
-      database
-        .prepare('INSERT INTO migrations (name, applied_at) VALUES (?, ?)')
-        .run(migration.name, Date.now());
+      database.transaction(() => {
+        migration.up();
+        database
+          .prepare('INSERT INTO migrations (name, applied_at) VALUES (?, ?)')
+          .run(migration.name, Date.now());
+      })();
     }
   }
 }
@@ -217,3 +254,21 @@ export function closeDatabase() {
     db = null;
   }
 }
+
+/** Every app table, for "Clear all data" and export (SPEC Phase 8). */
+export const DATA_TABLES = [
+  'sessions',
+  'app_events',
+  'web_signals',
+  'nudges',
+  'goals',
+  'plan_items',
+  'papers',
+  'paper_questions',
+  'hint_requests',
+  'webapp_activity',
+  'streak_days',
+  'streak_state',
+  'settings',
+  'events'
+] as const;

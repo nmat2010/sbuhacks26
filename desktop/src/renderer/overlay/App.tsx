@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mascot, MascotState } from './components/Mascot';
 import { SpeechBubble } from './components/SpeechBubble';
 import { useNudge } from './hooks/useNudge';
@@ -10,6 +10,10 @@ function App() {
   const [voiceActive, setVoiceActive] = useState(false);
 
   const { currentNudge, dismissNudge, handleButtonClick } = useNudge();
+  // Sprite state pushed by main when no bubble is showing (escalation glance / "?", sleeping)
+  const [baseState, setBaseState] = useState<MascotState>('idle');
+
+  useEffect(() => window.electronAPI.on('overlay-state', setBaseState), []);
 
   // Listen for voice toggle from context menu
   useEffect(() => {
@@ -51,7 +55,7 @@ function App() {
   });
 
   // Update mascot state based on current nudge
-  React.useEffect(() => {
+  useEffect(() => {
     if (currentNudge) {
       switch (currentNudge.kind) {
         case 'stuck':
@@ -74,9 +78,9 @@ function App() {
           setMascotState('talking');
       }
     } else {
-      setMascotState('idle');
+      setMascotState(baseState);
     }
-  }, [currentNudge]);
+  }, [currentNudge, baseState]);
 
   const handleMouseEnter = () => {
     // Disable click-through when hovering over mascot
@@ -100,8 +104,8 @@ function App() {
   };
 
   const handleMascotClick = () => {
-    // Request hint manually (will be implemented in Phase 4)
-    console.log('Mascot clicked - hint requested');
+    // Manual hint entry point (SPEC 4d); main routes it to the escalation engine
+    window.electronAPI.invoke('mascot-click');
   };
 
   return (
@@ -129,7 +133,7 @@ function App() {
           pointerEvents: 'auto',
           WebkitAppRegion: 'no-drag',
           position: 'relative'
-        }}
+        } as React.CSSProperties}
       >
         <Mascot
           state={mascotState}

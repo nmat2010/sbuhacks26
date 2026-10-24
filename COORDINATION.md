@@ -42,8 +42,8 @@ Each developer should update their section at the start and end of each work ses
 
 ### Tuan's Status
 
-**Current Phase:** Phase 0 (Scaffold)
-**Status:** ⏳ Ready to start
+**Current Phase:** Phase 0 fix-up (branch `tuan/phase0-fixes`)
+**Status:** 🟢 Done, waiting on Thu's review of the contract change below
 **Last Updated:** 2026-10-24
 
 **Completed:**
@@ -159,6 +159,19 @@ Track when features from both tracks need to come together.
 5. **IPC Channels** (`desktop/electron/preload.ts`)
    - Used by: Both
    - Status: ⚠️ Can extend, don't break existing
+
+## Contract Change Proposal: Phase 0 fix-up
+**Proposed by:** Tuan
+**Affects:** `shared/` (all schemas and fixtures), `desktop/src/main/nudge/`, `desktop/electron/{main,preload}.ts`, `desktop/src/renderer/overlay/{App.tsx,hooks/useNudge.ts}`, `extension/`
+**Reason:** `npm install` failed on Node 24, the overlay crashed (`React` not imported, preload could not load), the schemas said `ipad` while the DB said `webapp`, most fixtures were missing, and Phases 3–4 need nudge ids, responses, and sprite-only escalation states.
+**Change:** the full list is in `DECISIONS.md` → "Phase 0 fix-up". The parts that touch Thu's code:
+- `NudgeQueue.push()` returns `string | null` (the id) instead of `boolean`; new `respond()` / `'response'` event; `push(n, { userInitiated: true })` for hint replies.
+- Overlay sends `nudge-response {id, action}` from `handleButtonClick`, listens to `overlay-state`, and invokes `mascot-click`.
+- New IPC channels must be added to `desktop/src/common/ipc.ts`; `window.electronAPI.on()` returns an unsubscribe.
+- `web/` must use `device: 'webapp'`, the `SyncMessageSchema` envelope, and the shared escalation engine plus `runEscalationScenario` in its tests.
+- **Voice (needs Thu's decision):** `useVoiceIntents` uses Web Speech, which does not work inside Electron, and its words (help/dismiss/close) are not the spec's. Proposal: the desktop overlay uses Tuan's STT provider and local intent parser (B5); Web Speech stays for the web app.
+**Impact:** Thu pulls `tuan/phase0-fixes` (or main after merge), reruns `npm install`, and builds Phase 1+ on top.
+**Status:** ⏳ Waiting for Thu
 
 ### How to Propose Changes to Shared Contracts
 

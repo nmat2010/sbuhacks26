@@ -25,6 +25,11 @@ export function useNudge() {
   const handleButtonClick = (action: string) => {
     console.log('[Overlay] Button clicked:', action);
 
+    // Report every answer to main so it is logged and reaches the rule / hint owner
+    if (currentNudge?.id) {
+      window.electronAPI.invoke('nudge-response', { id: currentNudge.id, action, via: 'button' });
+    }
+
     // Handle common actions
     switch (action) {
       case 'snooze':

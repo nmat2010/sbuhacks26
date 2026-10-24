@@ -1,4 +1,4 @@
-import { HintResponse } from '@wolfie/shared';
+import { HintResponse, HintSourceType } from '@wolfie/shared';
 import { LLMProvider, HintContext, ChatMessage } from './provider.js';
 
 export class MockLLMProvider implements LLMProvider {
@@ -51,7 +51,7 @@ export class MockLLMProvider implements LLMProvider {
     }
   };
 
-  async requestHints(context: HintContext): Promise<HintResponse> {
+  async requestHints(context: HintContext, _source: HintSourceType, assessment: boolean): Promise<HintResponse> {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -60,7 +60,7 @@ export class MockLLMProvider implements LLMProvider {
     const hints = this.demoHints[demoId] || this.demoHints['default'];
 
     // In assessment mode, modify the hints to not give direct answers
-    if (context.assessment) {
+    if (assessment) {
       return {
         ...hints,
         hint_levels: {
@@ -73,7 +73,7 @@ export class MockLLMProvider implements LLMProvider {
     return hints;
   }
 
-  async chatCompletion(messages: ChatMessage[], schema?: any): Promise<any> {
+  async chatCompletion(messages: ChatMessage[], schema?: unknown): Promise<unknown> {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -95,14 +95,8 @@ export class MockLLMProvider implements LLMProvider {
   }
 
   private extractDemoId(context: HintContext): string {
-    // Try to extract demo ID from page summary or image path
-    if (context.pageSummary?.problemId) {
-      return context.pageSummary.problemId;
-    }
-    if (context.imagePath?.includes('demo-')) {
-      const match = context.imagePath.match(/demo-([^/]+)/);
-      return match ? `demo-${match[1]}` : 'default';
-    }
-    return 'default';
+    // Demo problem id from the context (web app / demo canvas) or the page summary (demo pages)
+    const id = context.problemId ?? context.pageSummary?.problemId;
+    return id && id in this.demoHints ? id : 'default';
   }
 }

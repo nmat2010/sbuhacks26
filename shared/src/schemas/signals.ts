@@ -9,7 +9,7 @@ export const SignalType = z.enum([
   'context_switch_loop',
   'idle_on_work',
   'long_on_problem',
-  // iPad signals
+  // Web app (canvas) signals
   'idle_on_page',
   'scribble_outs',
   'undo_burst',
@@ -22,6 +22,7 @@ export const StruggleSignalSchema = z.object({
   type: SignalType,
   strength: SignalStrength,
   timestamp: z.number(),
+  problemId: z.string().optional(),
   metadata: z.record(z.any()).optional()
 });
 
