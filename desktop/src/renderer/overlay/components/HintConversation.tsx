@@ -153,8 +153,29 @@ export function HintConversation({
     return hints[level] || "Let me help you with that...";
   };
 
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    console.log('[HintConversation] Overlay clicked');
+    // Close modal when clicking on the overlay background (not the container)
+    if (e.target === e.currentTarget) {
+      console.log('[HintConversation] Closing modal via overlay click');
+      onClose();
+    }
+  };
+
+  const handleCloseClick = () => {
+    console.log('[HintConversation] Close button clicked');
+    onClose();
+  };
+
   return (
-    <div className="hint-conversation-overlay">
+    <div
+      className="hint-conversation-overlay"
+      onClick={handleOverlayClick}
+      onMouseEnter={() => {
+        // Ensure the window accepts mouse events when hovering over modal
+        window.electronAPI?.setIgnoreMouseEvents?.(false);
+      }}
+    >
       <div className="hint-conversation-container">
         {/* Header */}
         <div className="hint-header">
@@ -168,7 +189,7 @@ export function HintConversation({
               </p>
             </div>
           </div>
-          <button className="close-btn" onClick={onClose}>×</button>
+          <button className="close-btn" onClick={handleCloseClick}>×</button>
         </div>
 
         {/* Context Preview */}
