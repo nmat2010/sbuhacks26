@@ -12,6 +12,7 @@ build/
 .env.local
 
 # IDE
+.claude/
 .vscode/
 .idea/
 *.swp

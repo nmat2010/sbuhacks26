@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Mascot, MascotState } from './components/Mascot';
 import { SpeechBubble } from './components/SpeechBubble';
+import { HoverMenu } from './components/HoverMenu';
 import { useNudge } from './hooks/useNudge';
 import { useVoiceIntents } from './hooks/useVoiceIntents';
 
@@ -8,6 +9,8 @@ function App() {
   const [isDragging, setIsDragging] = useState(false);
   const [mascotState, setMascotState] = useState<MascotState>('idle');
   const [voiceActive, setVoiceActive] = useState(false);
+  const [showHoverMenu, setShowHoverMenu] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
   const { currentNudge, dismissNudge, handleButtonClick } = useNudge();
   // Sprite state pushed by main when no bubble is showing (escalation glance / "?", sleeping)
@@ -85,6 +88,8 @@ function App() {
   const handleMouseEnter = () => {
     // Disable click-through when hovering over mascot
     window.electronAPI.setIgnoreMouseEvents(false);
+    // Show hover menu
+    setShowHoverMenu(true);
   };
 
   const handleMouseLeave = () => {
@@ -92,6 +97,8 @@ function App() {
     if (!isDragging) {
       window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
     }
+    // Hide hover menu
+    setShowHoverMenu(false);
   };
 
   const handleMouseDown = () => {
@@ -108,6 +115,28 @@ function App() {
     window.electronAPI.invoke('mascot-click');
   };
 
+  const handleOpenTestPanel = () => {
+    window.electronAPI.invoke('open-test-panel');
+    setShowHoverMenu(false);
+  };
+
+  const handleSnooze = () => {
+    window.electronAPI.invoke('nudge-snooze');
+    setShowHoverMenu(false);
+  };
+
+  const handlePause = () => {
+    window.electronAPI.invoke('nudge-pause');
+    setIsPaused(true);
+    setShowHoverMenu(false);
+  };
+
+  const handleResume = () => {
+    window.electronAPI.invoke('nudge-resume');
+    setIsPaused(false);
+    setShowHoverMenu(false);
+  };
+
   return (
     <div
       style={{
@@ -121,8 +150,6 @@ function App() {
       }}
     >
       <div
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onContextMenu={(e) => {
@@ -135,11 +162,32 @@ function App() {
           position: 'relative'
         } as React.CSSProperties}
       >
-        <Mascot
-          state={mascotState}
-          voiceActive={voiceActive}
-          onClick={handleMascotClick}
-        />
+        {/* Hover area that includes both mascot and menu */}
+        <div
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          style={{
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center'
+          }}
+        >
+          <HoverMenu
+            visible={showHoverMenu}
+            onOpenTestPanel={handleOpenTestPanel}
+            onSnooze={handleSnooze}
+            onPause={handlePause}
+            onResume={handleResume}
+            isPaused={isPaused}
+          />
+
+          <Mascot
+            state={mascotState}
+            voiceActive={voiceActive}
+            onClick={handleMascotClick}
+          />
+        </div>
 
         <SpeechBubble
           nudge={currentNudge}

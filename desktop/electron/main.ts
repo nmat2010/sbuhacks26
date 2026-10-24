@@ -43,14 +43,14 @@ function createOverlayWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
   overlayWindow = new BrowserWindow({
-    width: 200,
-    height: 200,
-    x: width - 250,
-    y: height - 250,
+    width: 300,
+    height: 300,
+    x: width - 350,
+    y: height - 350,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
-    skipTaskbar: true,
+    skipTaskbar: false, // Show in taskbar for easier debugging
     resizable: false,
     webPreferences: {
       preload: join(__dirname, 'preload.cjs'),
@@ -279,6 +279,7 @@ app.on('before-quit', () => {
 // IPC handlers (typed: see src/common/ipc.ts)
 handle('ping', async () => 'pong');
 
+
 // Test database IPC handler
 handle('db-test', async () => {
   const db = getDatabase();
@@ -330,6 +331,8 @@ handle('nudge-response', async (response) => guarded(() => getNudgeQueue().respo
 
 // Manual hint entry point (SPEC 4d); the escalation engine (B2) listens on stuckBus
 handle('mascot-click', async () => guarded(() => stuckBus.emit('help-requested', 'manual')));
+
+handle('open-test-panel', async () => guarded(() => createTestWindow()));
 
 // Export for other modules
 export { overlayWindow, dashboardWindow, testWindow };
