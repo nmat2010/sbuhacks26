@@ -18,7 +18,11 @@
 - ✅ Phase 8 complete (Dashboard with 5 views)
 - ✅ Phase 9 complete (Streak visualization)
 - ✅ Phases 10-12 complete (Web app with canvas + camera)
-- ⏭️ Ready to integrate with Tuan's branch
+- ✅ **Integration prep complete!**
+  - Reviewed IPC contracts (ipc.ts, ipc-sensing.ts, ipc-intelligence.ts)
+  - Updated overlay to send nudge-response with 'dismissed' and 'timeout'
+  - Reviewed and approved placeholder copy in messages.ts files
+- ⏭️ Ready to integrate with Tuan's `integration/tuan-m3` branch
 
 ### Tuan is working on:
 - 🟢 All of Tuan's track is built on branch `integration/tuan-m3`: Phases 2, 3, 4, 5–7 (logic), 9 (engine), 10 (desktop server), 12 (desktop side), and the STT/TTS providers. 525 tests pass. See `tuan/reports/integration-m3.md`.
@@ -99,6 +103,9 @@
 ## ✅ Recent Completions
 
 ### Today (2026-10-24)
+- ✅ Thu: Integration prep for Tuan's branch
+- ✅ Thu: Updated overlay nudge-response handling (dismissed/timeout events)
+- ✅ Thu: Reviewed IPC contracts and placeholder copy
 - ✅ Thu: Complete Phase 0 scaffold
 - ✅ Thu: All shared contracts defined
 - ✅ Thu: Database schema with migrations
@@ -252,6 +259,9 @@ Copy and paste to update your status:
 ## 🔄 Recent Updates Log
 
 ```
+[2026-10-24 Thu] Integration prep complete - ready for Tuan's branch
+[2026-10-24 Thu] Updated overlay nudge-response handling
+[2026-10-24 Thu] Completed all UI phases (0-1, 4-5, 7-9, 10-12)
 [2026-10-24 Thu] Created STATUS.md and COORDINATION.md
 [2026-10-24 Thu] Completed Phase 0 scaffold
 ```

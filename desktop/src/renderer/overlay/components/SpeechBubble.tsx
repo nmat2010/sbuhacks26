@@ -4,7 +4,7 @@ import { Nudge, NudgeButtonType } from '@wolfie/shared';
 interface SpeechBubbleProps {
   nudge: Nudge | null;
   onButtonClick?: (action: string) => void;
-  onDismiss?: () => void;
+  onDismiss?: (action?: 'dismissed' | 'timeout') => void;
 }
 
 export function SpeechBubble({ nudge, onButtonClick, onDismiss }: SpeechBubbleProps) {
@@ -17,7 +17,7 @@ export function SpeechBubble({ nudge, onButtonClick, onDismiss }: SpeechBubblePr
       // Auto-dismiss after 10 seconds if no buttons
       if (!nudge.buttons || nudge.buttons.length === 0) {
         const timer = setTimeout(() => {
-          handleDismiss();
+          handleDismiss('timeout');
         }, 10000);
         return () => clearTimeout(timer);
       }
@@ -26,10 +26,10 @@ export function SpeechBubble({ nudge, onButtonClick, onDismiss }: SpeechBubblePr
     }
   }, [nudge]);
 
-  const handleDismiss = () => {
+  const handleDismiss = (action?: 'dismissed' | 'timeout') => {
     setVisible(false);
     setTimeout(() => {
-      onDismiss?.();
+      onDismiss?.(action);
     }, 300); // Wait for fade out animation
   };
 
@@ -77,7 +77,7 @@ export function SpeechBubble({ nudge, onButtonClick, onDismiss }: SpeechBubblePr
 
         {/* Close button */}
         <button
-          onClick={handleDismiss}
+          onClick={() => handleDismiss('dismissed')}
           style={{
             position: 'absolute',
             top: '4px',
