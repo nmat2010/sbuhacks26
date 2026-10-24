@@ -1,5 +1,7 @@
 # Coordination Protocol for Thu and Tuan
 
+> **Start here (2026-10-24):** read [`NEXT_STEPS.md`](NEXT_STEPS.md). It has the proposed split of the remaining work. Thu, please fill in its section 1 so we don't duplicate work.
+
 This document provides a structured way for both developers (and their Claude Code agents) to coordinate work, report progress, and integrate features.
 
 ## Daily Status Updates
