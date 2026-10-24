@@ -21,6 +21,13 @@ VS Code sets `ELECTRON_RUN_AS_NODE=1` for its extension host, so Electron would 
 ## Real-hardware pass (Tuan, next)
 Goal: run everything that has only been tested with fakes so far. Write down each failure here, then fix it.
 
+- The seawolf sprite interaction is weird. the pop up tab have a showing problem, part of it is hidden. also it is not functional right now. there are no button so that user can hit and talk to the sprite for sources like access youtube, also the sprite can not talk using elevenlabs. the Sprite can not overlay on my screen, it only appear on the dashboard.
+
+- currently, the seawolf are able to identify that i am using youtube chatgpt, but then after i switch to another app then i does not stop that pop up. 
+- for the dashboard, nothing is working right now, it is only a static page so far. 
+- for the settings, user should be able to make adjustment to what should be warned. like i learn mostly on youtube so youtube is a learning source for me not a distraction.
+
+
 1. **Keys:** copy `desktop/.env.example` to `desktop/.env` and set `GEMINI_API_KEY`, `GEMINI_MODEL`, `ELEVENLABS_API_KEY`, and `ELEVENLABS_VOICE_ID` (and the models). Keep `DEMO_MODE=0`.
 2. **Start:** `npm run dev`. Expected: both windows open, and the log shows the extension server on 127.0.0.1:45678 and the LAN server on 45679.
 3. **macOS permissions** (dev builds are attributed to the terminal or VS Code app): grant Screen Recording, Accessibility, Automation (System Events), and Microphone. Then check `permissions-get` from the test panel's devtools console with `await window.electronAPI.invoke('permissions-get')`.
