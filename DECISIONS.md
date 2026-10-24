@@ -107,5 +107,16 @@ This document tracks decisions made during implementation where the spec was amb
 - **Browser list** (`monitor/browsers.ts`) is the set of Chromium-family app names; the tab domain is attached to `app_events.url_domain` only when one of them is frontmost.
 - **Lint in nested worktrees:** a worktree under `.claude/worktrees/` sees the parent repo's `.eslintrc.json` too and `npm run lint` fails with "couldn't determine the plugin uniquely". Not a repo bug; run `eslint --no-eslintrc -c <root>/.eslintrc.json` there.
 
+### A2: extension loopback server
+- **Auth order:** Origin must match `chrome-extension://<32 chars a-p>` (checked in `verifyClient`, HTTP 403 otherwise, including no Origin). The first `chrome-extension` id seen with a valid token is stored in `pairing.extension_id` (trust on first use); later origins must match. The first message must be `ext.hello` within 5 s, else the socket closes (1008). Regenerating the token (IPC `extension-pairing-regenerate`) also clears the stored id and drops clients, which is the way out after reinstalling the extension (new id).
+- **Token format** `XXXX-XXXX-XXXX` (no 0/O/1/I); compared case/dash-insensitively in constant time.
+- **No wire-level ping in the contract:** `ExtensionMessageSchema` has no `ping`. MV3 keep-alive is therefore: the desktop re-sends `desk.state` every 20 s (receiving a WebSocket message resets the worker's idle timer in Chrome 116+) plus ws ping/pong to drop dead sockets; the extension also re-reports the active tab while reporting and runs a `chrome.alarms` check (A3). No contract change needed.
+- **Desktop re-checks `desk.state`** on everything the extension sends (reporting, `capturePageText`, excluded domains), so a misbehaving client reports nothing. With `capturePageText` off, summaries are dropped; `ext.tab` domains still flow.
+- **`problem-changed`** fires only when a summary with a *defined, different* `problemId` arrives. Summaries without a `problemId` (other tabs/pages) are stored as the latest page but never reset the problem; a new session resets the tracker so its first problem counts again.
+- **Stale context is cleared:** when reporting turns false (browser not frontmost, pause, session end) the latest PageSummary and the tab domain are cleared, so a hint asked from another app never sees an old page.
+- **`requestSummary`** correlates by arrival (the reply has no request id): the next `ext.page_summary` after the request resolves it, 1.5 s timeout, then `requestPageSummary()` falls back to the latest one.
+- **Reporting needs the frontmost app**, which comes from the window poll. If Automation is denied, `reporting` stays false and the extension reports nothing (documented limitation; titles-only fallback applies the other way round).
+- **EADDRINUSE:** the link logs and stays off; IPC `extension-pairing-get` reports `port: null`.
+
 ## Agent B
 _(Agent B appends decisions here.)_

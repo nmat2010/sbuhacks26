@@ -18,6 +18,16 @@ export interface SessionInfo {
   paused: boolean;
 }
 
+/** Chrome extension pairing (A2): the token is shown in Wolfie's settings, typed once into the popup. */
+export interface ExtensionPairingInfo {
+  token: string;
+  /** Trusted extension id (trust on first use), or null before the first pairing. */
+  extensionId: string | null;
+  connected: boolean;
+  /** Bound loopback port, or null if the port was busy and the link is off. */
+  port: number | null;
+}
+
 /** renderer -> main, request/response: 'channel': { args: [...]; result: ... } */
 export interface SensingInvoke {
   'session-start': { args: [opts?: { assessmentMode?: boolean; goalId?: string }]; result: SessionInfo };
@@ -28,6 +38,9 @@ export interface SensingInvoke {
   'permissions-get': { args: []; result: PermissionsStatus };
   /** Microphone/Accessibility prompt; Screen Recording and Automation open System Settings. */
   'permissions-request': { args: [kind: PermissionKind]; result: PermissionsStatus };
+  'extension-pairing-get': { args: []; result: ExtensionPairingInfo };
+  /** New token; also forgets the trusted extension id and disconnects the extension. */
+  'extension-pairing-regenerate': { args: []; result: ExtensionPairingInfo };
 }
 
 /** renderer -> main, fire-and-forget: 'channel': [...args] */
@@ -39,4 +52,5 @@ export interface SensingEvents {
   'session-changed': SessionInfo;
   /** The mic may be live only during an active, unpaused session with voice mode on. */
   'mic-allowed': boolean;
+  'extension-status': { connected: boolean };
 }

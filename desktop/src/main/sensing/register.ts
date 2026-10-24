@@ -21,12 +21,19 @@ import {
   startSession,
   stopSession
 } from '../session/index.js';
-import { getSetting, settingsEvents } from '../settings.js';
+import { getSetting, setSetting, settingsEvents } from '../settings.js';
+import { stuckBus } from '../stuck/bus.js';
+import { DomainTracker } from '../sync/domain-tracker.js';
+import { startExtensionLink, type ExtensionLink } from '../sync/extension-link.js';
+import { setLatestPageSummary, setPageSummaryRequester } from '../sync/context.js';
+import { EXTENSION_WS_PORT } from '@wolfie/shared';
 
 const execFileAsync = promisify(execFile);
 
 let stops: Array<() => void> = [];
 let monitor: Monitor | null = null;
+let extensionLink: ExtensionLink | null = null;
+const domainTracker = new DomainTracker();
 
 function sessionInfo(): SessionInfo {
   const s = getActiveSession();
@@ -34,6 +41,10 @@ function sessionInfo(): SessionInfo {
     active: s ? { id: s.id, startedAt: s.startedAt, assessmentMode: s.assessmentMode, goalId: s.goalId } : null,
     paused: isPaused()
   };
+}
+
+function offlinePairing() {
+  return { token: getSetting('pairing.extension_token') ?? '', extensionId: getSetting('pairing.extension_id'), connected: false, port: null };
 }
 
 /** One module failing to start must not take the app down: log and carry on. */
@@ -94,7 +105,7 @@ export function registerSensing(): void {
       getSession: getActiveSession,
       isPaused,
       getIdleSeconds: () => powerMonitor.getSystemIdleTime(),
-      getDomain: () => null, // A2 replaces this with the extension's active tab domain
+      getDomain: () => domainTracker.getDomain(),
       settings: {
         captureTitles: () => getSetting('monitoring.capture_window_titles'),
         idleTimeoutSeconds: () => getSetting('session.idle_timeout_seconds'),
@@ -110,6 +121,43 @@ export function registerSensing(): void {
     return () => {
       off();
       m.stop();
+    };
+  });
+
+  // ---- A2: extension loopback server --------------------------------------------------------
+  guarded('extension-link', () => {
+    if (!monitor) throw new Error('monitor not running');
+    const m = monitor;
+    handle('extension-pairing-get', async () => extensionLink?.getExtensionPairingInfo() ?? offlinePairing());
+    handle('extension-pairing-regenerate', async () => extensionLink?.regenerateToken() ?? offlinePairing());
+    void startExtensionLink({
+      tracker: domainTracker,
+      port: EXTENSION_WS_PORT,
+      monitor: m,
+      getSession: getActiveSession,
+      isPaused,
+      sessionEvents,
+      settingsEvents,
+      settings: {
+        getToken: () => getSetting('pairing.extension_token'),
+        setToken: (t) => setSetting('pairing.extension_token', t),
+        getExtensionId: () => getSetting('pairing.extension_id'),
+        setExtensionId: (id) => setSetting('pairing.extension_id', id),
+        excludedDomains: () => getSetting('monitored.excluded_domains'),
+        capturePageText: () => getSetting('monitoring.capture_page_text')
+      },
+      setLatestPageSummary,
+      setPageSummaryRequester,
+      emitProblemChanged: (id) => stuckBus.emit('problem-changed', id)
+    })
+      .then((link) => {
+        extensionLink = link;
+        link.events.on('connection', (connected) => broadcast('extension-status', { connected }));
+      })
+      .catch((error) => console.error('[sensing] extension link failed:', error instanceof Error ? error.message : error));
+    return () => {
+      void extensionLink?.stop();
+      extensionLink = null;
     };
   });
 
