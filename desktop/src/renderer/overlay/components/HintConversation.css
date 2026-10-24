@@ -384,3 +384,8 @@
 .hint-conversation-container .send-btn:disabled { opacity: 0.5; cursor: default; }
 .hint-conversation-container .context-preview .context-header { margin-bottom: 2px; }
 .hint-conversation-container .context-description { font-size: 12px; line-height: 1.35; margin: 0; }
+/* One line for "What I see" (full text on hover), so the messages get the space */
+.hint-conversation-container .context-preview { display: flex; align-items: center; gap: 6px; }
+.hint-conversation-container .context-preview .context-header { margin: 0; flex-shrink: 0; }
+.hint-conversation-container .context-description { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.hint-conversation-container .hint-messages { position: relative; overscroll-behavior: contain; }

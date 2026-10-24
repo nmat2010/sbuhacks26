@@ -257,7 +257,9 @@ function registerWatch(): void {
     watcher: w,
     importPaper: async (url) => {
       const res = await getReadingService().importPdfUrl(url);
-      return res.success && res.data ? { paperId: res.data.paper.id, title: res.data.paper.title } : null;
+      return res.success && res.data
+        ? { ok: true as const, paperId: res.data.paper.id, title: res.data.paper.title }
+        : { ok: false as const, error: res.error ?? 'import failed' };
     },
     log: safeLog
   });

@@ -17,18 +17,20 @@ export interface WatchControllerDeps {
   isPaused: () => boolean;
   memory: SessionMemory;
   watcher: Pick<Watcher, 'start' | 'stop' | 'reset' | 'getState'> & Partial<Pick<Watcher, 'getSkipReason'>>;
-  /** Import a PDF/arXiv paper the student opened; resolves to the library paper. */
-  importPaper: (url: string) => Promise<{ paperId: string; title: string } | null>;
+  /** Import a PDF/arXiv paper the student opened; the library paper, or why it failed. */
+  importPaper: (url: string) => Promise<{ ok: true; paperId: string; title: string } | { ok: false; error: string }>;
   log: (type: EventType, payload: Record<string, unknown>) => void;
 }
 
 const PAPER_URL = /\.pdf$|arxiv\.org\/(abs|pdf)\//i;
+/** A failed paper import is tried again after this long (e.g. the network was down). */
+const IMPORT_RETRY_MS = 3 * 60_000;
 
 export class WatchController {
   readonly events = new TypedEmitter<{ status: [status: WatchStatus] }>();
   private sessionId: string | null = null;
-  /** URLs already imported (or tried) this session, so each paper is fetched once. */
-  private seenUrls = new Set<string>();
+  /** Paper import per URL this session: each is fetched once, a failure is retried later. */
+  private imports = new Map<string, { status: 'importing' | 'imported' | 'failed'; at: number; error?: string }>();
   /** Bumped whenever memory is cleared, so an import that finishes later can't refill it. */
   private memoryEpoch = 0;
 
@@ -139,6 +141,7 @@ export class WatchController {
         title: s.title,
         url: s.url,
         paperId: s.paperId,
+        paperImport: s.url ? (this.imports.get(s.url) ?? null) : null,
         lastSeen: s.lastSeen,
         minutes: Math.round(s.seconds / 60),
         locators: [...s.locators],
@@ -152,7 +155,7 @@ export class WatchController {
     this.memoryEpoch++;
     this.deps.memory.clear();
     this.deps.watcher.reset();
-    this.seenUrls.clear();
+    this.imports.clear();
     this.emit();
     return this.status();
   }
@@ -177,18 +180,29 @@ export class WatchController {
   /** The watcher saw a paper or video URL. Papers are imported once, in the background. */
   onContentUrl(url: string): void {
     const { deps } = this;
-    if (this.seenUrls.has(url)) return;
-    this.seenUrls.add(url);
+    // Checked first, so a paper opened while auto-import was off can still be imported later
     if (!PAPER_URL.test(url) || !deps.getSetting('watch.auto_import_papers')) return;
+    const prev = this.imports.get(url);
+    if (prev && (prev.status !== 'failed' || deps.now() - prev.at < IMPORT_RETRY_MS)) return;
     const epoch = this.memoryEpoch;
+    this.imports.set(url, { status: 'importing', at: deps.now() });
+    const fail = (error: string) => {
+      if (epoch !== this.memoryEpoch) return;
+      this.imports.set(url, { status: 'failed', at: deps.now(), error });
+      // The reason only (e.g. "needs a login"), never the URL or the paper's content
+      deps.log('watch.paper_import_failed', { reason: error.slice(0, 120) });
+      console.error(`[watch] paper import failed: ${error}`);
+    };
     void deps
       .importPaper(url)
-      .then((paper) => {
-        if (!paper || epoch !== this.memoryEpoch) return;
-        deps.memory.attachPaper(url, paper.paperId, paper.title);
+      .then((res) => {
+        if (epoch !== this.memoryEpoch) return;
+        if (!res.ok) return fail(res.error);
+        this.imports.set(url, { status: 'imported', at: deps.now() });
+        deps.memory.attachPaper(url, res.paperId, res.title);
         deps.log('watch.paper_imported', {});
       })
-      .catch((error) => console.error('[watch] paper import failed:', (error as Error).message));
+      .catch((error) => fail((error as Error).message || 'import error'));
   }
 
   /** Watcher state changed (watching / skipping / no permission ...). */
@@ -211,7 +225,7 @@ export class WatchController {
     this.memoryEpoch++;
     deps.memory.clear();
     deps.watcher.reset();
-    this.seenUrls.clear();
+    this.imports.clear();
   }
 
   private emit(): void {

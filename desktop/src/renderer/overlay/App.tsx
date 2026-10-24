@@ -25,6 +25,7 @@ function App() {
   useEffect(() => {
     chatOpenRef.current = showHintConversation;
     window.electronAPI.setIgnoreMouseEvents(!showHintConversation, { forward: true });
+    void window.electronAPI.invoke('overlay-expand', showHintConversation);
   }, [showHintConversation]);
   useEffect(() => {
     if (showHintConversation && currentNudge?.kind === 'stuck') dismissNudge();

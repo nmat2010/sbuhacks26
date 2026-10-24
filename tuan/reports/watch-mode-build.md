@@ -108,3 +108,15 @@
   - The captured picture shows the panel above the mascot.
   - 621 tests pass; typecheck and lint are clean.
 - **Not verified:** the "Help me with this" flow inside the chat on Tuan's screen. Without Watch mode it opens the macOS screenshot prompt, so the automated run skipped it.
+
+## Update: second real run (chat scrolling, paper import)
+- **Chat "can't scroll":**
+  - Reproduced in the real app with Electron mouse-wheel input. Wheel scrolling worked, but the message area was only 135 px tall, so long answers were unreadable.
+  - Fix: the overlay window grows to 780 px (capped by the screen) while the chat is open, with the same width and the mascot staying put (new `overlay-expand` IPC). "What I see" is one line, and new messages scroll to their first line.
+  - Re-measured: the message area is now 414 px and wheel scrolling moves it.
+- **Paper never imported:** the ACL PDF showed `paperId: null`, with no import or failure event.
+  - The import code itself works: `importPdfUrl('https://aclanthology.org/D17-1119.pdf')` succeeds in 0.5–0.7 s under both Node and Electron's runtime.
+  - Bug fixed: the URL was marked "seen" before the auto-import check, so a paper opened while auto-import was off could never be imported that session.
+  - Failures are now logged (`watch.paper_import_failed`, reason only) and retried after 3 min.
+  - `watch-memory-get` shows `paperImport` per source.
+- Tests: 623 pass.

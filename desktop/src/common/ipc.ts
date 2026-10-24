@@ -30,6 +30,8 @@ export interface CoreInvoke {
   'nudge-resume': { args: []; result: Result };
   'nudge-status': { args: []; result: NudgeQueueStatus };
   'nudge-response': { args: [response: NudgeResponse]; result: Result };
+  /** The overlay chat opened/closed: the overlay window grows taller (same width) while it is open. */
+  'overlay-expand': { args: [expanded: boolean]; result: Result };
   /** Hover menu "Test panel" (dev). */
   'open-test-panel': { args: []; result: Result };
   /** Clicking Wolfie starts the hint flow (SPEC 4d). */

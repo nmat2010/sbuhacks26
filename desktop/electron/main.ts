@@ -44,6 +44,8 @@ function loadPage(win: BrowserWindow, page: string) {
 // click-through outside the mascot and bubble, so the extra size doesn't block other apps.
 const OVERLAY_WIDTH = 360;
 const OVERLAY_HEIGHT = 520;
+/** Height while the chat is open, so answers have room (capped by the screen). */
+const OVERLAY_CHAT_HEIGHT = 780;
 
 function createOverlayWindow() {
   const { x: areaX, y: areaY, width, height } = screen.getPrimaryDisplay().workArea;
@@ -274,6 +276,26 @@ app.whenReady().then(() => {
           await new Promise((r) => setTimeout(r, 2500));
           const texts = await ui("[...document.querySelectorAll('.message-text')].map((e) => e.textContent).join(' | ')");
           console.log(`[smoke] chat: ${texts}`);
+          // Overflow the list, then scroll with real wheel input and see whether it moves
+          for (let i = 0; i < 4; i++) {
+            await ui(`(() => {
+              const input = document.querySelector('.hint-input');
+              const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+              set.call(input, 'Question ' + ${'${i}'});
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+              document.querySelector('.send-btn').click();
+            })()`);
+            await new Promise((r) => setTimeout(r, 900));
+          }
+          const box = await ui("(() => { const r = document.querySelector('.hint-messages').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()");
+          const before = await ui("document.querySelector('.hint-messages').scrollTop");
+          for (let i = 0; i < 5; i++) {
+            overlayWindow.webContents.sendInputEvent({ type: 'mouseWheel', x: Math.round(box.x), y: Math.round(box.y), deltaX: 0, deltaY: 120, canScroll: true } as Electron.MouseWheelInputEvent);
+          }
+          await new Promise((r) => setTimeout(r, 600));
+          const after = await ui("document.querySelector('.hint-messages').scrollTop");
+          const sizes = await ui("(() => { const m = document.querySelector('.hint-messages'); return m.scrollHeight + '/' + m.clientHeight; })()");
+          console.log(`[smoke] scroll: before=${before} after=${after} scrollHeight/clientHeight=${sizes}`);
           const image = await overlayWindow.webContents.capturePage();
           writeFileSync(process.env.WOLFIE_SMOKE_SHOT, image.toPNG());
         }
@@ -364,6 +386,18 @@ handle('nudge-response', async (response) => guarded(() => getNudgeQueue().respo
 handle('mascot-click', async () => guarded(() => stuckBus.emit('help-requested', 'manual')));
 
 handle('open-test-panel', async () => guarded(() => createTestWindow()));
+
+// Grow upward while the chat is open; the bottom edge (and the mascot) stays where it is
+handle('overlay-expand', async (expanded) =>
+  guarded(() => {
+    if (!overlayWindow) return;
+    const b = overlayWindow.getBounds();
+    const area = screen.getDisplayMatching(b).workArea;
+    const height = expanded ? Math.min(OVERLAY_CHAT_HEIGHT, area.height - 16) : OVERLAY_HEIGHT;
+    const bottom = b.y + b.height;
+    overlayWindow.setBounds({ x: b.x, y: Math.max(area.y, bottom - height), width: b.width, height });
+  })
+);
 
 // Export for other modules
 export { overlayWindow, dashboardWindow, testWindow };

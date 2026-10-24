@@ -13,9 +13,12 @@ let watcher: { start: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn>; 
 let logs: Array<[string, Record<string, unknown>]>;
 let imports: string[];
 
-function make(importPaper = async (url: string) => (imports.push(url), { paperId: 'p1', title: 'Imported paper' })) {
+type ImportResult = { ok: true; paperId: string; title: string } | { ok: false; error: string };
+let clock = 42;
+
+function make(importPaper = async (url: string): Promise<ImportResult> => (imports.push(url), { ok: true, paperId: 'p1', title: 'Imported paper' })) {
   return new WatchController({
-    now: () => 42,
+    now: () => clock,
     getSetting: <K extends SettingsKey>(key: K) => (key in settings ? settings[key] : SettingsDefaults[key]) as SettingsValues[K],
     setSetting: (key, value) => void (settings[key] = value as never),
     getSession: () => session,
@@ -28,6 +31,7 @@ function make(importPaper = async (url: string) => (imports.push(url), { paperId
 }
 
 beforeEach(() => {
+  clock = 42;
   settings = {};
   session = { id: 's1' };
   paused = false;
@@ -125,11 +129,11 @@ describe('WatchController', () => {
 describe('WatchController: imports vs clearing (re-review)', () => {
   it('an import that finishes after "Clear memory" does not reattach the paper', async () => {
     settings['watch.auto_import_papers'] = true;
-    let finish: (v: { paperId: string; title: string }) => void = () => {};
+    let finish: (v: ImportResult) => void = () => {};
     const c = make(() => new Promise((r) => (finish = r)));
     c.onContentUrl('https://example.edu/a.pdf');
     c.clearMemory();
-    finish({ paperId: 'p1', title: 'Late' });
+    finish({ ok: true, paperId: 'p1', title: 'Late' });
     await new Promise((r) => setTimeout(r, 0));
     memory.record(obs(), { ts: 1, appName: 'Chrome', windowTitle: null, contentUrl: 'https://example.edu/a.pdf', elapsedMs: 0 });
     expect(memory.paperIds()).toEqual([]);
@@ -154,5 +158,36 @@ describe('WatchController status note', () => {
     expect(c.status().note).toContain('away');
     state = 'watching';
     expect(c.status().note).toBeNull();
+  });
+});
+
+describe('WatchController: paper import (second real run)', () => {
+  it('a paper opened while auto-import was off is imported once it is turned on', async () => {
+    const c = make();
+    c.onContentUrl('https://aclanthology.org/D17-1119.pdf');
+    expect(imports).toEqual([]);
+    settings['watch.auto_import_papers'] = true;
+    c.onContentUrl('https://aclanthology.org/D17-1119.pdf');
+    await new Promise((r) => setTimeout(r, 0));
+    expect(imports).toEqual(['https://aclanthology.org/D17-1119.pdf']);
+  });
+
+  it('logs a failed import with its reason (no URL) and retries it after a few minutes', async () => {
+    settings['watch.auto_import_papers'] = true;
+    let attempts = 0;
+    const c = make(async () => (attempts++, { ok: false, error: "That link didn't return a PDF (it may need a login)." }));
+    memory.record(obs(), { ts: 1, appName: 'Chrome', windowTitle: null, contentUrl: 'https://school.edu/p.pdf', elapsedMs: 0 });
+    c.onContentUrl('https://school.edu/p.pdf');
+    await new Promise((r) => setTimeout(r, 0));
+    const failed = logs.find(([t]) => t === 'watch.paper_import_failed');
+    expect(failed?.[1]).toEqual({ reason: "That link didn't return a PDF (it may need a login)." });
+    expect(JSON.stringify(logs)).not.toContain('school.edu');
+    expect(c.memoryView().sources[0].paperImport).toMatchObject({ status: 'failed' });
+    c.onContentUrl('https://school.edu/p.pdf');
+    expect(attempts).toBe(1); // not hammered
+    clock += 3 * 60_000;
+    c.onContentUrl('https://school.edu/p.pdf');
+    await new Promise((r) => setTimeout(r, 0));
+    expect(attempts).toBe(2);
   });
 });

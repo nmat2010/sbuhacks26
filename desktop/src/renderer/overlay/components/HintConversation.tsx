@@ -84,9 +84,13 @@ export function HintConversation({ onClose, voiceMode = false }: HintConversatio
     return () => offs.forEach((off) => off());
   }, []);
 
+  // Bring the newest message into view from its first line, so a long answer reads from the top
   useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages]);
+    const list = listRef.current;
+    const last = list?.lastElementChild as HTMLElement | null;
+    if (!list || !last) return;
+    list.scrollTo({ top: Math.max(0, last.offsetTop - list.offsetTop - 8), behavior: 'smooth' });
+  }, [messages, busy]);
 
   const openStep = () => [...messagesRef.current].reverse().find((m) => m.buttons?.length && !m.answered && m.nudgeId);
 
@@ -160,7 +164,7 @@ export function HintConversation({ onClose, voiceMode = false }: HintConversatio
               <span className="context-icon">{seeing.icon}</span>
               <span className="context-label">What I see:</span>
             </div>
-            <p className="context-description">{seeing.text}</p>
+            <p className="context-description" title={seeing.text}>{seeing.text}</p>
           </div>
         )}
 

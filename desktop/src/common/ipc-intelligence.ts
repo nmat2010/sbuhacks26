@@ -272,6 +272,8 @@ export interface WatchMemoryView {
     title: string;
     url: string | null;
     paperId: string | null;
+    /** Watch mode's import of this paper (null if not a paper or not tried). */
+    paperImport: { status: 'importing' | 'imported' | 'failed'; at: number; error?: string } | null;
     lastSeen: number;
     minutes: number;
     locators: string[];
