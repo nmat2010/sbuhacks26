@@ -40,7 +40,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         overlay: resolve(__dirname, 'overlay.html'),
-        dashboard: resolve(__dirname, 'dashboard.html')
+        dashboard: resolve(__dirname, 'dashboard.html'),
+        'test-nudge': resolve(__dirname, 'test-nudge.html')
       }
     }
   }

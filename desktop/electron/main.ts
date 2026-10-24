@@ -1,16 +1,20 @@
-import { app, BrowserWindow, ipcMain, screen } from 'electron';
+import { app, BrowserWindow, ipcMain, screen, Menu } from 'electron';
 import { join } from 'path';
 import { config } from 'dotenv';
 import { initDatabase, getDatabase, closeDatabase } from '../src/main/db/index.js';
+import { initNudgeQueue, getNudgeQueue } from '../src/main/nudge/index.js';
+import { Nudge } from '@wolfie/shared';
 
 // Load environment variables
 config();
 
 // Initialize database when app is ready
 let dbInitialized = false;
+let nudgeQueueInitialized = false;
 
 let overlayWindow: BrowserWindow | null = null;
 let dashboardWindow: BrowserWindow | null = null;
+let testWindow: BrowserWindow | null = null;
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -36,6 +40,79 @@ function createOverlayWindow() {
 
   // Click-through except on mascot
   overlayWindow.setIgnoreMouseEvents(true, { forward: true });
+
+  // Create context menu
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Start Session',
+      click: () => {
+        overlayWindow?.webContents.send('session-control', 'start');
+      }
+    },
+    {
+      label: 'Stop Session',
+      click: () => {
+        overlayWindow?.webContents.send('session-control', 'stop');
+      }
+    },
+    { type: 'separator' },
+    {
+      label: 'Open Dashboard',
+      click: () => {
+        if (dashboardWindow) {
+          dashboardWindow.show();
+          dashboardWindow.focus();
+        }
+      }
+    },
+    {
+      label: 'Open Test Panel',
+      click: () => {
+        createTestWindow();
+      }
+    },
+    { type: 'separator' },
+    {
+      label: 'Snooze 30 min',
+      click: () => {
+        const queue = getNudgeQueue();
+        queue.snooze();
+      }
+    },
+    {
+      label: 'Pause Monitoring',
+      type: 'checkbox',
+      checked: false,
+      click: (menuItem) => {
+        const queue = getNudgeQueue();
+        if (menuItem.checked) {
+          queue.pause();
+        } else {
+          queue.resume();
+        }
+      }
+    },
+    { type: 'separator' },
+    {
+      label: 'Voice',
+      type: 'checkbox',
+      checked: false,
+      click: (menuItem) => {
+        overlayWindow?.webContents.send('voice-toggle', menuItem.checked);
+      }
+    },
+    { type: 'separator' },
+    {
+      label: 'Quit',
+      click: () => {
+        app.quit();
+      }
+    }
+  ]);
+
+  overlayWindow.webContents.on('context-menu', () => {
+    contextMenu.popup();
+  });
 
   if (isDev) {
     overlayWindow.loadURL('http://localhost:5173/overlay.html');
@@ -72,6 +149,35 @@ function createDashboardWindow() {
   });
 }
 
+function createTestWindow() {
+  if (testWindow) {
+    testWindow.show();
+    testWindow.focus();
+    return;
+  }
+
+  testWindow = new BrowserWindow({
+    width: 900,
+    height: 700,
+    title: 'Wolfie Test Panel',
+    webPreferences: {
+      preload: join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  if (isDev) {
+    testWindow.loadURL('http://localhost:5173/test-nudge.html');
+  } else {
+    testWindow.loadFile(join(__dirname, '../dist/test-nudge.html'));
+  }
+
+  testWindow.on('closed', () => {
+    testWindow = null;
+  });
+}
+
 app.whenReady().then(() => {
   // Initialize database
   try {
@@ -80,6 +186,22 @@ app.whenReady().then(() => {
     console.log('Database initialized successfully');
   } catch (error) {
     console.error('Failed to initialize database:', error);
+  }
+
+  // Initialize nudge queue
+  try {
+    const nudgeQueue = initNudgeQueue();
+    nudgeQueueInitialized = true;
+    console.log('NudgeQueue initialized successfully');
+
+    // Forward nudges to overlay window
+    nudgeQueue.on('show', (nudge: Nudge) => {
+      if (overlayWindow) {
+        overlayWindow.webContents.send('nudge-show', nudge);
+      }
+    });
+  } catch (error) {
+    console.error('Failed to initialize nudge queue:', error);
   }
 
   createOverlayWindow();
@@ -132,5 +254,60 @@ ipcMain.handle('db-test', async () => {
   }
 });
 
+// Nudge API IPC handlers
+ipcMain.handle('nudge-push', async (_event, nudge: Nudge) => {
+  try {
+    const queue = getNudgeQueue();
+    const result = queue.push(nudge);
+    return { success: result };
+  } catch (error) {
+    console.error('Failed to push nudge:', error);
+    return { success: false, error: String(error) };
+  }
+});
+
+ipcMain.handle('nudge-snooze', async () => {
+  try {
+    const queue = getNudgeQueue();
+    queue.snooze();
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to snooze:', error);
+    return { success: false, error: String(error) };
+  }
+});
+
+ipcMain.handle('nudge-pause', async () => {
+  try {
+    const queue = getNudgeQueue();
+    queue.pause();
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to pause:', error);
+    return { success: false, error: String(error) };
+  }
+});
+
+ipcMain.handle('nudge-resume', async () => {
+  try {
+    const queue = getNudgeQueue();
+    queue.resume();
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to resume:', error);
+    return { success: false, error: String(error) };
+  }
+});
+
+ipcMain.handle('nudge-status', async () => {
+  try {
+    const queue = getNudgeQueue();
+    return queue.getStatus();
+  } catch (error) {
+    console.error('Failed to get status:', error);
+    throw error;
+  }
+});
+
 // Export for other modules
-export { overlayWindow, dashboardWindow };
+export { overlayWindow, dashboardWindow, testWindow };

@@ -8,36 +8,35 @@ Each developer should update their section at the start and end of each work ses
 
 ### Thu's Status
 
-**Current Phase:** Phase 0 (Scaffold)
-**Status:** ✅ Complete
+**Current Phase:** Phase 1 (Mascot overlay and voice)
+**Status:** 🟡 In Progress
 **Last Updated:** 2026-10-24
 
 **Completed:**
-- [x] Monorepo structure with shared/, desktop/, extension/, web/, demo-pages/
-- [x] Desktop Electron app scaffolding
-- [x] Overlay window with draggable mascot
-- [x] Dashboard window
-- [x] Typed IPC channels
-- [x] SQLite database with migrations
-- [x] .env loading
-- [x] Chrome extension skeleton
-- [x] LLM provider interface (mock + gemini stub)
-- [x] Shared contracts and schemas
+- [x] Phase 0: Complete infrastructure scaffold
+- [x] Coordination documentation
+- [x] SPEC.md updated for web app approach
 
 **In Progress:**
-- [ ] Nothing currently
+- [ ] Phase 1: NudgeQueue implementation
+- [ ] Phase 1: Overlay sprite states and speech bubbles
+- [ ] Phase 1: Voice UI coordination layer
 
 **Blocked:**
-- None
+- Waiting for Tuan's STT/TTS provider implementations (can use mock for now)
 
 **Next Up:**
-- Phase 1: Mascot overlay and voice UI
+- Complete NudgeQueue
+- Build sprite animation system
+- Create speech bubble component
 
 **Notes for Tuan:**
 - All Phase 0 infrastructure is ready for you to build on top of
 - Database schema is in `desktop/src/main/db/index.ts`
 - Shared contracts are in `shared/src/schemas/`
 - IPC preload is in `desktop/electron/preload.ts`
+- I'll create the voice UI layer that will use your STT/TTS providers
+- NudgeQueue API will be exposed via IPC for you to use in Phase 2+
 
 ---
 

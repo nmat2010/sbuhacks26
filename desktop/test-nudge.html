@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wolfie - Test Nudges</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #2c3e50;
+      border-bottom: 3px solid #3498db;
+      padding-bottom: 10px;
+    }
+    .section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .section h2 {
+      color: #34495e;
+      margin-top: 0;
+    }
+    button {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #2980b9;
+    }
+    button.danger {
+      background: #e74c3c;
+    }
+    button.danger:hover {
+      background: #c0392b;
+    }
+    button.success {
+      background: #27ae60;
+    }
+    button.success:hover {
+      background: #229954;
+    }
+    .status {
+      background: #ecf0f1;
+      padding: 15px;
+      border-radius: 5px;
+      margin-top: 10px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    .info {
+      background: #e8f4f8;
+      border-left: 4px solid #3498db;
+      padding: 15px;
+      margin: 15px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🐺 Wolfie Test Panel</h1>
+
+  <div class="info">
+    <strong>Instructions:</strong>
+    <ol>
+      <li>Make sure the Wolfie app is running</li>
+      <li>Click buttons below to send test nudges</li>
+      <li>Right-click the mascot to access context menu</li>
+      <li>Enable Voice mode from context menu and say commands like "snooze", "help", "dismiss"</li>
+    </ol>
+  </div>
+
+  <div class="section">
+    <h2>Test Nudges - Stuck Detection</h2>
+    <button onclick="sendNudge('stuck', 1)">Level 1 - Glance</button>
+    <button onclick="sendNudge('stuck', 2)">Level 2 - Question Mark</button>
+    <button onclick="sendNudge('stuck', 3)">Level 3 - Gentle Nudge</button>
+    <button onclick="sendNudge('stuck', 4)">Level 4 - Strong Hint</button>
+  </div>
+
+  <div class="section">
+    <h2>Test Nudges - Distraction</h2>
+    <button onclick="sendNudge('distraction', 1)">Distraction Alert</button>
+    <button onclick="sendNudge('distraction', 2)">Distraction - Level 2</button>
+  </div>
+
+  <div class="section">
+    <h2>Test Nudges - AI Tool</h2>
+    <button onclick="sendNudge('ai_tool', 1)">AI Tool Detection</button>
+  </div>
+
+  <div class="section">
+    <h2>Test Nudges - Streak</h2>
+    <button onclick="sendNudge('streak', 0)">Streak Celebration</button>
+  </div>
+
+  <div class="section">
+    <h2>Queue Controls</h2>
+    <button class="success" onclick="getStatus()">Get Status</button>
+    <button onclick="snooze()">Snooze 30 min</button>
+    <button class="danger" onclick="pause()">Pause Queue</button>
+    <button class="success" onclick="resume()">Resume Queue</button>
+  </div>
+
+  <div class="section">
+    <h2>Status</h2>
+    <div id="status" class="status">Ready to test...</div>
+  </div>
+
+  <script>
+    const log = (msg) => {
+      const statusDiv = document.getElementById('status');
+      const timestamp = new Date().toLocaleTimeString();
+      statusDiv.textContent = `[${timestamp}] ${msg}\n` + statusDiv.textContent;
+    };
+
+    async function sendNudge(kind, level) {
+      const nudges = {
+        stuck: {
+          1: {
+            kind: 'stuck',
+            level: 1,
+            text: "👀 Still working on this?",
+            buttons: []
+          },
+          2: {
+            kind: 'stuck',
+            level: 2,
+            text: "❓ Need some help?",
+            buttons: [
+              { label: "I'm fine", action: "decline", variant: "secondary" },
+              { label: "Yes, help!", action: "accept_hint", variant: "primary" }
+            ]
+          },
+          3: {
+            kind: 'stuck',
+            level: 3,
+            text: "You've been stuck for a while. Want a hint?",
+            buttons: [
+              { label: "Not yet", action: "decline", variant: "secondary" },
+              { label: "Show hint", action: "accept_hint", variant: "primary" }
+            ]
+          },
+          4: {
+            kind: 'stuck',
+            level: 4,
+            text: "Let me help you! I have some suggestions.",
+            buttons: [
+              { label: "Snooze", action: "snooze", variant: "secondary" },
+              { label: "Get hint", action: "accept_hint", variant: "primary" }
+            ]
+          }
+        },
+        distraction: {
+          1: {
+            kind: 'distraction',
+            level: 1,
+            text: "Hey! Looks like you switched to a non-coding app. Stay focused!",
+            buttons: [
+              { label: "Got it", action: "decline", variant: "primary" }
+            ]
+          },
+          2: {
+            kind: 'distraction',
+            level: 2,
+            text: "Multiple distractions detected. Need a break?",
+            buttons: [
+              { label: "Back to work", action: "decline", variant: "primary" },
+              { label: "Take a break", action: "snooze", variant: "secondary" }
+            ]
+          }
+        },
+        ai_tool: {
+          1: {
+            kind: 'ai_tool',
+            level: 1,
+            text: "⚠️ Detected AI tool usage. Are you learning or just copying?",
+            buttons: [
+              { label: "I'm learning", action: "decline", variant: "primary" },
+              { label: "Help me understand", action: "accept_hint", variant: "secondary" }
+            ]
+          }
+        },
+        streak: {
+          0: {
+            kind: 'streak',
+            level: 0,
+            text: "🎉 Great job! You've been focused for 30 minutes!",
+            buttons: []
+          }
+        }
+      };
+
+      const nudge = nudges[kind]?.[level];
+
+      if (!nudge) {
+        log(`ERROR: No nudge defined for ${kind} level ${level}`);
+        return;
+      }
+
+      try {
+        const result = await window.electronAPI.invoke('nudge-push', nudge);
+        if (result.success) {
+          log(`✓ Sent ${kind} nudge (level ${level})`);
+        } else {
+          log(`✗ Failed: ${result.error || 'Unknown error'}`);
+        }
+      } catch (error) {
+        log(`✗ Error: ${error.message}`);
+      }
+    }
+
+    async function snooze() {
+      try {
+        await window.electronAPI.invoke('nudge-snooze');
+        log('✓ Snoozed for 30 minutes');
+      } catch (error) {
+        log(`✗ Snooze error: ${error.message}`);
+      }
+    }
+
+    async function pause() {
+      try {
+        await window.electronAPI.invoke('nudge-pause');
+        log('✓ Queue paused');
+      } catch (error) {
+        log(`✗ Pause error: ${error.message}`);
+      }
+    }
+
+    async function resume() {
+      try {
+        await window.electronAPI.invoke('nudge-resume');
+        log('✓ Queue resumed');
+      } catch (error) {
+        log(`✗ Resume error: ${error.message}`);
+      }
+    }
+
+    async function getStatus() {
+      try {
+        const status = await window.electronAPI.invoke('nudge-status');
+        log(`Status: ${JSON.stringify(status, null, 2)}`);
+      } catch (error) {
+        log(`✗ Status error: ${error.message}`);
+      }
+    }
+
+    log('Test panel ready. Click buttons to test nudges!');
+  </script>
+</body>
+</html>
