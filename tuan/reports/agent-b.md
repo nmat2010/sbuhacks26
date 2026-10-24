@@ -10,7 +10,7 @@
 | B2 Escalation runtime | done |
 | B3a Hint service | done |
 | B3b Hint flow (M2) | done (M2-int pending A7) |
-| B4 Handwriting + camera | not started |
+| B4 Handwriting + camera | done |
 | B6 Plan | not started |
 | B5b ElevenLabs | not started |
 | B7 Ideas + papers | not started |
@@ -54,3 +54,9 @@ WOLFIE_USER_DATA=/tmp/wolfie-b npm run smoke
 - Tests: `hints/__tests__/flow.test.ts` (21): accept -> five distinct levels shown one at a time with the right buttons and `hint_requests` rows 1-5; spoken text is the first two sentences; "Show the answer" present outside assessment mode (returns the mock answer at level 5) and absent at all five levels in assessment mode (and ignored if requested); page summary preferred, screenshot fallback for empty/stale/missing summaries, confirm only once per session, decline and denied permission end gently with no model call; paused ignored; offline ladder labeled; closing paths (got it, I'm good, dismissed vs timeout, idle, problem change); help again = another hint; voice answers via `respond`; follow-ups keep at most 6 turns; the real `EscalationEngine` accepting the offer starts the flow; `captureActiveWindow` (permission, title match, blank, error). Plus `voice.test.ts` nudge speech.
 - Verified: typecheck, 141 tests, lint (workaround), `npm run smoke` OK.
 - Not verified in a real app: the Electron dialog, `desktopCapturer` and the overlay showing the bubbles (needs Thu's overlay to send `dismissed`/`timeout`, see COORDINATION.md). To try the loop by hand in dev: `WOLFIE_USER_DATA=/tmp/wolfie-b DEMO_MODE=1 npm run dev`, start a session from the mascot menu, click Wolfie (or Alt+Shift+H); with no extension connected, expect the screenshot confirm dialog (needs Screen Recording permission for the terminal/VS Code).
+
+## B4 details
+- Files: `llm/mock-provider.ts` (demo-handwriting, demo-camera, demo-illegible, handwriting-default), prompts `source-handwriting.v1.md` / `source-camera.v1.md` (added in B3a).
+- Tests: `hints/__tests__/handwriting.test.ts` (8): mock round trip for handwriting and camera (demo and unknown ids) returns five distinct levels with the image passed to the model; illegible demo asks for clarification; illegible-writing instructions are in the prompt for handwriting/camera only; assessment mode and follow-ups; webapp device logged against its session; no image on disk with storage off.
+- Verified: typecheck, tests, lint (workaround).
+- Not verified: a real Gemini read of real handwriting (no key).

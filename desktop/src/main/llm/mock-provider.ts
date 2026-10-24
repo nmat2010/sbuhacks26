@@ -47,6 +47,61 @@ export const MOCK_HINTS: Record<string, MockHint> = {
     },
     answer: 'Change line 3 to "return a + b;". Without return the function gives back undefined, which is why the test sees undefined instead of 5.'
   },
+  // Handwriting / camera demos (SPEC Phase 12). The web app's pre-filled demo canvas uses
+  // problemId 'demo-handwriting'; 'demo-camera' covers the photographed-paper demo.
+  'demo-handwriting': {
+    what_i_see: 'I can read your handwriting: you are differentiating f(x) = x^2 sin(x) and wrote 2x cos(x).',
+    hint_levels: {
+      nudge: 'Look at f(x): it is two functions multiplied together. Does your answer account for both?',
+      hint: 'When two functions are multiplied, each one gets its turn to be differentiated. What happened to the x^2 part?',
+      explanation:
+        'The product rule says the derivative of u times v is u prime times v, plus u times v prime. Differentiating only one factor, or only one piece, misses half of the terms.',
+      analogous_example:
+        'For g(x) = x^3 e^x, the product rule gives 3x^2 e^x + x^3 e^x. Both terms keep one factor as it was and differentiate the other.',
+      direct_step: 'Write u = x^2 and v = sin(x), find u prime and v prime separately, then combine them as u prime v plus u v prime.'
+    },
+    answer: 'The derivative is 2x sin(x) + x^2 cos(x), from the product rule with u = x^2 and v = sin(x).'
+  },
+  'demo-camera': {
+    what_i_see: 'I can read the photo of your paper: you are solving 3(x - 2) = 12 and wrote 3x - 2 = 12.',
+    hint_levels: {
+      nudge: 'Look at your second line. When you multiplied the bracket by 3, what happened to each thing inside it?',
+      hint: 'The 3 has to multiply both the x and the 2. Check the second term on that line.',
+      explanation:
+        'Distributing means multiplying every term inside the brackets by the number outside. Skipping the second term changes the equation, so the later steps start from a different problem.',
+      analogous_example: 'For 4(y + 1) = 20, distributing gives 4y + 4 = 20, not 4y + 1 = 20.',
+      direct_step: 'Rewrite the second line with 3 times x and 3 times 2 both showing, then continue from there.'
+    },
+    answer: 'Distributing gives 3x - 6 = 12, so 3x = 18 and x = 6.'
+  },
+  // The writing could not be read: say what, and ask (SPEC Phase 12, "illegible or ambiguous")
+  'demo-illegible': {
+    what_i_see:
+      'I could not read the third line: I cannot tell whether it says 3x or 8x, and the exponent on the last line is cut off.',
+    hint_levels: {
+      nudge: 'Before I help, can you tell me what the third line says: 3x or 8x?',
+      hint: 'Could you rewrite the last line a little larger, including the exponent, so I can read it?',
+      explanation:
+        'Once I can read every line, I can point at exactly where the work changes direction. Until then I would only be guessing.',
+      analogous_example:
+        'It is like proofreading a sentence with a smudge: you need to know the word before you can say whether the sentence works.',
+      direct_step: 'Rewrite the unclear part clearly, then ask me again and I will build on what I can read.'
+    },
+    answer: 'I cannot give an answer yet because I could not read your work. Please rewrite the unclear lines.'
+  },
+  // Used for handwriting / camera sources whose problem id is not a known demo
+  'handwriting-default': {
+    what_i_see: 'I can see your handwritten work, but I am not certain I read every line correctly.',
+    hint_levels: {
+      nudge: 'Which line are you least sure about? Start there and tell me what you were trying to do.',
+      hint: 'Compare that line with the line before it. What changed, and why?',
+      explanation:
+        'Mistakes often hide at the step where one line turns into the next. Checking each change on its own makes them easy to spot.',
+      analogous_example: 'Like retracing a route on a map: go one turn at a time and confirm each one before the next.',
+      direct_step: 'Redo just that one step on fresh paper, writing what you do to both sides or to each term.'
+    },
+    answer: 'I can not safely give the answer from handwriting alone. Walk me through the step you are unsure about.'
+  },
   default: {
     what_i_see: "I can see you're working on a problem.",
     hint_levels: {
@@ -71,6 +126,12 @@ function assessmentSafe(hint: MockHint): MockHint {
   };
 }
 
+function pickHint(problemId: string | undefined, source: unknown): MockHint {
+  if (problemId && problemId in MOCK_HINTS) return MOCK_HINTS[problemId];
+  if (source === 'handwriting' || source === 'camera') return MOCK_HINTS['handwriting-default'];
+  return MOCK_HINTS.default;
+}
+
 export class MockLLMProvider implements LLMProvider {
   readonly name = 'mock';
   readonly countsTowardCap = false;
@@ -93,13 +154,13 @@ export class MockLLMProvider implements LLMProvider {
 
   private hints(req: LlmRequest): MockHint {
     const id = typeof req.mockKey?.problemId === 'string' ? req.mockKey.problemId : undefined;
-    const hint = MOCK_HINTS[id && id in MOCK_HINTS ? id : 'default'];
+    const hint = pickHint(id, req.mockKey?.source);
     return req.mockKey?.assessment === true ? assessmentSafe(hint) : hint;
   }
 
   private followup(req: LlmRequest): { text: string; level: number } {
     const id = typeof req.mockKey?.problemId === 'string' ? req.mockKey.problemId : undefined;
-    const hint = MOCK_HINTS[id && id in MOCK_HINTS ? id : 'default'];
+    const hint = pickHint(id, req.mockKey?.source);
     // The fixed "Show the answer" request (outside assessment mode) gets the worked answer
     if (req.mockKey?.assessment !== true && /show me the answer/i.test(String(req.mockKey?.utterance ?? ''))) {
       return { text: hint.answer, level: 5 };

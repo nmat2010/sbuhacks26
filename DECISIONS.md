@@ -143,3 +143,7 @@ _(Agent B appends decisions here.)_
 - Closing: "I got it", "I'm good" (also marks the problem for the engine), dismissing the bubble, a real problem change, a session change, or 5 minutes without interaction (checked every 5 s). A bubble fading ('timeout') keeps the ladder open. The engine is held at level 0 while a ladder is open.
 - Spoken output: ladder bubbles carry `spokenText` (first two sentences); main speaks any nudge with `spokenText` when voice mode is on and monitoring is not paused. The level-3 offer has no `spokenText` on purpose (level 4 speaks it).
 - "Let me take a look..." appears only if the model call takes longer than 0.8 s.
+
+### B4: handwriting and camera sources
+- No new code path: `hint.request` with `source: handwriting | camera` already reaches `requestHints` with `context.imageDataUrl` (A8 routes it). B4 added the prompt notes (`source-handwriting.v1.md`, `source-camera.v1.md`: say exactly what could not be read, make the level 1 nudge a clarifying question, build only on what is readable) and mock hints.
+- **Mock problem ids for the web app's demo canvas (tell Thu):** `demo-handwriting` (product rule), `demo-camera` (distributing a bracket), `demo-illegible` (the hint says what it could not read and asks). Any other id with a handwriting or camera source gets the `handwriting-default` ladder, so the demo never falls through to the typed-page text.
