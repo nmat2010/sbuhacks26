@@ -97,3 +97,12 @@ _(Agent A appends decisions here.)_
 
 ## Agent B
 _(Agent B appends decisions here.)_
+
+### B1: LLM client
+- **Provider interface changed** (it is in `llm/`, which B owns): a provider now exposes one method, `generateJson(req) -> parsed JSON`, plus `name` and `countsTowardCap`. Timeout, retry, schema validation and the daily cap live once in `LLMClient`, so Gemini and the mock behave identically. The old `requestHints`/`chatCompletion` provider methods are gone; `requestHints`/`requestFollowup` (frozen) live in `hints/`. Per-task mock output is keyed by `LlmRequest.task` + `mockKey`.
+- **Retry policy:** transient failures (timeout, no HTTP status, 429, 5xx) are retried once after a short delay; 400/401/403 are not. Unparseable or schema-invalid replies are retried once with the validation problems appended as a user message. Every provider attempt counts against `api.call_limit_per_day` (real providers only; the mock never counts). The count is per local day in table `llm_usage` (migration `201_b_llm_usage`), so a restart does not reset it.
+- **Gemini:** `models.generateContent` with `responseMimeType: 'application/json'` and `responseJsonSchema` (from `zod-to-json-schema`, stripped to the keywords Gemini supports). Images are `inlineData` parts on the last user message. Model comes from `GEMINI_MODEL`; if unset, `gemini-3.6-flash` (a current stable Flash model per ai.google.dev/gemini-api/docs/models on 2026-10-24). `gemini-pro` is refused.
+- **Prompts** are Markdown files in `llm/prompts/`, imported with Vite `?raw` (works in the Electron main bundle and in Vitest). New version = new file.
+- **Logs** carry only task, provider, attempt, duration and a scrubbed error (keys and URLs removed). Prompt text, page text and titles are never logged.
+- **Tests touched outside B's folders:** `db.test.ts` asserted the exact migration list; it now filters to core `0xx_` names so agent migrations don't break it (Agent A probably needs the same one-line change).
+- **Lint in nested worktrees:** `npm run lint` fails here because ESLint also finds the parent repo's `.eslintrc.json` (the worktree lives inside `sbuhacks26/.claude/worktrees/`). Equivalent check: `cd desktop && npx eslint --no-eslintrc -c ../.eslintrc.json src electron`.
