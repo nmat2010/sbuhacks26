@@ -129,7 +129,12 @@ export class IdeasService {
 
 export class PapersService {
   constructor(
-    private readonly deps: { papers: PapersStore; plan: PlanStore; log: (type: EventType, payload: Record<string, unknown>) => void }
+    private readonly deps: {
+      papers: PapersStore;
+      plan: PlanStore;
+      log: (type: EventType, payload: Record<string, unknown>) => void;
+      onPlanChanged?: () => void;
+    }
   ) {}
 
   list(): PaperView[] {
@@ -165,6 +170,7 @@ export class PapersService {
     let planItemId: string | null = null;
     if (input.planItemDueDate && input.goalId) {
       planItemId = plan.addItem(input.goalId, { title: `Read: ${paper.title}`, dueDate: input.planItemDueDate }, 'paper').id;
+      this.deps.onPlanChanged?.();
     }
     if (!existing) this.deps.log('paper.added', { arxiv: Boolean(input.arxivId), planItem: planItemId !== null });
     return { success: true, data: { paper, planItemId } };

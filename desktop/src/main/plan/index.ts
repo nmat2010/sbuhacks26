@@ -2,6 +2,7 @@ import type { PlanSnapshotType } from '@wolfie/shared';
 import { getDatabase } from '../db/index.js';
 import { logEvent } from '../events.js';
 import { getLLMClient } from '../llm/client.js';
+import { TypedEmitter } from '../typed-emitter.js';
 import { PlanService } from './service.js';
 import { PlanStore } from './store.js';
 
@@ -11,11 +12,19 @@ import { PlanStore } from './store.js';
 
 let service: PlanService | null = null;
 
+/**
+ * Fires after any change to the plan. Agent A's sync module can push a fresh `plan.snapshot` on it:
+ *   setPlanSnapshotProvider(getPlanSnapshot);
+ *   planEvents.on('changed', () => notifySnapshotsChanged('plan'));
+ */
+export const planEvents = new TypedEmitter<{ changed: [] }>();
+
 export function getPlanService(): PlanService {
   return (service ??= new PlanService({
     store: new PlanStore(getDatabase),
     llm: getLLMClient,
     now: Date.now,
+    onChanged: () => planEvents.emit('changed'),
     log: (type, payload) => {
       try {
         logEvent(type, payload);

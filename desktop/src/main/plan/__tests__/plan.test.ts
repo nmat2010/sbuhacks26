@@ -304,3 +304,27 @@ describe('seams for sync and nudges', () => {
     expect(service.snapshot()).toEqual({ items: [] });
   });
 });
+
+describe('change notifications (for the web app snapshot)', () => {
+  it('fires after onboarding, generation and every edit, but not after failures', async () => {
+    let changes = 0;
+    const client = new LLMClient({ provider: new MockLLMProvider({ delayMs: 0 }), log: () => {} });
+    const store = new PlanStore(() => db, () => NOW);
+    const service = new PlanService({ store, llm: () => client, now: () => NOW, log: () => undefined, onChanged: () => void changes++ });
+    service.saveOnboarding(sample);
+    expect(changes).toBe(1);
+    service.saveOnboarding({ ...sample, goals: [] }); // rejected
+    expect(changes).toBe(1);
+    const goal = (await service.generate()).data!.goals[0];
+    expect(changes).toBe(2);
+    const added = service.addItem(goal.id, { title: 'x' }).data!;
+    service.updateItem(added.id, { status: 'completed' });
+    service.reorder(goal.id, [added.id]);
+    await service.regenerateItem(goal.items[0].id);
+    service.deleteItem(added.id);
+    expect(changes).toBe(7);
+    service.deleteItem('missing');
+    service.updateItem('missing', { title: 'x' });
+    expect(changes).toBe(7);
+  });
+});

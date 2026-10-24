@@ -1,6 +1,7 @@
 import { getDatabase } from '../db/index.js';
 import { logEvent } from '../events.js';
 import { getLLMClient } from '../llm/client.js';
+import { planEvents } from '../plan/index.js';
 import { PlanStore } from '../plan/store.js';
 import { ArxivClient } from './arxiv.js';
 import { DemoCatalogSearcher } from './demo-catalog.js';
@@ -41,7 +42,7 @@ export function getPapersStore(): PapersStore {
 }
 
 export function getPapersService(): PapersService {
-  return (papersService ??= new PapersService({ papers: getPapersStore(), plan: new PlanStore(getDatabase), log }));
+  return (papersService ??= new PapersService({ papers: getPapersStore(), plan: new PlanStore(getDatabase), log, onPlanChanged: () => planEvents.emit('changed') }));
 }
 
 export function getIdeasService(): IdeasService {

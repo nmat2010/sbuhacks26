@@ -328,3 +328,14 @@ describe('requestFollowup', () => {
     expect(db.prepare('SELECT hint_level FROM hint_requests').get()).toEqual({ hint_level: 3 });
   });
 });
+
+describe('MockLLMProvider.requestHints (direct, frozen shape)', () => {
+  it('returns the demo ladder without a client, for callers that just need mock hints', async () => {
+    const mock = new MockLLMProvider({ delayMs: 0 });
+    const res = await mock.requestHints(ctx({ pageSummary: page('demo-code-error') }), 'page', false);
+    expect(() => HintResponseSchema.parse(res)).not.toThrow();
+    expect(res.what_i_see).toMatch(/test failure/);
+    expect(new Set(HINT_LEVEL_KEYS.map((k) => res.hint_levels[k])).size).toBe(5);
+    expect((await mock.requestHints(ctx({}), 'screen', true)).hint_levels.direct_step).toMatch(/graded work/);
+  });
+});

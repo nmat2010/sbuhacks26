@@ -1,4 +1,5 @@
 import { HINT_LEVEL_KEYS, type HintResponse } from '@wolfie/shared';
+import type { HintContext, HintSourceType } from '@wolfie/shared';
 import type { LLMProvider, LlmRequest } from './provider.js';
 import { mockPlan } from './mock-plan.js';
 import { mockIdeas } from './mock-ideas.js';
@@ -158,6 +159,20 @@ export class MockLLMProvider implements LLMProvider {
       default:
         return {};
     }
+  }
+
+  /**
+   * Convenience for tests and callers that want the demo ladder straight from the mock, without
+   * an LLMClient (the frozen `requestHints` shape). No delay, no retries.
+   */
+  async requestHints(context: HintContext, source: HintSourceType, assessment: boolean): Promise<HintResponse> {
+    const hint = this.hints({
+      task: 'hints',
+      system: '',
+      messages: [],
+      mockKey: { problemId: context.problemId ?? context.pageSummary?.problemId, assessment, source }
+    });
+    return { ...hint, offline: false };
   }
 
   private hints(req: LlmRequest): MockHint {

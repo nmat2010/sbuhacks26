@@ -29,6 +29,8 @@ export interface PlanServiceDeps {
   llm: () => { generate<T>(call: LlmCall<T>): Promise<T> };
   now: () => number;
   log: (type: EventType, payload: Record<string, unknown>) => void;
+  /** Called after anything that changes the plan, so the web app's snapshot can be refreshed. */
+  onChanged?: () => void;
 }
 
 /** Longest horizon we plan for, even if a goal's target date is further out. */
@@ -60,6 +62,7 @@ export class PlanService {
     if (!parsed.success) return { success: false, error: describeIssue(parsed.error.issues[0]) };
     const { goalIds } = this.deps.store.saveOnboarding(parsed.data);
     this.deps.log('plan.onboarding_saved', { goals: goalIds.length, courses: parsed.data.courses.length });
+    this.deps.onChanged?.();
     return { success: true, data: { goalIds } };
   }
 
@@ -123,6 +126,7 @@ export class PlanService {
         delete goalEnds[goalPlan.goal_id];
       }
       this.deps.log('plan.generated', { goals: out.goals.length, items: out.goals.reduce((n, g) => n + g.items.length, 0) });
+      this.deps.onChanged?.();
       return { success: true, data: store.listPlan() };
     } catch (error) {
       return { success: false, error: friendlyLlmError(error) };
@@ -165,6 +169,7 @@ export class PlanService {
       const updated = store.updateItem(id, { title: out.title, dueDate: out.due_date, notes: out.notes ?? null });
       // A regenerated item is still the plan's own, so a later full regenerate may replace it
       store.setItemSource(id, 'generated');
+      this.deps.onChanged?.();
       return { success: true, data: { ...updated, source: 'generated' } };
     } catch (error) {
       if (error instanceof PlanNotFoundError) return { success: false, error: MESSAGES.notFound };
@@ -175,7 +180,11 @@ export class PlanService {
   addItem(goalId: string, raw: unknown): BResult<PlanItemView> {
     const parsed = NewItemSchema.safeParse(raw);
     if (!parsed.success) return { success: false, error: describeIssue(parsed.error.issues[0]) };
-    return this.guard(() => this.deps.store.addItem(goalId, parsed.data));
+    return this.guard(() => {
+      const item = this.deps.store.addItem(goalId, parsed.data);
+      this.deps.onChanged?.();
+      return item;
+    });
   }
 
   updateItem(id: string, raw: unknown): BResult<PlanItemView> {
@@ -187,6 +196,7 @@ export class PlanService {
       if (before.status !== 'completed' && after.status === 'completed') {
         this.deps.log('plan.item_completed', { itemId: id, goalId: after.goalId, dueDate: after.dueDate });
       }
+      this.deps.onChanged?.();
       return after;
     });
   }
@@ -194,6 +204,7 @@ export class PlanService {
   deleteItem(id: string): BResult {
     return this.guard(() => {
       this.deps.store.deleteItem(id);
+      this.deps.onChanged?.();
       return undefined;
     });
   }
@@ -202,6 +213,7 @@ export class PlanService {
     return this.guard(() => {
       if (!this.deps.store.getGoal(goalId)) throw new PlanNotFoundError(goalId);
       this.deps.store.reorder(goalId, orderedIds);
+      this.deps.onChanged?.();
       return undefined;
     });
   }
