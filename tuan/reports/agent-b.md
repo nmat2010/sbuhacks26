@@ -2,20 +2,44 @@
 
 **Branch:** `tuan/b-intelligence` (from `tuan/phase0-fixes` @ f4de16a)
 
-## Status
-| Package | State |
-|---|---|
-| B1 LLM client | done |
-| B5a Voice core | done |
-| B2 Escalation runtime | done |
-| B3a Hint service | done |
-| B3b Hint flow (M2) | done (M2-int pending A7) |
-| B4 Handwriting + camera | done |
-| B6 Plan | done |
-| B5b ElevenLabs | done (no real call verified) |
-| B7 Ideas + papers | done |
-| B8 Paper reading | done |
-| M2-int | pending (needs A7) |
+## Status: all packages done
+| Package | State | Commit |
+|---|---|---|
+| B1 LLM client | done | 0afbf9b |
+| B5a Voice core | done | da3c3ce |
+| B2 Escalation runtime | done | de65418 |
+| B3a Hint service | done | 4053392 |
+| B3b Hint flow (M2) | done | c240e5c |
+| B4 Handwriting + camera | done | 14bb590 |
+| B6 Plan | done | 9c75011 |
+| B5b ElevenLabs | done, but no real call verified | c17ab34 |
+| B7 Ideas + papers | done | 198b47f |
+| B8 Paper reading | done | a5ffe59 |
+| M2-int | done (A7 is committed on `tuan/a-sensing`) | be95128 |
+| Merge-readiness tweaks | done | 1d15b17 |
+
+In progress: nothing. Left: nothing in B's plan. Blockers: none.
+
+On this branch: `npm run typecheck` clean, `npm test` passes (47 shared, 235 desktop), lint has no errors (warnings only), `npm run smoke` OK.
+
+## What to do when merging (Tuan)
+I merged `tuan/a-sensing` into a throwaway branch (deleted, nothing of it is on this branch) and ran everything: typecheck clean, 405 tests pass, smoke OK. Three mechanical things come up when B and A meet:
+1. `desktop/src/main/__tests__/db.test.ts` conflicts (A and I made the same one-line fix to the migration-list assertion). Take either side; A's regex also skips `1xx_a_` and `2xx_b_`.
+2. `history.test.ts` ("seeding really fills every table") fails after the merge, because it seeds every table in `DATA_TABLES` and B's new tables have no rows. The fix is 9 INSERTs in `tuan/reports/b-post-merge.patch`. With them "Clear all data" passes too, so B's tables (no foreign keys) clear in any order. Clear-all should also delete the folders `<userData>/papers/` and `<userData>/images/`, which live outside SQLite.
+3. Plan snapshot wiring: A's `sync/snapshots.ts` says "B6 calls `setPlanSnapshotProvider`". That import cannot exist on B's branch before A is merged, so it is in the same patch (`setPlanSnapshotProvider(getPlanSnapshot)`, and `planEvents.on('changed', () => notifySnapshotsChanged('plan'))` in `intelligence/register.ts`). Apply it on the merged tree with `git apply tuan/reports/b-post-merge.patch` (verified there: typecheck, 405 tests, smoke).
+
+A's `lan-server.test.ts` calls `MockLLMProvider.requestHints`; I kept that method as a compatibility shim (commit 1d15b17).
+
+## Not verified
+- Any real Gemini call (no key). The request shape follows the `@google/genai` 2.28 typings and the structured-output docs.
+- Any real ElevenLabs call (no key). The protocol follows the ElevenLabs docs read on 2026-10-24.
+- Live arXiv and Semantic Scholar (tests use fakes; the arXiv format matches the API manual).
+- Electron pieces that need a human: the first-capture confirm dialog, `desktopCapturer` with Screen Recording permission, the PDF file picker, the `Alt+Shift+H` shortcut, audio playback and mic capture (Thu's renderer does the last two).
+- Plan, ideas and reading quality from the real model (only the mock was exercised).
+
+## Needs action from others
+- Thu: send `nudge-response` with `dismissed` (X pressed) and `timeout` (bubble faded) from the overlay; the hint ladder and the offer rely on it. Mic capture into `voice-audio-in`, playback of `voice-audio-out` (PCM 16 kHz 16-bit mono), and the UI for plan, papers and reading on the channels in `ipc-intelligence.ts`. Details are in COORDINATION.md under Agent B. `voice-utterance` takes typed text for the developer panel.
+- Agent A: nothing blocking. Optional: `setFrontWindowProvider` (in `hints/capture.ts`) so screenshots match the active window, and listen on `voiceBus` for `taking_a_break`, `need_this`, `ignore`.
 
 ## B1 details
 - Files: `desktop/src/main/llm/{client,provider,gemini-provider,mock-provider,schema,usage,redact,data-url}.ts`, `llm/prompts/*`, `db/migrations-b.ts` (`201_b_llm_usage`).
@@ -28,6 +52,10 @@ npm ci && npm run typecheck && npm test
 cd desktop && npx eslint --no-eslintrc -c ../.eslintrc.json src electron   # lint workaround for nested worktrees, see DECISIONS.md
 WOLFIE_USER_DATA=/tmp/wolfie-b npm run smoke
 ```
+Trying the loop by hand (no keys needed): `WOLFIE_USER_DATA=/tmp/wolfie-b DEMO_MODE=1 npm run dev`, start a session from the mascot menu, then press Alt+Shift+H or click Wolfie. With no extension connected you get the screenshot confirm dialog (it needs Screen Recording permission for your terminal or VS Code). The hint bubbles then walk through the five mock levels.
+
+## M2-int details
+`desktop/src/main/intelligence/__tests__/m2-int.test.ts` (7 tests, offline; `DEMO_MODE=1` selects the mock even with a key present). Page events come in the way A's extension link delivers them (`setLatestPageSummary`, `setPageSummaryRequester`, `stuckBus` `problem-changed` and `signal`). The real `EscalationEngine`, `HintFlow`, `HintService` and `NudgeQueue` do the rest: glance, "?", offer after 90 s, accept, five distinct ladder levels one per bubble, `hint_requests` rows 1-5, "Show the answer" present outside assessment mode and absent in assessment mode (no worked answer in level 5), decline cooldown, "I'm good" per problem, voice-mode level 4 speech, voice "I'm stuck". The page summary in the test is a fixture; A's detectors on the real demo pages are covered by A's own `demo-pages.test.ts`.
 
 ## B5a details
 - Files: `desktop/src/main/voice/{types,mock,text,intents,echo,speaker,router,controller,service,bus}.ts`, IPC in `src/common/ipc-intelligence.ts`, voice wiring in `intelligence/register.ts`.

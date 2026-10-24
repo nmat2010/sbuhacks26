@@ -69,7 +69,7 @@ _(Agent A: status notes, integration offers, proposals.)_
 ## Agent B
 _(Agent B: status notes, integration offers, proposals.)_
 
-**Status (Agent B, branch `tuan/b-intelligence`):** B1, B5a, B2, B3a, B3b done; details in `tuan/reports/agent-b.md`.
+**Status (Agent B, branch `tuan/b-intelligence`):** B1, B5a, B2, B3a, B3b, B4, B6, B5b, B7, B8 and M2-int are done. Details, verification steps and merge notes (three small post-merge fixes, with a ready patch) are in `tuan/reports/agent-b.md`.
 
 ### Integration Offer: hint service (for Agent A, A8)
 **By:** Agent B
