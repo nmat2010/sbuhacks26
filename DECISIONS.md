@@ -144,5 +144,14 @@ This document tracks decisions made during implementation where the spec was amb
 - Signals contain only type, strength, timestamp, problemId and counts/control ids: no page text.
 - **Adapters (max 2):** `leetcode.com` and `khanacademy.org`: problem id from the URL path, plus their submit selectors. The submit selectors are UNVERIFIED (written from memory, not checked against the live pages); the generic detection does not depend on them.
 
+### A6: desktop signals, signal sink, input events
+- **One sink for all signals** (`stuck/signals/sink.ts`): every signal, web or desktop, is inserted into `web_signals` (desktop ones tagged `source: 'desktop'` in `meta_json`, extension ones `source: 'extension'`), logged as event `stuck.signal`, and emitted on `stuckBus 'signal'`. Signals outside a session or while paused are dropped. Metadata is reduced to small primitives (<= 8 keys, strings cut at 64 chars) so a signal can never carry page text. Extension signals get the desktop's clock as `timestamp` (the page's clock is not trusted).
+- **Agent B:** if the engine also logs signals, drop one of the two `stuck.signal` writes; the sink's is the one that has the source.
+- **`stuckBus 'input'`** is emitted by `InputPoller` every 1 s when `getSystemIdleTime() < 1`, only during an unpaused session. Nothing else emits it.
+- **context_switch_loop:** windows are keyed by tab domain (browser with an extension domain) or app name; the recent run that alternates between exactly two windows, with at least one of them *work* (not an AI tool/distraction), and >= `contextSwitchCount` (3) switches inside `contextSwitchWindowSec` (120). Title/idle changes inside one window are ignored. Thresholds from `stuck.thresholds`.
+- **idle_on_work:** `idleSeconds >= stuck.idle_minutes * 60` on a work window (not AI/distraction); re-emitted every 60 s while it persists (so B2's lifetime refresh works).
+- **long_on_problem:** "no visible progress" cannot be measured from the desktop, so it is approximated as focused, non-idle time in the browser on the problem page's domain (accumulated per monitor tick, gaps over 5 s ignored) reaching `stuck.long_problem_minutes`; any problem change restarts it; re-emitted every 60 s. The page domain is read from the monitor's latest snapshot when `problem-changed` fires.
+- Re-emission rule for B2 (signal lifetime = max(window, 5 min), refreshed by re-emitting): web signals re-fire on each further occurrence (wrong_answer_loop on every failed check from the 2nd; dead clicks on each further click while >= 3 in 20 s), desktop condition signals every 60 s.
+
 ## Agent B
 _(Agent B appends decisions here.)_

@@ -10,6 +10,8 @@ import { settingsEvents } from '../../settings.js';
 import { DomainTracker } from '../domain-tracker.js';
 import { startExtensionLink, type ExtensionLink } from '../extension-link.js';
 import { generateToken, normalizeToken, tokensMatch } from '../pairing.js';
+import { stuckBus } from '../../stuck/bus.js';
+import { SignalSink } from '../../stuck/signals/sink.js';
 
 const EXT_A = 'chrome-extension://abcdefghijklmnopabcdefghijklmnop';
 const EXT_B = 'chrome-extension://ponmlkjihgfedcbaponmlkjihgfedcba';
@@ -85,7 +87,7 @@ class TestClient {
 
 const source: WindowSource = { getActiveWindow: async () => front };
 
-async function boot(opts: { helloTimeoutMs?: number; heartbeatMs?: number } = {}): Promise<void> {
+async function boot(opts: { helloTimeoutMs?: number; heartbeatMs?: number; onSignal?: (s: StruggleSignal, d: string) => void } = {}): Promise<void> {
   const tracker = new DomainTracker();
   monitor = new Monitor({
     source,
@@ -371,6 +373,29 @@ describe('extension loopback server: reporting', () => {
     c.send('ext.signal', { signal, domain: 'chase.com' }); // excluded: dropped
     await new Promise((r) => setTimeout(r, 60));
     expect(signals).toEqual([[signal, 'localhost']]);
+  });
+
+  it("an extension signal reaches stuckBus 'signal' and web_signals through the sink", async () => {
+    const sink = new SignalSink({
+      db: () => db,
+      getSession: getActiveSession,
+      isPaused,
+      emit: (s) => stuckBus.emit('signal', s),
+      logEvent: () => undefined,
+      now: Date.now
+    });
+    await boot({ onSignal: (s) => void sink.accept(s, 'extension') });
+    await reportingSession();
+    const onBus: StruggleSignal[] = [];
+    const off = stuckBus.on('signal', (s) => onBus.push(s));
+    const c = new TestClient(link.port!);
+    await c.hello(settingsState.token!);
+    const signal: StruggleSignal = { type: 'dead_control_clicks', strength: 'strong', timestamp: 7, problemId: 'demo-disabled-button', metadata: { clicks: 3 } };
+    c.send('ext.signal', { signal, domain: 'localhost' });
+    await new Promise((r) => setTimeout(r, 60));
+    off();
+    expect(onBus).toEqual([signal]);
+    expect(db.prepare('SELECT type, strength FROM web_signals').all()).toEqual([{ type: 'dead_control_clicks', strength: 'strong' }]);
   });
 
   it('requestSummary asks the extension and resolves with the next page summary', async () => {

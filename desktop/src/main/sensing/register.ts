@@ -23,6 +23,10 @@ import {
 } from '../session/index.js';
 import { getNudgeQueue } from '../nudge/index.js';
 import { RulesEngine } from '../rules/engine.js';
+import { matchForeground } from '../rules/matcher.js';
+import { DesktopSignalDetector } from '../stuck/signals/desktop-signals.js';
+import { InputPoller } from '../stuck/signals/input-poller.js';
+import { SignalSink } from '../stuck/signals/sink.js';
 import { logEvent } from '../events.js';
 import { getSetting, setSetting, settingsEvents } from '../settings.js';
 import { stuckBus } from '../stuck/bus.js';
@@ -36,6 +40,7 @@ const execFileAsync = promisify(execFile);
 let stops: Array<() => void> = [];
 let monitor: Monitor | null = null;
 let extensionLink: ExtensionLink | null = null;
+let signalSink: SignalSink | null = null;
 const domainTracker = new DomainTracker();
 
 function sessionInfo(): SessionInfo {
@@ -147,6 +152,56 @@ export function registerSensing(): void {
     return () => engine.stop();
   });
 
+  // ---- A6: desktop signals, extension signal forwarding, input events --------------------------
+  guarded('signals', () => {
+    if (!monitor) throw new Error('monitor not running');
+    const m = monitor;
+    const sink = new SignalSink({
+      db: getDatabase,
+      getSession: getActiveSession,
+      isPaused,
+      emit: (signal) => stuckBus.emit('signal', signal),
+      logEvent: (type, payload) => logEvent(type, payload),
+      now: Date.now
+    });
+    signalSink = sink;
+    const detector = new DesktopSignalDetector({
+      now: Date.now,
+      emit: (signal) => void sink.accept(signal, 'desktop'),
+      getConfig: () => {
+        const t = getSetting('stuck.thresholds');
+        return {
+          contextSwitchCount: t.contextSwitchCount,
+          contextSwitchWindowSec: t.contextSwitchWindowSec,
+          idleMinutes: getSetting('stuck.idle_minutes'),
+          longProblemMinutes: getSetting('stuck.long_problem_minutes')
+        };
+      },
+      classify: (snap) =>
+        matchForeground(snap, { aiTools: getSetting('monitored.ai_tools'), distractions: getSetting('monitored.distractions') })
+          ? 'other'
+          : 'work'
+    });
+    const poller = new InputPoller({
+      getIdleSeconds: () => powerMonitor.getSystemIdleTime(),
+      isActive: () => getActiveSession() !== null && !isPaused(),
+      now: Date.now,
+      emit: (at) => stuckBus.emit('input', at)
+    });
+    poller.start(1000);
+    const offs = [
+      m.events.on('foreground', (snap) => detector.handleForeground(snap)),
+      m.events.on('tick', (snap) => detector.handleTick(snap)),
+      sessionEvents.on('change', () => detector.reset()),
+      stuckBus.on('problem-changed', (id) => detector.handleProblem(id, m.getLast()))
+    ];
+    return () => {
+      poller.stop();
+      offs.forEach((off) => off());
+      signalSink = null;
+    };
+  });
+
   // ---- A2: extension loopback server --------------------------------------------------------
   guarded('extension-link', () => {
     if (!monitor) throw new Error('monitor not running');
@@ -171,7 +226,8 @@ export function registerSensing(): void {
       },
       setLatestPageSummary,
       setPageSummaryRequester,
-      emitProblemChanged: (id) => stuckBus.emit('problem-changed', id)
+      emitProblemChanged: (id) => stuckBus.emit('problem-changed', id),
+      onSignal: (signal) => void signalSink?.accept({ ...signal, timestamp: Date.now() }, 'extension')
     })
       .then((link) => {
         extensionLink = link;

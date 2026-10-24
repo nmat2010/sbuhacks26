@@ -82,6 +82,19 @@ isMicAllowed();            // active session && !paused && voice.enabled
 **Pause marker:** while paused, `app_events` gets one row with `app_name='(paused)'`; history/streak treat time until the next row as paused.
 **Tests:** `npm test --workspace=desktop` (monitor, session, sync, rules suites).
 
+### Integration Offer: signals for the escalation engine (A5, A6) - M2
+**By:** Agent A
+**Provides (for Agent B / B2):**
+```typescript
+stuckBus.on('signal', (s: StruggleSignal) => ...)   // web: wrong_answer_loop, dead_control_clicks (strong); validation_errors, backtracking (weak)
+                                                    // desktop: context_switch_loop, idle_on_work, long_on_problem (weak)
+stuckBus.on('input', (at: number) => ...)           // every 1 s while the user is typing/clicking, during an unpaused session
+stuckBus.on('problem-changed', (problemId) => ...)  // only when PageSummary.problemId changes to a new defined id
+requestPageSummary()                                // sync/context.ts: asks the extension, falls back to the latest
+```
+**Re-emission (for the signal lifetime rule):** strong web signals re-fire on every further occurrence (wrong_answer_loop on each failed check from the 2nd; dead clicks on each further click while >= 3 within 20 s); desktop weak signals re-fire every 60 s while their condition persists. Every signal is also stored in `web_signals` and logged as event `stuck.signal` by A's sink.
+**Demo pages:** `demo-pages/` (A: `demo-algebra-problem`, B: `demo-disabled-button`, C: `demo-code-error`); serve with `npx vite demo-pages --port 5174`. `extension/src/content/__tests__/demo-pages.test.ts` shows the exact signal each page raises. For the M2-int test: wrong answers on page A (right answer is 4) produce `wrong_answer_loop` with `problemId: 'demo-algebra-problem'` after the second check.
+
 ## Agent B
 _(Agent B: status notes, integration offers, proposals.)_
 
