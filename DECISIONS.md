@@ -125,5 +125,13 @@ This document tracks decisions made during implementation where the spec was amb
 - **Page text gate in two places:** the background forwards `PAGE_SUMMARY` only when the tab is reportable, `capturePageText` is true and the summary's domain matches the tab's hostname; content scripts also ask for per-tab state (`GET_CONTENT_STATE`, pushed again as `STATE`).
 - Pure logic is in `extension/src/lib` (`reportableDomain`, backoff, messages) and `background/connection.ts` (fake socket/timers in tests); `popup/view.ts` renders with `textContent` only.
 
+### A4: rules + warnings
+- **When it fires:** on a monitor `foreground` event whose matched rule differs from the previous one ("comes to the front"). Title/idle changes inside the same rule never re-fire. If the NudgeQueue drops the nudge (snooze, its per-kind cooldown, hourly cap) the rule's own cooldown is *not* consumed, so the next arrival tries again.
+- **Two cooldowns stack:** per rule (`monitored.rule_cooldown_minutes`, default 10) here, plus the NudgeQueue's per-kind cooldown and hourly cap.
+- **Matching:** with a tab domain known, only the domain is consulted (suffix match, `www.` ignored). Otherwise app name (whole word, case-insensitive), and the window title **only when the frontmost app is a browser** (otherwise "Reddit notes.md" in an editor would warn). Entries with a path (`github.com/copilot`) are skipped for domain matching because only the host is known; the Copilot rule still matches by app name. AI tools are checked before distractions.
+- **Answers:** buttons `taking_break`, `need_for_task`, `ignore_session` (`RULE_ACTIONS` in `rules/messages.ts`). `parseRuleAction` also accepts loose phrasing ("taking a break", "I need this", "ignore"), so B5a's voice intents can send either the action id or the phrase as `NudgeResponse.action`. "Ignore" suppresses that rule for the session; "I need this" quiets it for 3 cooldown periods; "Taking a break" changes nothing. `dismissed`/`timeout` change nothing. Every response is already logged to `nudges.user_response` and `events` (`nudge.answered`) by the NudgeQueue wiring; the engine also logs `rule.response`.
+- Rule nudges use `level: 1`, `priority: 6`, and set `spokenText` equal to the text (the overlay decides whether to speak, per voice mode).
+- Ignores, cooldowns and pending nudges reset on every session change.
+
 ## Agent B
 _(Agent B appends decisions here.)_

@@ -21,6 +21,9 @@ import {
   startSession,
   stopSession
 } from '../session/index.js';
+import { getNudgeQueue } from '../nudge/index.js';
+import { RulesEngine } from '../rules/engine.js';
+import { logEvent } from '../events.js';
 import { getSetting, setSetting, settingsEvents } from '../settings.js';
 import { stuckBus } from '../stuck/bus.js';
 import { DomainTracker } from '../sync/domain-tracker.js';
@@ -122,6 +125,26 @@ export function registerSensing(): void {
       off();
       m.stop();
     };
+  });
+
+  // ---- A4: AI-tool and distraction warnings -------------------------------------------------
+  guarded('rules', () => {
+    if (!monitor) throw new Error('monitor not running');
+    const engine = new RulesEngine({
+      monitorEvents: monitor.events,
+      sessionEvents,
+      nudgeEvents: getNudgeQueue(),
+      getSession: getActiveSession,
+      isPaused,
+      getLists: () => ({ aiTools: getSetting('monitored.ai_tools'), distractions: getSetting('monitored.distractions') }),
+      getCooldownMinutes: () => getSetting('monitored.rule_cooldown_minutes'),
+      push: (nudge) => getNudgeQueue().push(nudge),
+      logEvent: (type, payload) => logEvent(type, payload),
+      now: Date.now,
+      random: Math.random
+    });
+    engine.start();
+    return () => engine.stop();
   });
 
   // ---- A2: extension loopback server --------------------------------------------------------

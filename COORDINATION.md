@@ -66,6 +66,22 @@ Each developer should update their section at the start and end of each work ses
 ## Agent A
 _(Agent A: status notes, integration offers, proposals.)_
 
+### Integration Offer: session, monitor, rules (A1-A4)
+**By:** Agent A
+**Provides (for Agent B, Thu):**
+```typescript
+// desktop/src/main/session/index.ts
+getActiveSession(); isPaused(); sessionEvents.on('change' | 'pause', ...);
+setAssessmentMode(bool);   // in place, no 'change' event
+isMicAllowed();            // active session && !paused && voice.enabled
+// desktop/src/main/sync/context.ts (A2 fills it): requestPageSummary() -> PageSummary | null
+// stuckBus 'problem-changed' fires only when PageSummary.problemId changes (A2)
+```
+**IPC (Thu):** `session-start {assessmentMode?, goalId?}`, `session-stop`, `session-get`, `session-set-assessment`, `permissions-get`, `permissions-request`, `extension-pairing-get`, `extension-pairing-regenerate`; events `session-changed`, `mic-allowed`, `extension-status`. All typed in `desktop/src/common/ipc-sensing.ts`.
+**Nudge button actions (Agent B voice intents, Thu):** AI-tool and distraction warnings answer with action ids `taking_break`, `need_for_task`, `ignore_session`. Voice phrases such as "taking a break", "I need this", "ignore" are also understood if sent as the `action` string.
+**Pause marker:** while paused, `app_events` gets one row with `app_name='(paused)'`; history/streak treat time until the next row as paused.
+**Tests:** `npm test --workspace=desktop` (monitor, session, sync, rules suites).
+
 ## Agent B
 _(Agent B: status notes, integration offers, proposals.)_
 
