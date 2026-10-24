@@ -24,7 +24,8 @@ describe('database', () => {
     );
     for (const t of DATA_TABLES) expect(tables).toContain(t);
     const migrations = db.prepare('SELECT name FROM migrations ORDER BY id').all() as { name: string }[];
-    expect(migrations.map((m) => m.name).filter((n) => /^0\d\d_/.test(n))).toEqual([
+    // Agent migrations (1xx_a_*, 2xx_b_*) are additive and live in their own files; check core only.
+    expect(migrations.map((m) => m.name).filter((n) => !/^[12]\d\d_[ab]_/.test(n))).toEqual([
       '001_initial_schema',
       '002_nudges_uid_nullable_session'
     ]);

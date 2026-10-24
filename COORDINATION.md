@@ -66,6 +66,61 @@ Each developer should update their section at the start and end of each work ses
 ## Agent A
 _(Agent A: status notes, integration offers, proposals.)_
 
+### Integration Offer: session, monitor, rules (A1-A4)
+**By:** Agent A
+**Provides (for Agent B, Thu):**
+```typescript
+// desktop/src/main/session/index.ts
+getActiveSession(); isPaused(); sessionEvents.on('change' | 'pause', ...);
+setAssessmentMode(bool);   // in place, no 'change' event
+isMicAllowed();            // active session && !paused && voice.enabled
+// desktop/src/main/sync/context.ts (A2 fills it): requestPageSummary() -> PageSummary | null
+// stuckBus 'problem-changed' fires only when PageSummary.problemId changes (A2)
+```
+**IPC (Thu):** `session-start {assessmentMode?, goalId?}`, `session-stop`, `session-get`, `session-set-assessment`, `permissions-get`, `permissions-request`, `extension-pairing-get`, `extension-pairing-regenerate`; events `session-changed`, `mic-allowed`, `extension-status`. All typed in `desktop/src/common/ipc-sensing.ts`.
+**Nudge button actions (Agent B voice intents, Thu):** AI-tool and distraction warnings answer with action ids `taking_break`, `need_for_task`, `ignore_session`. Voice phrases such as "taking a break", "I need this", "ignore" are also understood if sent as the `action` string.
+**Pause marker:** while paused, `app_events` gets one row with `app_name='(paused)'`; history/streak treat time until the next row as paused.
+**Tests:** `npm test --workspace=desktop` (monitor, session, sync, rules suites).
+
+### Integration Offer: settings, history, status, streak, data controls (A9, A10) - for Thu's dashboard
+**By:** Agent A. All channels are typed in `desktop/src/common/ipc-sensing.ts`; call with `window.electronAPI.invoke(channel, ...args)`.
+| Channel | Returns |
+|---|---|
+| `streak-get` / event `streak-changed` | `StreakSnapshot`: `current, longest, freezesAvailable, todayQualified, todayMinutes, week[7]{localDate,status}` (same as `streak.snapshot` on the web app) |
+| `history-get {limit?, sinceTs?}` | `{sessions[], totals}`: per session `seconds{work,ai_tool,distraction,idle}`, `nudgeCount`, `hintCount`, `deepestHintLevel`, `deepestEscalationLevel` |
+| `settings-get` / `settings-set {key, value}` / event `settings-changed` | all settings except `pairing.*`; writes are validated and return `{success, error?, value?}` |
+| `status-get` | `{extensionConnected, extensionListening, syncListening, pairedDevices, geminiKeyPresent, elevenLabsKeyPresent, demoMode, sessionActive, paused}` |
+| `extension-pairing-get` / `-regenerate`, `sync-info-get` / `sync-regenerate-code` / `sync-unpair`, `permissions-get` / `-request` | pairing, LAN pairing code + IPs for the QR, permission status |
+| `data-export` | asks where to save, writes every table as JSON (pairing secrets left out) |
+| `data-clear {keepSettings?}` | deletes everything and re-seeds the streak row; confirm in the UI first; event `data-cleared` means reload |
+**Streak copy** (celebration, milestone, freeze, reset, reminder) is placeholder text in `desktop/src/main/streak/messages.ts` for Thu to edit; rule-warning copy is in `desktop/src/main/rules/messages.ts`.
+**For Agent B (B2):** History reads the deepest escalation level from events `stuck.level` with `payload.level` (0-4); please log that shape.
+
+### Integration Offer: LAN sync (A8) - M3
+**By:** Agent A
+**For Thu (web app client):** protocol, step by step, over `ws://<desktop-ip>:45679` (message envelope `{id, type, ts, payload}` from `shared/src/schemas/sync.ts`):
+1. Server sends `auth.challenge {nonce}` on connect.
+2. New device: send `pair.request {code, deviceName}` (the 6 digits shown in Wolfie's settings). Reply `pair.result {ok, deviceId, secret}`: store both in localStorage. The socket is authenticated.
+3. Paired device: send `auth.hello {deviceId, hmac}` with `hmac = hex(HMAC-SHA256(key=secret, data=nonce))`, lower-case hex, both as UTF-8 strings (WebCrypto: import the secret string's UTF-8 bytes as the HMAC key). Test vector: `HMAC('abc','xyz') = c03d0898b76731130f3e2134b39b824c53c4e62a55b3c020a4be6d5ada606102`. Reply `auth.result {ok:true}` then `plan.snapshot` and `streak.snapshot`.
+4. `auth.result {ok:false, reason:'unpaired'}` means the desktop forgot this device: delete the stored secret and show the pairing screen.
+5. Every other message gets `ack {ackId}`. Keep messages in `pendingSync` until acked; replay in order after reconnect with the **same ids** (the desktop dedupes and re-acks). Hints: `hint.request` is acked at once, then `hint.response` or `hint.error {requestId, message}` arrives; fail fast yourself if the socket is down.
+6. IPC for the desktop settings screen: `sync-info-get` -> `{listening, port, addresses[], code, codeExpiresAt, devices[]}` (build the QR from `addresses[0]`, `port`, `code`), `sync-regenerate-code`, `sync-unpair {deviceId}`; event `sync-changed`.
+**For Agent B (B6):** call `setPlanSnapshotProvider(getPlanSnapshot)` (from `desktop/src/main/sync/snapshots.ts`) in `intelligence/register.ts` and `notifySnapshotsChanged('plan')` after plan changes; until then the web app gets an empty plan. `hints/index.ts` `requestHints`/`requestFollowup` are called as-is for `hint.request`/`hint.followup`.
+**For Tuan at merge:** `desktop/src/main/__tests__/db.test.ts` (core) was edited to compare only core migrations, since agent migration files add names to the list; keep either side's version.
+
+### Integration Offer: signals for the escalation engine (A5, A6) - M2
+**By:** Agent A
+**Provides (for Agent B / B2):**
+```typescript
+stuckBus.on('signal', (s: StruggleSignal) => ...)   // web: wrong_answer_loop, dead_control_clicks (strong); validation_errors, backtracking (weak)
+                                                    // desktop: context_switch_loop, idle_on_work, long_on_problem (weak)
+stuckBus.on('input', (at: number) => ...)           // every 1 s while the user is typing/clicking, during an unpaused session
+stuckBus.on('problem-changed', (problemId) => ...)  // only when PageSummary.problemId changes to a new defined id
+requestPageSummary()                                // sync/context.ts: asks the extension, falls back to the latest
+```
+**Re-emission (for the signal lifetime rule):** strong web signals re-fire on every further occurrence (wrong_answer_loop on each failed check from the 2nd; dead clicks on each further click while >= 3 within 20 s); desktop weak signals re-fire every 60 s while their condition persists. Every signal is also stored in `web_signals` and logged as event `stuck.signal` by A's sink.
+**Demo pages:** `demo-pages/` (A: `demo-algebra-problem`, B: `demo-disabled-button`, C: `demo-code-error`); serve with `npx vite demo-pages --port 5174`. `extension/src/content/__tests__/demo-pages.test.ts` shows the exact signal each page raises. For the M2-int test: wrong answers on page A (right answer is 4) produce `wrong_answer_loop` with `problemId: 'demo-algebra-problem'` after the second check.
+
 ## Agent B
 _(Agent B: status notes, integration offers, proposals.)_
 

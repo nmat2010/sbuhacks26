@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Practice: add(a, b)</title>
+  <style>
+    body { font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 760px; margin: 40px auto; padding: 0 16px; color: #1c1c1e; }
+    .problem-statement { padding: 14px 16px; background: #f2f2f7; border-radius: 8px; margin: 14px 0; }
+    textarea { width: 100%; box-sizing: border-box; height: 130px; font: 14px/1.4 ui-monospace, Menlo, monospace; padding: 10px; }
+    button { font-size: 16px; padding: 7px 18px; margin: 10px 8px 0 0; cursor: pointer; }
+    .output { margin-top: 14px; padding: 12px 14px; background: #1c1c1e; color: #f2f2f7; border-radius: 8px; font: 14px/1.5 ui-monospace, Menlo, monospace; min-height: 70px; white-space: pre-wrap; }
+    .pass { color: #7ee2a8; } .fail { color: #ff8a80; }
+  </style>
+</head>
+<body>
+  <h1>Practice: add(a, b)</h1>
+  <p>Scenario C of the Wolfie demo: failing test results. Run the code twice without fixing it and Wolfie should step in.</p>
+
+  <div class="problem-statement" data-problem-id="demo-code-error">
+    Write a function <code>add(a, b)</code> that returns the sum of two numbers.
+  </div>
+
+  <textarea id="code" spellcheck="false" aria-label="Code editor">function add(a, b) {
+  // TODO: compute the sum
+  a + b;
+}</textarea>
+  <div>
+    <button id="run" type="button">Run</button>
+    <button id="submit" type="button">Submit</button>
+  </div>
+
+  <div id="results" class="output" role="status" aria-live="polite">Press Run to test your code.</div>
+
+  <script>
+    var codeEl = document.getElementById('code');
+    var results = document.getElementById('results');
+    function runTests() {
+      var lines = [];
+      var failed = 0;
+      var cases = [[2, 3, 5], [10, -4, 6]];
+      var fn;
+      try { fn = new Function(codeEl.value + '; return add;')(); } catch (e) { fn = null; lines.push('<span class="fail">SyntaxError: ' + String(e.message).replace(/</g, '&lt;') + '</span>'); failed++; }
+      if (fn) {
+        cases.forEach(function (c, i) {
+          var got = fn(c[0], c[1]);
+          if (got === c[2]) lines.push('<span class="pass">Test ' + (i + 1) + ': passed</span>');
+          else { failed++; lines.push('<span class="fail">Test ' + (i + 1) + ': failed. add(' + c[0] + ', ' + c[1] + ') expected ' + c[2] + ' but got ' + got + '</span>'); }
+        });
+      }
+      lines.push(failed ? '<span class="fail">' + failed + ' test(s) failed.</span>' : '<span class="pass">All tests passed!</span>');
+      results.innerHTML = lines.join('\n');
+    }
+    document.getElementById('run').addEventListener('click', runTests);
+    document.getElementById('submit').addEventListener('click', runTests);
+  </script>
+</body>
+</html>

@@ -35,3 +35,6 @@ npm-debug.log*
 # User data
 userData/
 data/
+
+# Claude Code agent worktrees
+.claude/worktrees/

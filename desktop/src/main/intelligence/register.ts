@@ -17,7 +17,8 @@ import { requestPageSummary } from '../sync/context.js';
 import { captureActiveWindow } from '../hints/capture.js';
 import { HintFlow } from '../hints/flow.js';
 import { configureHintService, getHintService } from '../hints/index.js';
-import { getPlanService } from '../plan/index.js';
+import { getPlanService, getPlanSnapshot, planEvents } from '../plan/index.js';
+import { notifySnapshotsChanged, setPlanSnapshotProvider } from '../sync/snapshots.js';
 import { getIdeasService, getPapersService } from '../papers/index.js';
 import { configureReading, getReadingService } from '../reading/index.js';
 import { ReadingStore } from '../reading/store.js';
@@ -163,6 +164,8 @@ function registerHintFlow(): void {
 
 function registerPlan(): void {
   const plan = () => getPlanService();
+  setPlanSnapshotProvider(getPlanSnapshot);
+  cleanups.push(planEvents.on('changed', () => notifySnapshotsChanged('plan')));
   handle('plan-onboarding-get', async () => plan().getOnboarding());
   handle('plan-onboarding-save', async (input) => plan().saveOnboarding(input));
   handle('plan-get', async () => plan().view());

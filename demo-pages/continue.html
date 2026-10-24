@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign up: Step 2 of 3</title>
+  <style>
+    body { font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 520px; margin: 40px auto; padding: 0 16px; color: #1c1c1e; }
+    .card { border: 1px solid #d1d1d6; border-radius: 10px; padding: 18px 20px; }
+    label { display: block; margin: 12px 0 4px; font-weight: 600; }
+    input[type=text], input[type=email] { width: 100%; box-sizing: border-box; padding: 8px 10px; font-size: 16px; }
+    button { font-size: 16px; padding: 9px 22px; margin-top: 18px; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <h1>Create your study account</h1>
+  <p>Scenario B of the Wolfie demo: a Continue button that stays disabled. Click it three times quickly and Wolfie should step in.</p>
+
+  <form class="card" data-problem-id="demo-disabled-button" onsubmit="return false">
+    <h2>Step 2 of 3: Your details</h2>
+
+    <label for="email">Email address *</label>
+    <input id="email" type="email" required autocomplete="off" placeholder="you@school.edu">
+
+    <label for="major">Major (optional)</label>
+    <input id="major" type="text" autocomplete="off">
+
+    <button id="continue" type="submit" disabled>Continue</button>
+  </form>
+
+  <script>
+    var email = document.getElementById('email');
+    var cont = document.getElementById('continue');
+    // The button enables itself only when the email looks valid, which the student may not notice.
+    email.addEventListener('input', function () {
+      cont.disabled = !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.value);
+    });
+  </script>
+</body>
+</html>
