@@ -1,7 +1,7 @@
 # Report: Agent A (Sensing & Data)
 
 **Branch:** `tuan/a-sensing`, from `tuan/phase0-fixes` @ f4de16a.
-**Last updated after:** A9.
+**Last updated after:** A10 (all packages done).
 
 ## Status
 
@@ -16,7 +16,7 @@
 | A6 desktop signals (**M2**) | done | 0538f24 |
 | A8 LAN sync server (**M3**) | done | b0a2dec |
 | A9 streak engine | done | 249214e |
-| A10 history / settings / data controls | not started | |
+| A10 history / settings / data controls | done | A10HASH |
 
 ## Verified (automated)
 `npm run typecheck`, `npm test`, `npm run smoke` (with `WOLFIE_USER_DATA=/tmp/wolfie-a`; logs `[extension] loopback server listening on 127.0.0.1:45678`), `npm run build:extension` (every file the manifest references exists in `extension/dist`).
@@ -25,6 +25,7 @@ Tests that prove each "Done when":
 - **A1:** `desktop/src/main/monitor/__tests__/monitor.test.ts` (simulated window stream gives exactly the expected change-only `app_events` rows, idle flips, domains only for browsers, title capture off, pause marker, auto-start; denied Automation gives a status and no row, no crash), `window-source.test.ts` (osascript parsing/error classification, permission status/requests), `session/__tests__/session.test.ts` (sessions row, `session.start/end`, orphan recovery, mic flag).
 - **A2:** `desktop/src/main/sync/__tests__/extension-link.test.ts` on port 0: no token / wrong token / wrong or missing origin rejected; first-use extension id stored then enforced; a valid client's domain lands in `app_events.url_domain`; `desk.state` pushed on session/pause/frontmost/settings changes; `problem-changed` only on `problemId` change; domain-only mode; summary round trip.
 - **A3:** `extension/src/lib/__tests__/report.test.ts` (`reportableDomain`: excluded, incognito, paused, non-web), `background/__tests__/connection.test.ts` (hello, backoff, rejection), `popup/__tests__/view.test.ts` (jsdom).
+- **A10:** `desktop/src/main/history/__tests__/history.test.ts` (History totals equal an independent sum over the raw `app_events`, paused time excluded, per-session nudge/hint/escalation counts, web sessions, running session; settings reads exclude pairing, writes validated/normalized and bad ones store nothing; export covers every table and omits secrets; Clear leaves every table empty except the re-seeded `streak_state` row, with foreign keys on and stored images deleted).
 - **A9:** `desktop/src/main/streak/__tests__/{compute,engine}.test.ts` (qualifying boundary, freeze earn every 7 days and cap 2, auto-consume, reset, longest kept, week calendar, work-only focus minutes, midnight split, DST spring forward and fall back, timezone change keeps old dates, late-synced web session repairs the past, desktop+web combined, celebration/milestone/freeze/reset/reminder each once and retried if the queue drops them, reminder time in the local zone), `monitor.test.ts` (sleep gap).
 - **A8:** `desktop/src/main/sync/__tests__/lan-server.test.ts` (port 0, real sockets: right/wrong/locked pairing code, HMAC auth good/bad/unknown/replayed nonce, unauthenticated traffic rejected, sessions/activity/nudge logs stored and acked, offline replay of the whole queue on a new connection and after a restart creates no duplicates, out-of-order data, poison messages, hint round trip with the mock provider returning 5 distinct levels, followup and `hint.error`, replayed hint does not call the model twice, unpair cuts the device off, snapshots pushed).
 - **A6:** `desktop/src/main/stuck/signals/__tests__/signals.test.ts` (fake-clock tests: each desktop signal's threshold and non-firing cases; `InputPoller`; `SignalSink` stores into `web_signals`, logs, emits on `stuckBus 'signal'`, drops outside a session; and an extension `ext.signal` over a real socket reaches the bus and `web_signals` in `extension-link.test.ts`).

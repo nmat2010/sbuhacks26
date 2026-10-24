@@ -5,9 +5,10 @@
 import { execFile } from 'child_process';
 import { networkInterfaces } from 'os';
 import { promisify } from 'util';
-import { powerMonitor, shell, systemPreferences } from 'electron';
+import { unlinkSync, writeFileSync } from 'fs';
+import { BrowserWindow, dialog, powerMonitor, shell, systemPreferences } from 'electron';
 import type { SessionInfo } from '../../common/ipc-sensing.js';
-import { getDatabase } from '../db/index.js';
+import { DATA_TABLES, getDatabase } from '../db/index.js';
 import { broadcast, handle } from '../ipc.js';
 import { Monitor } from '../monitor/monitor.js';
 import { getPermissionsStatus, requestPermission, type PermissionDeps } from '../monitor/permissions.js';
@@ -37,6 +38,9 @@ import { setLatestPageSummary, setPageSummaryRequester } from '../sync/context.j
 import { EXTENSION_WS_PORT, SYNC_WS_PORT } from '@wolfie/shared';
 import { requestFollowup, requestHints } from '../hints/index.js';
 import { StreakEngine } from '../streak/engine.js';
+import { buildExport, clearAllData } from '../history/data-controls.js';
+import { getHistory } from '../history/queries.js';
+import { isPublicSettingKey, keyPresent, readPublicSettings, writePublicSetting } from '../history/settings-api.js';
 import { startLanLink, type LanLink } from '../sync/lan-link.js';
 import { getPlanSnapshotForSync, getStreakSnapshotForSync, notifySnapshotsChanged, setStreakSnapshotProvider } from '../sync/snapshots.js';
 import type { SyncInfo } from '../../common/ipc-sensing.js';
@@ -318,6 +322,75 @@ export function registerSensing(): void {
       void lanLink?.stop();
       lanLink = null;
     };
+  });
+
+  // ---- A10: history, settings, status, data controls ----------------------------------------
+  guarded('data', () => {
+    const lists = () => ({ aiTools: getSetting('monitored.ai_tools'), distractions: getSetting('monitored.distractions') });
+
+    handle('history-get', async (opts) =>
+      getHistory(getDatabase(), { now: Date.now(), lists: lists(), limit: opts?.limit, sinceTs: opts?.sinceTs })
+    );
+    handle('settings-get', async () => readPublicSettings(getSetting));
+    handle('settings-set', async (key, value) => writePublicSetting(key, value, setSetting));
+    handle('status-get', async () => ({
+      extensionConnected: extensionLink?.server.isConnected() ?? false,
+      extensionListening: extensionLink?.port != null,
+      syncListening: lanLink?.getInfo().listening ?? false,
+      pairedDevices: getSetting('pairing.webapp_devices').length,
+      geminiKeyPresent: keyPresent(process.env.GEMINI_API_KEY),
+      elevenLabsKeyPresent: keyPresent(process.env.ELEVENLABS_API_KEY),
+      demoMode: process.env.DEMO_MODE === '1' || getSetting('demo.mode'),
+      sessionActive: getActiveSession() !== null,
+      paused: isPaused()
+    }));
+
+    handle('data-export', async () => {
+      try {
+        const win = BrowserWindow.getFocusedWindow();
+        const options = {
+          title: 'Export Wolfie data',
+          defaultPath: `wolfie-export-${new Date().toISOString().slice(0, 10)}.json`,
+          filters: [{ name: 'JSON', extensions: ['json'] }]
+        };
+        const choice = win ? await dialog.showSaveDialog(win, options) : await dialog.showSaveDialog(options);
+        if (choice.canceled || !choice.filePath) return { success: false, canceled: true };
+        writeFileSync(choice.filePath, JSON.stringify(buildExport(getDatabase(), DATA_TABLES, Date.now()), null, 2), 'utf8');
+        return { success: true, path: choice.filePath };
+      } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
+      }
+    });
+
+    handle('data-clear', async (opts) => {
+      try {
+        stopSession(); // end the running session cleanly before its rows go
+        const result = clearAllData(getDatabase(), DATA_TABLES, { keepSettings: opts?.keepSettings, deleteFile: unlinkSync });
+        if (!opts?.keepSettings) extensionLink?.regenerateToken(); // settings are gone, so make a fresh pairing token
+        streakEngine?.recalculate();
+        broadcast('session-changed', sessionInfo());
+        broadcast('data-cleared', {});
+        return { success: true, tablesCleared: result.tablesCleared.length };
+      } catch (error) {
+        console.error('[sensing] clear all data failed:', error instanceof Error ? error.message : error);
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
+      }
+    });
+
+    // Tell every window about setting changes; apply the NudgeQueue limits live
+    return settingsEvents.on('change', (key, value) => {
+      if (isPublicSettingKey(key)) broadcast('settings-changed', { key, value });
+      if (key === 'nudge.max_per_hour' || key === 'nudge.cooldown_minutes') {
+        try {
+          getNudgeQueue().updateConfig({
+            maxNudgesPerHour: getSetting('nudge.max_per_hour'),
+            cooldownMinutes: getSetting('nudge.cooldown_minutes')
+          });
+        } catch {
+          // queue not ready yet
+        }
+      }
+    });
   });
 
   guarded('permissions', () => {

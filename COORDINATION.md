@@ -82,6 +82,20 @@ isMicAllowed();            // active session && !paused && voice.enabled
 **Pause marker:** while paused, `app_events` gets one row with `app_name='(paused)'`; history/streak treat time until the next row as paused.
 **Tests:** `npm test --workspace=desktop` (monitor, session, sync, rules suites).
 
+### Integration Offer: settings, history, status, streak, data controls (A9, A10) - for Thu's dashboard
+**By:** Agent A. All channels are typed in `desktop/src/common/ipc-sensing.ts`; call with `window.electronAPI.invoke(channel, ...args)`.
+| Channel | Returns |
+|---|---|
+| `streak-get` / event `streak-changed` | `StreakSnapshot`: `current, longest, freezesAvailable, todayQualified, todayMinutes, week[7]{localDate,status}` (same as `streak.snapshot` on the web app) |
+| `history-get {limit?, sinceTs?}` | `{sessions[], totals}`: per session `seconds{work,ai_tool,distraction,idle}`, `nudgeCount`, `hintCount`, `deepestHintLevel`, `deepestEscalationLevel` |
+| `settings-get` / `settings-set {key, value}` / event `settings-changed` | all settings except `pairing.*`; writes are validated and return `{success, error?, value?}` |
+| `status-get` | `{extensionConnected, extensionListening, syncListening, pairedDevices, geminiKeyPresent, elevenLabsKeyPresent, demoMode, sessionActive, paused}` |
+| `extension-pairing-get` / `-regenerate`, `sync-info-get` / `sync-regenerate-code` / `sync-unpair`, `permissions-get` / `-request` | pairing, LAN pairing code + IPs for the QR, permission status |
+| `data-export` | asks where to save, writes every table as JSON (pairing secrets left out) |
+| `data-clear {keepSettings?}` | deletes everything and re-seeds the streak row; confirm in the UI first; event `data-cleared` means reload |
+**Streak copy** (celebration, milestone, freeze, reset, reminder) is placeholder text in `desktop/src/main/streak/messages.ts` for Thu to edit; rule-warning copy is in `desktop/src/main/rules/messages.ts`.
+**For Agent B (B2):** History reads the deepest escalation level from events `stuck.level` with `payload.level` (0-4); please log that shape.
+
 ### Integration Offer: LAN sync (A8) - M3
 **By:** Agent A
 **For Thu (web app client):** protocol, step by step, over `ws://<desktop-ip>:45679` (message envelope `{id, type, ts, payload}` from `shared/src/schemas/sync.ts`):
