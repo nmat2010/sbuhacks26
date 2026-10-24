@@ -2,6 +2,7 @@
 // while the desktop says `reporting`, honor pause / exclusions / incognito, serve the popup.
 // The pure parts live in ../lib and ./connection so they are unit-tested without chrome.*.
 import { EXTENSION_WS_PORT } from '@wolfie/shared';
+import { BacktrackDetector } from '../lib/backtrack';
 import { normalizeDomainInput, reportableDomain, type ReportState } from '../lib/report';
 import type { ContentState, PopupStatus, RuntimeMessage, TabMessage } from '../lib/messages';
 import { DesktopConnection, type DeskStatePayload, type SocketLike } from './connection';
@@ -95,7 +96,23 @@ chrome.tabs.onActivated.addListener((info) => {
 });
 chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.active) reportTab(tab);
+  // URL oscillation (backtracking) is tracked here because page loads destroy content scripts.
+  if (changeInfo.url && tab.active) trackNavigation(tab);
 });
+
+const backtrack = new BacktrackDetector({
+  now: () => Date.now(),
+  emit: (signal) => {
+    void chrome.tabs.query({ active: true, lastFocusedWindow: true }).then(([tab]) => {
+      const domain = tab ? reportableDomain(tab, reportState()) : null;
+      if (domain) conn.send('ext.signal', { signal, domain });
+    });
+  }
+});
+
+function trackNavigation(tab: chrome.tabs.Tab): void {
+  if (tab.url && reportableDomain(tab, reportState())) backtrack.visit(tab.url);
+}
 
 // ---- keep-alive ----------------------------------------------------------------------------
 
