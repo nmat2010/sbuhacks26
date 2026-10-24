@@ -10,7 +10,7 @@
 | A1 sessions + monitor | done | 41e678d |
 | A2 extension loopback server | done | 09a161c |
 | A3 extension background + popup | done | 83a2313 |
-| A4 rules + warnings (**M1**) | done | see `git log` (commit "A4") |
+| A4 rules + warnings (**M1**) | done | 32d4513 |
 | A5 PageSummary + web signals | not started | |
 | A7 demo pages | not started | |
 | A6 desktop signals (**M2**) | not started | |
