@@ -10,10 +10,12 @@
 
 ### Thu is working on:
 - ✅ Phase 0 complete
-- ⏭️ Ready for Phase 1: Mascot overlay and voice
+- ✅ Phase 1 complete (Mascot overlay and voice UI)
+- ⏭️ Ready for Phase 4 hint conversation UI (waiting on Tuan's hint service)
 
 ### Tuan is working on:
-- ⏳ Ready to start Phase 2
+- 🔴 Phase 1: STT/TTS voice providers (pending)
+- 🔴 Phase 2: Session monitoring and extension connection (not started)
 
 ---
 
@@ -22,9 +24,9 @@
 | Phase | Feature | Owner | Status | Notes |
 |-------|---------|-------|--------|-------|
 | 0 | Scaffold & contracts | Both | ✅ Complete | Ready for Phase 1-2 |
-| 1 | Mascot overlay | Thu | 🔴 Not started | - |
-| 1 | Voice UI | Thu | 🔴 Not started | Needs Tuan's providers |
-| 1 | STT/TTS providers | Tuan | 🔴 Not started | - |
+| 1 | Mascot overlay | Thu | ✅ Complete | With 6 states, animations, hover menu |
+| 1 | Voice UI | Thu | ✅ Complete | Local voice intents, Web Speech API |
+| 1 | STT/TTS providers | Tuan | 🔴 Not started | Eleven Labs integration pending |
 | 2 | Session monitoring | Tuan | 🔴 Not started | - |
 | 2 | Extension connection | Tuan | 🔴 Not started | - |
 | 3 | AI tool warnings | Tuan | 🔴 Not started | - |
@@ -96,9 +98,17 @@
 - ✅ Thu: Desktop Electron app scaffold
 - ✅ Thu: Chrome extension skeleton
 - ✅ Thu: LLM provider interface (mock + gemini)
+- ✅ Thu: **Phase 1 Complete** - Mascot overlay with 6 states (idle, talking, alert, sleeping, glance, question-mark)
+- ✅ Thu: Speech bubble component with buttons and auto-dismiss
+- ✅ Thu: CSS animations for all mascot states
+- ✅ Thu: Hover menu for quick actions
+- ✅ Thu: Voice mode toggle and local intents (Web Speech API)
+- ✅ Thu: NudgeQueue system with cooldowns and priority
+- ✅ Thu: Test panel for easy nudge testing
 
 ### This Week
 - Phase 0 complete
+- Phase 1 (Thu's part) complete
 
 ---
 

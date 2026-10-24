@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import wolfieMascotImage from '../assets/wolfie_mascot.png';
 
 export type MascotState = 'idle' | 'talking' | 'alert' | 'sleeping' | 'glance' | 'question-mark';
 
@@ -21,27 +22,20 @@ export function Mascot({ state, voiceActive, onClick, onMouseEnter, onMouseLeave
     }
   }, [state]);
 
-  // Map states to emoji and styles
-  const getStateAppearance = () => {
+  // Map states to animation
+  const getAnimation = () => {
     switch (state) {
-      case 'idle':
-        return { emoji: '🐺', animation: 'idle' };
-      case 'talking':
-        return { emoji: '🐺', animation: 'talking' };
-      case 'alert':
-        return { emoji: '🐺', animation: 'alert' };
-      case 'sleeping':
-        return { emoji: '😴', animation: 'sleeping' };
-      case 'glance':
-        return { emoji: '👀', animation: 'glance' };
-      case 'question-mark':
-        return { emoji: '❓', animation: 'question' };
-      default:
-        return { emoji: '🐺', animation: 'idle' };
+      case 'idle': return 'idle';
+      case 'talking': return 'talking';
+      case 'alert': return 'alert';
+      case 'sleeping': return 'sleeping';
+      case 'glance': return 'glance';
+      case 'question-mark': return 'question';
+      default: return 'idle';
     }
   };
 
-  const { emoji, animation } = getStateAppearance();
+  const animation = getAnimation();
 
   return (
     <div
@@ -49,58 +43,42 @@ export function Mascot({ state, voiceActive, onClick, onMouseEnter, onMouseLeave
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       style={{
-        width: '120px',
-        height: '120px',
-        backgroundColor: state === 'alert' ? '#e74c3c' : '#3498db',
-        borderRadius: '50%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        cursor: 'pointer',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-        border: '3px solid',
-        borderColor: state === 'alert' ? '#c0392b' : '#2980b9',
-        userSelect: 'none',
         position: 'relative',
+        cursor: 'pointer',
+        userSelect: 'none',
         transform: bounce ? 'scale(1.1)' : 'scale(1)',
         transition: 'all 0.3s ease',
         animation: `${animation} 2s ease-in-out infinite`
       }}
       className="mascot"
     >
-      <div style={{
-        fontSize: '48px',
-        userSelect: 'none',
-        animation: state === 'talking' ? 'talk 0.5s ease-in-out infinite' : 'none'
-      }}>
-        {emoji}
-      </div>
+      {/* Wolfie Mascot */}
+      <img
+        src={wolfieMascotImage}
+        alt="Wolfie Mascot"
+        style={{
+          width: '220px',
+          height: 'auto',
+          userSelect: 'none',
+          pointerEvents: 'none',
+          opacity: state === 'sleeping' ? 0.7 : 1
+        }}
+      />
 
       {/* Voice active indicator */}
       {voiceActive && (
         <div style={{
           position: 'absolute',
-          top: '5px',
-          right: '5px',
-          width: '12px',
-          height: '12px',
+          top: '10px',
+          right: '10px',
+          width: '16px',
+          height: '16px',
           backgroundColor: '#27ae60',
           borderRadius: '50%',
-          animation: 'pulse 1s ease-in-out infinite'
+          border: '2px solid white',
+          animation: 'pulse 1s ease-in-out infinite',
+          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)'
         }} />
-      )}
-
-      {/* Question mark overlay for escalation level 2 */}
-      {state === 'question-mark' && (
-        <div style={{
-          position: 'absolute',
-          top: '-10px',
-          right: '-10px',
-          fontSize: '32px',
-          animation: 'bounce 0.5s ease-in-out infinite'
-        }}>
-          ❓
-        </div>
       )}
     </div>
   );
