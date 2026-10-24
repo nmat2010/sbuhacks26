@@ -12,7 +12,7 @@
 | A3 extension background + popup | done | 83a2313 |
 | A4 rules + warnings (**M1**) | done | 32d4513 |
 | A5 PageSummary + web signals | done | f9375f7 |
-| A7 demo pages | done | A7HASH |
+| A7 demo pages | done | b12c5af |
 | A6 desktop signals (**M2**) | not started | |
 | A8 LAN sync server (**M3**) | not started | |
 | A9 streak engine | not started | |
