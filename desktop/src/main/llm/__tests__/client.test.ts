@@ -200,3 +200,27 @@ describe('LLMClient per-call options (Watch-mode video attempts)', () => {
     expect(Date.now() - started).toBeLessThan(2000);
   });
 });
+
+describe('LLMClient: used-up daily quota (Gemini free tier)', () => {
+  it('maps a per-day 429 to QUOTA without retrying; a per-minute 429 stays retryable', async () => {
+    const { LLMClient: Client } = await import('../client.js');
+    const { z } = await import('zod');
+    let attempts = 0;
+    const fail = (message: string) => ({
+      name: 'gemini',
+      countsTowardCap: false,
+      generateJson: async () => {
+        attempts++;
+        throw Object.assign(new Error(message), { status: 429 });
+      }
+    });
+    const call = { task: 'generic' as const, system: '', messages: [{ role: 'user' as const, content: 'x' }], schema: z.object({}) };
+    const daily = new Client({ provider: fail('Generate content requests per day limit exceeded on Free Tier'), retryDelayMs: 1, log: () => {} });
+    await expect(daily.generate(call)).rejects.toMatchObject({ code: 'QUOTA' });
+    expect(attempts).toBe(1);
+    attempts = 0;
+    const perMinute = new Client({ provider: fail('Requests per minute limit exceeded'), retryDelayMs: 1, log: () => {} });
+    await expect(perMinute.generate(call)).rejects.toMatchObject({ code: 'RATE_LIMITED' });
+    expect(attempts).toBe(2);
+  });
+});

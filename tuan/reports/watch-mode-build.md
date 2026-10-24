@@ -120,3 +120,13 @@
   - Failures are now logged (`watch.paper_import_failed`, reason only) and retried after 3 min.
   - `watch-memory-get` shows `paperImport` per source.
 - Tests: 623 pass.
+
+## Update: "couldn't reach the AI" was Gemini's free-tier quota
+- A test call with Tuan's key returned 429 RESOURCE_EXHAUSTED: "Generate content requests per day limit exceeded on Free Tier". That's `gemini-3.6-flash`, with a limit of **20 requests/day per project per model**, resetting at midnight Pacific.
+- About 82 calls were made today, 69 of them by the watcher. Wolfie's own caps were not hit (13/200 and 69/2000).
+- **Fix:**
+  - A new `QUOTA` error code: a per-day 429 is not retried, and per-minute 429s stay retryable.
+  - Answers and the paper Q&A say the quota is used up, and the watcher shows `limit_reached` with a quota note.
+- **New option:** `GEMINI_WATCH_MODEL` gives the watcher its own model and quota pool. On this key today, `gemini-3.5-flash-lite`, `gemini-3.1-flash-lite` and `gemini-flash-lite-latest` still respond, while `gemini-3.5-flash` is also at 20/day.
+- **Recommendation:** turn on billing (Tier 1) for real use; the free tier can't support Watch mode.
+- Tests: 625 pass.

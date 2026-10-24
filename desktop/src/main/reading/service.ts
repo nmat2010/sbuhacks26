@@ -447,6 +447,7 @@ function joinList(items: string[]): string {
 function friendly(error: unknown): string {
   if (error instanceof LLMError) {
     if (error.code === 'DAILY_CAP') return "I've reached today's limit for questions. Try again tomorrow.";
+    if (error.code === 'QUOTA') return "Gemini's daily quota for this API key is used up. It resets at midnight Pacific time, or turn on billing in Google AI Studio.";
     if (error.code === 'SCHEMA' || error.code === 'INVALID_JSON') return "I couldn't put together a good answer this time. Please try asking again.";
   }
   return "I couldn't reach the question service. Check your connection and try again.";

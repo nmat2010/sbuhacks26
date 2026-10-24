@@ -16,7 +16,7 @@ export interface WatchControllerDeps {
   getSession: () => { id: string } | null;
   isPaused: () => boolean;
   memory: SessionMemory;
-  watcher: Pick<Watcher, 'start' | 'stop' | 'reset' | 'getState'> & Partial<Pick<Watcher, 'getSkipReason'>>;
+  watcher: Pick<Watcher, 'start' | 'stop' | 'reset' | 'getState'> & Partial<Pick<Watcher, 'getSkipReason' | 'isQuotaExhausted'>>;
   /** Import a PDF/arXiv paper the student opened; the library paper, or why it failed. */
   importPaper: (url: string) => Promise<{ ok: true; paperId: string; title: string } | { ok: false; error: string }>;
   log: (type: EventType, payload: Record<string, unknown>) => void;
@@ -72,7 +72,11 @@ export class WatchController {
     if (!this.isActive()) return null;
     const state = deps.watcher.getState();
     if (state === 'no_permission') return 'Allow Screen Recording for Wolfie in System Settings so I can see your screen.';
-    if (state === 'limit_reached') return "I've reached today's watching limit; I'll pick up again tomorrow.";
+    if (state === 'limit_reached') {
+      return deps.watcher.isQuotaExhausted?.()
+        ? "Gemini's daily quota for your API key is used up, so I can't look right now. It resets at midnight Pacific time (or set GEMINI_WATCH_MODEL to a flash-lite model, or turn on billing)."
+        : "I've reached today's watching limit; I'll pick up again tomorrow.";
+    }
     if (state === 'away') return "You've been away for a while, so I'm not looking. I'll pick up when you're back.";
     if (state !== 'skipping') return null;
     switch (deps.watcher.getSkipReason?.()) {

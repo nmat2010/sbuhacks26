@@ -201,9 +201,13 @@ const LEARNING_RULES =
 const HOMEWORK_RULES =
   'The student is doing homework or graded work. Do NOT give the final answer, the full solution, or a worked version of their own problem. Give the smallest useful hint: point to the step or idea to look at again, or ask a guiding question. If they ask for the answer, kindly say you will help them get there and give a hint instead.';
 
+export const QUOTA_MESSAGE =
+  "Gemini's daily quota for this API key is used up (the free tier allows only a few requests per day). It resets at midnight Pacific time, or turn on billing in Google AI Studio.";
+
 function friendly(error: unknown): string {
   if (error instanceof LLMError) {
     if (error.code === 'DAILY_CAP') return "I've reached today's limit for questions. Try again tomorrow.";
+    if (error.code === 'QUOTA') return QUOTA_MESSAGE;
     if (error.code === 'SCHEMA' || error.code === 'INVALID_JSON') return "I couldn't put together a good answer this time. Please ask again.";
     if (error.code === 'AUTH' || error.code === 'NOT_CONFIGURED') return 'The AI key is missing or not working. Check desktop/.env.';
   }

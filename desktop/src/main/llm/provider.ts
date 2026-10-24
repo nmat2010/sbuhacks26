@@ -55,6 +55,8 @@ export type LlmErrorCode =
   | 'TIMEOUT'
   | 'NETWORK'
   | 'RATE_LIMITED'
+  /** The provider's daily quota is used up (e.g. Gemini free tier): retrying today won't help. */
+  | 'QUOTA'
   | 'AUTH'
   | 'BAD_REQUEST'
   | 'INVALID_JSON'

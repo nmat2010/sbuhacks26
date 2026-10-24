@@ -39,7 +39,7 @@ import { attachNudgeSpeech } from '../voice/nudge-speech.js';
 import { createVoiceService, type VoiceService } from '../voice/service.js';
 import type { IntentHandler } from '../voice/router.js';
 import type { VoiceIntent } from '../voice/intents.js';
-import { getLLMClient, LLMClient } from '../llm/client.js';
+import { getLLMClient, LLMClient, selectProvider } from '../llm/client.js';
 import { PrefixedUsageStore, SqliteUsageStore } from '../llm/usage.js';
 import { getForeground, getTabReport } from '../foreground.js';
 import { isBrowserApp } from '../monitor/browsers.js';
@@ -201,9 +201,12 @@ function domainListed(domain: string | null, list: string[]): boolean {
 // Watch mode (WATCH_MODE.md): watcher + session memory + answers, and the hooks the hint flow uses.
 function registerWatch(): void {
   const memory = new SessionMemory();
-  // Its own daily budget (watch.calls_per_day), counted separately from hints and plans
+  // Its own daily budget (watch.calls_per_day), counted separately from hints and plans, and
+  // optionally its own model (GEMINI_WATCH_MODEL): Gemini quotas are per model, and the watcher
+  // makes most of the calls, so a cheaper flash-lite model keeps the main model free for answers
+  const watchModel = process.env.GEMINI_WATCH_MODEL?.trim();
   const client = new LLMClient({
-    provider: getLLMClient().provider,
+    provider: watchModel ? selectProvider({ ...process.env, GEMINI_MODEL: watchModel }) : getLLMClient().provider,
     usage: new PrefixedUsageStore(new SqliteUsageStore(), 'watch:'),
     dailyCap: () => getSetting('watch.calls_per_day'),
     timeoutMs: 20_000

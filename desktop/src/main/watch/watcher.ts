@@ -113,6 +113,8 @@ export class Watcher {
   private flaggedAnswers = new Set<string>();
   private state: WatcherState = 'idle';
   private skipReason: SkipReason | null = null;
+  /** The last limit hit was Gemini's own daily quota (not Wolfie's watch.calls_per_day). */
+  private quotaExhausted = false;
   /** The browser's last answer for a window, reused while its id and title stay the same. */
   private probeCache: { windowId: number; title: string; tab: BrowserTab; at: number } | null = null;
   /** The newest frame, kept in memory briefly for questions asked right after (never written). */
@@ -140,6 +142,11 @@ export class Watcher {
 
   getState(): WatcherState {
     return this.state;
+  }
+
+  /** True when watching stopped on Gemini's daily quota rather than Wolfie's own cap. */
+  isQuotaExhausted(): boolean {
+    return this.state === 'limit_reached' && this.quotaExhausted;
   }
 
   /** Why the last look was skipped (null unless the state is 'skipping'). */
@@ -343,7 +350,11 @@ export class Watcher {
       this.setState('watching');
     } catch (error) {
       if (stale()) return; // stopped meanwhile: stay idle
-      if (error instanceof LLMError && error.code === 'DAILY_CAP') this.setState('limit_reached');
+      if (error instanceof LLMError && (error.code === 'DAILY_CAP' || error.code === 'QUOTA')) {
+        this.skipReason = null;
+        this.quotaExhausted = error.code === 'QUOTA';
+        this.setState('limit_reached');
+      }
       else {
         console.error('[watch] observe failed:', (error as Error).message);
         this.setState('error');

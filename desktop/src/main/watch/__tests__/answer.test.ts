@@ -164,3 +164,11 @@ describe('WatchAnswerService: follow-ups and video attempts (re-review)', () => 
     expect(calls[0]).toMatchObject({ noRetry: true, timeoutMs: 40_000 });
   });
 });
+
+describe('WatchAnswerService: Gemini quota used up', () => {
+  it('says the daily quota is used up instead of "couldn\'t reach the AI"', async () => {
+    reply = new LLMError('per day limit', 'QUOTA', 'gemini');
+    const res = await make().ask({ question: 'x?', inputMode: 'text' });
+    expect(res.error).toContain('daily quota');
+  });
+});

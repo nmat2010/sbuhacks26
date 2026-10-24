@@ -170,6 +170,8 @@ function toLlmError(error: unknown, provider: string): LLMError {
   if (error instanceof LLMError) return error;
   const status = (error as { status?: number } | null)?.status;
   const message = error instanceof Error ? error.message : String(error);
+  // A used-up daily quota is not transient (per-minute limits are, and stay retryable)
+  if (status === 429 && /per ?day|PerDay|exceeded your current quota/i.test(message)) return new LLMError(message, 'QUOTA', provider, false);
   if (status === 429 || (status !== undefined && status >= 500)) return new LLMError(message, 'RATE_LIMITED', provider, true);
   if (status === 401 || status === 403) return new LLMError(message, 'AUTH', provider);
   if (status === 400) return new LLMError(message, 'BAD_REQUEST', provider);
