@@ -1,7 +1,7 @@
 # Report: Agent A (Sensing & Data)
 
 **Branch:** `tuan/a-sensing`, from `tuan/phase0-fixes` @ f4de16a.
-**Last updated after:** A6 (M2 ready on my side).
+**Last updated after:** A8 (M3 ready on my side).
 
 ## Status
 
@@ -14,7 +14,7 @@
 | A5 PageSummary + web signals | done | f9375f7 |
 | A7 demo pages | done | b12c5af |
 | A6 desktop signals (**M2**) | done | 0538f24 |
-| A8 LAN sync server (**M3**) | not started | |
+| A8 LAN sync server (**M3**) | done | A8HASH |
 | A9 streak engine | not started | |
 | A10 history / settings / data controls | not started | |
 
@@ -25,6 +25,7 @@ Tests that prove each "Done when":
 - **A1:** `desktop/src/main/monitor/__tests__/monitor.test.ts` (simulated window stream gives exactly the expected change-only `app_events` rows, idle flips, domains only for browsers, title capture off, pause marker, auto-start; denied Automation gives a status and no row, no crash), `window-source.test.ts` (osascript parsing/error classification, permission status/requests), `session/__tests__/session.test.ts` (sessions row, `session.start/end`, orphan recovery, mic flag).
 - **A2:** `desktop/src/main/sync/__tests__/extension-link.test.ts` on port 0: no token / wrong token / wrong or missing origin rejected; first-use extension id stored then enforced; a valid client's domain lands in `app_events.url_domain`; `desk.state` pushed on session/pause/frontmost/settings changes; `problem-changed` only on `problemId` change; domain-only mode; summary round trip.
 - **A3:** `extension/src/lib/__tests__/report.test.ts` (`reportableDomain`: excluded, incognito, paused, non-web), `background/__tests__/connection.test.ts` (hello, backoff, rejection), `popup/__tests__/view.test.ts` (jsdom).
+- **A8:** `desktop/src/main/sync/__tests__/lan-server.test.ts` (port 0, real sockets: right/wrong/locked pairing code, HMAC auth good/bad/unknown/replayed nonce, unauthenticated traffic rejected, sessions/activity/nudge logs stored and acked, offline replay of the whole queue on a new connection and after a restart creates no duplicates, out-of-order data, poison messages, hint round trip with the mock provider returning 5 distinct levels, followup and `hint.error`, replayed hint does not call the model twice, unpair cuts the device off, snapshots pushed).
 - **A6:** `desktop/src/main/stuck/signals/__tests__/signals.test.ts` (fake-clock tests: each desktop signal's threshold and non-firing cases; `InputPoller`; `SignalSink` stores into `web_signals`, logs, emits on `stuckBus 'signal'`, drops outside a session; and an extension `ext.signal` over a real socket reaches the bus and `web_signals` in `extension-link.test.ts`).
 - **A5:** `extension/src/content/__tests__/` (summary + redaction: no password/card/OTP/typed values anywhere in a summary, viewport-first 2,500-char text, <=120 controls with stable ids; detectors: each threshold; runtime in jsdom: wrong-answer loop, dead clicks (disabled, aria-disabled, no-effect), validation errors, domain-only mode sends and reads nothing, throttling).
 - **A4:** `desktop/src/main/rules/__tests__/rules.test.ts` (matching, cooldown, ignore, "I need this"; an end-to-end test drives a simulated stream through the real `Monitor` and `NudgeQueue` into SQLite and checks `nudges.user_response` and `events`).

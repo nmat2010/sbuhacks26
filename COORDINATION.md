@@ -82,6 +82,18 @@ isMicAllowed();            // active session && !paused && voice.enabled
 **Pause marker:** while paused, `app_events` gets one row with `app_name='(paused)'`; history/streak treat time until the next row as paused.
 **Tests:** `npm test --workspace=desktop` (monitor, session, sync, rules suites).
 
+### Integration Offer: LAN sync (A8) - M3
+**By:** Agent A
+**For Thu (web app client):** protocol, step by step, over `ws://<desktop-ip>:45679` (message envelope `{id, type, ts, payload}` from `shared/src/schemas/sync.ts`):
+1. Server sends `auth.challenge {nonce}` on connect.
+2. New device: send `pair.request {code, deviceName}` (the 6 digits shown in Wolfie's settings). Reply `pair.result {ok, deviceId, secret}`: store both in localStorage. The socket is authenticated.
+3. Paired device: send `auth.hello {deviceId, hmac}` with `hmac = hex(HMAC-SHA256(key=secret, data=nonce))`, lower-case hex, both as UTF-8 strings (WebCrypto: import the secret string's UTF-8 bytes as the HMAC key). Test vector: `HMAC('abc','xyz') = c03d0898b76731130f3e2134b39b824c53c4e62a55b3c020a4be6d5ada606102`. Reply `auth.result {ok:true}` then `plan.snapshot` and `streak.snapshot`.
+4. `auth.result {ok:false, reason:'unpaired'}` means the desktop forgot this device: delete the stored secret and show the pairing screen.
+5. Every other message gets `ack {ackId}`. Keep messages in `pendingSync` until acked; replay in order after reconnect with the **same ids** (the desktop dedupes and re-acks). Hints: `hint.request` is acked at once, then `hint.response` or `hint.error {requestId, message}` arrives; fail fast yourself if the socket is down.
+6. IPC for the desktop settings screen: `sync-info-get` -> `{listening, port, addresses[], code, codeExpiresAt, devices[]}` (build the QR from `addresses[0]`, `port`, `code`), `sync-regenerate-code`, `sync-unpair {deviceId}`; event `sync-changed`.
+**For Agent B (B6):** call `setPlanSnapshotProvider(getPlanSnapshot)` (from `desktop/src/main/sync/snapshots.ts`) in `intelligence/register.ts` and `notifySnapshotsChanged('plan')` after plan changes; until then the web app gets an empty plan. `hints/index.ts` `requestHints`/`requestFollowup` are called as-is for `hint.request`/`hint.followup`.
+**For Tuan at merge:** `desktop/src/main/__tests__/db.test.ts` (core) was edited to compare only core migrations, since agent migration files add names to the list; keep either side's version.
+
 ### Integration Offer: signals for the escalation engine (A5, A6) - M2
 **By:** Agent A
 **Provides (for Agent B / B2):**

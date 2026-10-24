@@ -3,6 +3,7 @@
 // Only register files may import `electron` or `../ipc.js`; logic modules get them injected.
 
 import { execFile } from 'child_process';
+import { networkInterfaces } from 'os';
 import { promisify } from 'util';
 import { powerMonitor, shell, systemPreferences } from 'electron';
 import type { SessionInfo } from '../../common/ipc-sensing.js';
@@ -33,7 +34,11 @@ import { stuckBus } from '../stuck/bus.js';
 import { DomainTracker } from '../sync/domain-tracker.js';
 import { startExtensionLink, type ExtensionLink } from '../sync/extension-link.js';
 import { setLatestPageSummary, setPageSummaryRequester } from '../sync/context.js';
-import { EXTENSION_WS_PORT } from '@wolfie/shared';
+import { EXTENSION_WS_PORT, SYNC_WS_PORT } from '@wolfie/shared';
+import { requestFollowup, requestHints } from '../hints/index.js';
+import { startLanLink, type LanLink } from '../sync/lan-link.js';
+import { getPlanSnapshotForSync, getStreakSnapshotForSync } from '../sync/snapshots.js';
+import type { SyncInfo } from '../../common/ipc-sensing.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -41,6 +46,7 @@ let stops: Array<() => void> = [];
 let monitor: Monitor | null = null;
 let extensionLink: ExtensionLink | null = null;
 let signalSink: SignalSink | null = null;
+let lanLink: LanLink | null = null;
 const domainTracker = new DomainTracker();
 
 function sessionInfo(): SessionInfo {
@@ -49,6 +55,10 @@ function sessionInfo(): SessionInfo {
     active: s ? { id: s.id, startedAt: s.startedAt, assessmentMode: s.assessmentMode, goalId: s.goalId } : null,
     paused: isPaused()
   };
+}
+
+function offlineSync(): SyncInfo {
+  return { listening: false, port: null, addresses: [], code: '', codeExpiresAt: 0, devices: [] };
 }
 
 function offlinePairing() {
@@ -237,6 +247,34 @@ export function registerSensing(): void {
     return () => {
       void extensionLink?.stop();
       extensionLink = null;
+    };
+  });
+
+  // ---- A8: LAN sync server for the web app --------------------------------------------------
+  guarded('lan-sync', () => {
+    handle('sync-info-get', async () => lanLink?.getInfo() ?? offlineSync());
+    handle('sync-regenerate-code', async () => lanLink?.regenerateCode() ?? offlineSync());
+    handle('sync-unpair', async (deviceId) => lanLink?.unpair(deviceId) ?? offlineSync());
+    void startLanLink({
+      port: SYNC_WS_PORT,
+      db: getDatabase,
+      now: Date.now,
+      getDevices: () => getSetting('pairing.webapp_devices'),
+      setDevices: (devices) => setSetting('pairing.webapp_devices', devices),
+      hints: { requestHints, requestFollowup },
+      getPlanSnapshot: getPlanSnapshotForSync,
+      getStreakSnapshot: getStreakSnapshotForSync,
+      logEvent: (type, payload, opts) => logEvent(type, payload, opts),
+      networkInterfaces
+    })
+      .then((link) => {
+        lanLink = link;
+        link.events.on('changed', (info) => broadcast('sync-changed', info));
+      })
+      .catch((error) => console.error('[sensing] LAN sync failed:', error instanceof Error ? error.message : error));
+    return () => {
+      void lanLink?.stop();
+      lanLink = null;
     };
   });
 
