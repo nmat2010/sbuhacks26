@@ -118,5 +118,12 @@ This document tracks decisions made during implementation where the spec was amb
 - **Reporting needs the frontmost app**, which comes from the window poll. If Automation is denied, `reporting` stays false and the extension reports nothing (documented limitation; titles-only fallback applies the other way round).
 - **EADDRINUSE:** the link logs and stays off; IPC `extension-pairing-get` reports `port: null`.
 
+### A3: extension background + popup
+- **Popup exclusions and pause are extension-local.** The contract has no extension-to-desktop settings message, so the popup keeps `localPaused` and `localExcluded` in `chrome.storage.local` and enforces them in the extension (union with `desk.state.excludedDomains`). Desktop-managed exclusions show read-only ("edit in Wolfie settings", via A10's `settings-set`). Removing a desktop default from the popup is therefore not possible; that is a settings-screen action.
+- **Pairing rejected** (`desk.hello_result ok:false`) stops reconnect attempts until the user enters a new token (avoids hammering the desktop); an unreachable desktop retries with 1 s..30 s backoff (+20% jitter).
+- **Keep-alive:** `chrome.alarms` every 30 s (added `alarms` permission) reconnects if the worker restarted; a 20 s interval re-reports the active tab while reporting; the desktop also heartbeats `desk.state` (see A2).
+- **Page text gate in two places:** the background forwards `PAGE_SUMMARY` only when the tab is reportable, `capturePageText` is true and the summary's domain matches the tab's hostname; content scripts also ask for per-tab state (`GET_CONTENT_STATE`, pushed again as `STATE`).
+- Pure logic is in `extension/src/lib` (`reportableDomain`, backoff, messages) and `background/connection.ts` (fake socket/timers in tests); `popup/view.ts` renders with `textContent` only.
+
 ## Agent B
 _(Agent B appends decisions here.)_

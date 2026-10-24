@@ -5,7 +5,8 @@
   "description": "Study companion that helps when you're stuck",
   "permissions": [
     "activeTab",
-    "storage"
+    "storage",
+    "alarms"
   ],
   "host_permissions": [
     "<all_urls>"

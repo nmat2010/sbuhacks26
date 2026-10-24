@@ -1,155 +1,176 @@
-// Background service worker for Wolfie Sensei extension.
-// Phase 0 fix-up: speaks the frozen contract in @wolfie/shared/schemas/extension.ts.
-// Agent A (A3) owns the rest: popup UI, exclusions editing, incognito, PageSummary forwarding.
-import {
-  EXTENSION_WS_PORT,
-  ExtensionMessageSchema,
-  type ExtensionMessage,
-  type ExtensionMessageOf
-} from '@wolfie/shared';
+// Background service worker (MV3). A3: reconnect with backoff, keep the worker alive, report only
+// while the desktop says `reporting`, honor pause / exclusions / incognito, serve the popup.
+// The pure parts live in ../lib and ./connection so they are unit-tested without chrome.*.
+import { EXTENSION_WS_PORT } from '@wolfie/shared';
+import { normalizeDomainInput, reportableDomain, type ReportState } from '../lib/report';
+import type { ContentState, PopupStatus, RuntimeMessage, TabMessage } from '../lib/messages';
+import { DesktopConnection, type DeskStatePayload, type SocketLike } from './connection';
 
-console.log('Wolfie Sensei extension background script loaded');
+const KEEPALIVE_ALARM = 'wolfie-keepalive';
+/** MV3 workers are stopped after ~30 s without activity; traffic every 20 s keeps them alive. */
+const HEARTBEAT_MS = 20_000;
 
-// Extension state
-let desktopConnected = false;
 let pairingToken: string | null = null;
-let ws: WebSocket | null = null;
-// Last desk.state from the desktop. Report nothing until the desktop says to.
-let deskState: ExtensionMessageOf<'desk.state'>['payload'] = {
-  reporting: false,
-  paused: false,
-  capturePageText: false,
-  excludedDomains: []
-};
+let localPaused = false;
+let localExcluded: string[] = [];
+// Report nothing until the desktop says to.
+let desk: DeskStatePayload = { reporting: false, paused: false, capturePageText: false, excludedDomains: [] };
 
-type Outbound = Extract<ExtensionMessage, { type: `ext.${string}` }>;
+const reportState = (): ReportState => ({
+  reporting: desk.reporting,
+  paused: desk.paused,
+  localPaused,
+  excludedDomains: desk.excludedDomains,
+  localExcludedDomains: localExcluded
+});
 
-function send<T extends Outbound['type']>(type: T, payload: Extract<Outbound, { type: T }>['payload']): void {
-  if (!ws || ws.readyState !== WebSocket.OPEN) return;
-  ws.send(JSON.stringify({ id: crypto.randomUUID(), type, ts: Date.now(), payload }));
-}
-
-function isExcluded(domain: string): boolean {
-  return deskState.excludedDomains.some((d) => domain === d || domain.endsWith(`.${d}`));
-}
-
-/** Domain to report for a tab, or null if this tab must report nothing. */
-function reportableDomain(tab: chrome.tabs.Tab): string | null {
-  if (!deskState.reporting || deskState.paused || tab.incognito || !tab.url) return null;
-  let url: URL;
-  try {
-    url = new URL(tab.url);
-  } catch {
-    return null;
+const conn = new DesktopConnection({
+  url: `ws://127.0.0.1:${EXTENSION_WS_PORT}`, // loopback only; the token goes in the first message
+  createSocket: (url) => new WebSocket(url) as unknown as SocketLike,
+  getToken: () => pairingToken,
+  extensionVersion: chrome.runtime.getManifest().version,
+  newId: () => crypto.randomUUID(),
+  now: () => Date.now(),
+  setTimer: (fn, ms) => setTimeout(fn, ms),
+  clearTimer: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
+  onDeskState: (state) => {
+    const wasReporting = desk.reporting;
+    desk = state;
+    if (!wasReporting && state.reporting) void reportActiveTab();
+    void broadcastContentState();
+  },
+  onRequestSummary: () => void askActiveTabForSummary(),
+  onStatus: () => {
+    if (!conn.connected) desk = { ...desk, reporting: false };
+    void broadcastContentState();
   }
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
-  return isExcluded(url.hostname) ? null : url.hostname;
+});
+
+// ---- storage -------------------------------------------------------------------------------
+
+const ready = chrome.storage.local
+  .get(['pairingToken', 'localPaused', 'localExcluded'])
+  .then((stored) => {
+    pairingToken = typeof stored.pairingToken === 'string' && stored.pairingToken ? stored.pairingToken : null;
+    localPaused = stored.localPaused === true;
+    localExcluded = Array.isArray(stored.localExcluded) ? stored.localExcluded.filter((d) => typeof d === 'string') : [];
+    conn.connect();
+  });
+
+// ---- reporting -----------------------------------------------------------------------------
+
+async function reportActiveTab(): Promise<void> {
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  if (tab) reportTab(tab);
 }
 
 function reportTab(tab: chrome.tabs.Tab): void {
-  const domain = reportableDomain(tab);
-  if (domain) send('ext.tab', { domain, title: tab.title });
+  const domain = reportableDomain(tab, reportState());
+  if (domain) conn.send('ext.tab', { domain, title: tab.title });
 }
 
-// Load pairing token from storage
-chrome.storage.local.get(['pairingToken'], (result) => {
-  if (result.pairingToken) {
-    pairingToken = result.pairingToken;
-    connectToDesktop();
+async function askActiveTabForSummary(): Promise<void> {
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  if (!tab?.id || !reportableDomain(tab, reportState()) || !desk.capturePageText) return;
+  const message: TabMessage = { type: 'REQUEST_SUMMARY' };
+  chrome.tabs.sendMessage(tab.id, message).catch(() => undefined); // no content script on this page
+}
+
+function contentStateFor(tab: { url?: string; incognito?: boolean }): ContentState {
+  return { reporting: reportableDomain(tab, reportState()) !== null, capturePageText: desk.capturePageText };
+}
+
+/** Tell each tab's content script whether it may report (it sends domain-only when text is off). */
+async function broadcastContentState(): Promise<void> {
+  const tabs = await chrome.tabs.query({});
+  for (const tab of tabs) {
+    if (!tab.id) continue;
+    const message: TabMessage = { type: 'STATE', ...contentStateFor(tab) };
+    chrome.tabs.sendMessage(tab.id, message).catch(() => undefined);
   }
-});
+}
 
-// Listen for messages from content scripts and the popup
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'PAGE_SUMMARY') {
-    // Forward page summary to desktop if allowed for this tab
-    if (sender.tab && reportableDomain(sender.tab)) {
-      send('ext.page_summary', { summary: message.data });
-    }
-    sendResponse({ success: true });
-  } else if (message.type === 'SET_PAIRING_TOKEN') {
-    pairingToken = message.token;
-    chrome.storage.local.set({ pairingToken });
-    ws?.close();
-    connectToDesktop();
-    sendResponse({ success: true });
-  } else if (message.type === 'GET_CONNECTION_STATUS') {
-    sendResponse({ connected: desktopConnected, reporting: deskState.reporting });
-  }
-  return true; // Keep message channel open for async response
+chrome.tabs.onActivated.addListener((info) => {
+  chrome.tabs.get(info.tabId).then(reportTab, () => undefined);
 });
-
-// Track active tab changes
-chrome.tabs.onActivated.addListener((activeInfo) => {
-  chrome.tabs.get(activeInfo.tabId, reportTab);
-});
-
-// Track tab updates
 chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.active) reportTab(tab);
 });
 
-function connectToDesktop() {
-  if (!pairingToken) {
-    console.log('No pairing token, skipping desktop connection');
-    return;
-  }
+// ---- keep-alive ----------------------------------------------------------------------------
 
-  // Loopback only; the token goes in the first message, never in the URL
-  try {
-    ws = new WebSocket(`ws://127.0.0.1:${EXTENSION_WS_PORT}`);
+chrome.alarms.create(KEEPALIVE_ALARM, { periodInMinutes: 0.5 });
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name !== KEEPALIVE_ALARM) return;
+  void ready.then(() => {
+    conn.connect(); // reconnect if the worker was restarted or the socket died
+    if (desk.reporting) void reportActiveTab();
+  });
+});
+// While the worker is alive, re-report the active tab so the socket is never idle for 30 s.
+setInterval(() => {
+  if (conn.connected && desk.reporting) void reportActiveTab();
+}, HEARTBEAT_MS);
 
-    ws.onopen = () => {
-      send('ext.hello', { token: pairingToken!, extensionVersion: chrome.runtime.getManifest().version });
-    };
+// ---- messages from the content script and popup --------------------------------------------
 
-    ws.onclose = () => {
-      console.log('Disconnected from Wolfie desktop');
-      desktopConnected = false;
-      deskState = { ...deskState, reporting: false };
-      // Retry connection after 5 seconds
-      setTimeout(connectToDesktop, 5000);
-    };
-
-    ws.onerror = () => {
-      desktopConnected = false;
-    };
-
-    ws.onmessage = (event) => {
-      const parsed = ExtensionMessageSchema.safeParse(safeJson(event.data));
-      if (parsed.success) handleDesktopMessage(parsed.data);
-      else console.warn('Ignoring invalid desktop message');
-    };
-  } catch (error) {
-    console.error('Failed to connect to desktop:', error);
-    desktopConnected = false;
-  }
+function status(): PopupStatus {
+  return {
+    connected: conn.connected,
+    reporting: desk.reporting,
+    deskPaused: desk.paused,
+    localPaused,
+    hasToken: pairingToken !== null,
+    deskExcluded: desk.excludedDomains,
+    localExcluded
+  };
 }
 
-function safeJson(data: unknown): unknown {
-  try {
-    return JSON.parse(String(data));
-  } catch {
-    return null;
-  }
-}
-
-function handleDesktopMessage(message: ExtensionMessage) {
+async function handle(message: RuntimeMessage, sender: chrome.runtime.MessageSender): Promise<unknown> {
+  await ready;
   switch (message.type) {
-    case 'desk.hello_result':
-      desktopConnected = message.payload.ok;
-      console.log(message.payload.ok ? 'Connected to Wolfie desktop' : `Pairing rejected: ${message.payload.reason}`);
-      break;
-    case 'desk.state':
-      deskState = message.payload;
-      if (deskState.reporting) {
-        chrome.tabs.query({ active: true, lastFocusedWindow: true }, ([tab]) => tab && reportTab(tab));
+    case 'PAGE_SUMMARY': {
+      const tab = sender.tab;
+      const domain = tab ? reportableDomain(tab, reportState()) : null;
+      // Domain-only mode: never forward page text. Also require the summary to match the tab.
+      if (domain && desk.capturePageText && message.data.domain.toLowerCase() === domain) {
+        conn.send('ext.page_summary', { summary: message.data });
       }
-      break;
-    case 'desk.request_summary':
-      // A5: ask the active tab's content script for a fresh PageSummary
-      break;
+      return { success: true };
+    }
+    case 'SIGNAL': {
+      const domain = sender.tab ? reportableDomain(sender.tab, reportState()) : null;
+      if (domain) conn.send('ext.signal', { signal: message.signal, domain });
+      return { success: true };
+    }
+    case 'GET_CONTENT_STATE':
+      return sender.tab ? contentStateFor(sender.tab) : { reporting: false, capturePageText: false };
+    case 'GET_STATUS':
+      return status();
+    case 'SET_PAIRING_TOKEN': {
+      pairingToken = message.token.trim() || null;
+      await chrome.storage.local.set({ pairingToken });
+      if (pairingToken) conn.restart();
+      else conn.disconnect();
+      return status();
+    }
+    case 'SET_LOCAL_PAUSED':
+      localPaused = message.paused;
+      await chrome.storage.local.set({ localPaused });
+      void broadcastContentState();
+      return status();
+    case 'SET_LOCAL_EXCLUDED': {
+      localExcluded = [...new Set(message.domains.map(normalizeDomainInput).filter((d): d is string => d !== null))];
+      await chrome.storage.local.set({ localExcluded });
+      void broadcastContentState();
+      return status();
+    }
     default:
-      break;
+      return undefined;
   }
 }
+
+chrome.runtime.onMessage.addListener((message: RuntimeMessage, sender, sendResponse) => {
+  handle(message, sender).then(sendResponse, () => sendResponse(undefined));
+  return true; // async response
+});
