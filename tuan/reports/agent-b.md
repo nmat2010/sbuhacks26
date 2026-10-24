@@ -6,7 +6,7 @@
 | Package | State |
 |---|---|
 | B1 LLM client | done |
-| B5a Voice core | not started |
+| B5a Voice core | done |
 | B2 Escalation runtime | not started |
 | B3a Hint service | not started |
 | B3b Hint flow (M2) | not started |
@@ -28,3 +28,11 @@ npm ci && npm run typecheck && npm test
 cd desktop && npx eslint --no-eslintrc -c ../.eslintrc.json src electron   # lint workaround for nested worktrees, see DECISIONS.md
 WOLFIE_USER_DATA=/tmp/wolfie-b npm run smoke
 ```
+
+## B5a details
+- Files: `desktop/src/main/voice/{types,mock,text,intents,echo,speaker,router,controller,service,bus}.ts`, IPC in `src/common/ipc-intelligence.ts`, voice wiring in `intelligence/register.ts`.
+- Interfaces for Thu: `SttProvider`/`TtsProvider` in `voice/types.ts`; mic frames arrive via invoke `voice-audio-in` (16 kHz 16-bit mono PCM; the preload has no generic `send`), audio goes out on events `voice-audio-out` / `voice-stop-playback`, green dot on `voice-mic`, failures on `voice-trouble`. Developer panel / typed input: invoke `voice-utterance` (works with the mock STT). `voice-status` reports providers and whether an ElevenLabs key exists.
+- For Agent A (A4): every recognized intent is announced on `voiceBus` (`voice/bus.ts`). `taking_a_break`, `need_this`, `ignore` have no B handler; A4 listens and answers its open nudge.
+- Tests: `voice/__tests__/voice.test.ts` (46): intents incl. negatives and speed, echo, first-two-sentences, speaker barge-in and TTS failure, router (intents with no model call, follow-up only with an open ladder, paused drop, echo drop, barge-in), controller (STT closes on pause, drops frames, trouble).
+- Verified: typecheck, tests, lint (workaround), `npm run smoke` OK with the register wiring.
+- Not verified: real microphone or ElevenLabs (B5b).
