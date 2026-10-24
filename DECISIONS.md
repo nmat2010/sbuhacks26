@@ -124,3 +124,11 @@ _(Agent B appends decisions here.)_
 - Level 4 speaks the same offer text; the text includes "say I'm stuck" so it works when the bubble has already faded. Level 4 only happens with voice mode on (the shared engine caps otherwise).
 - While paused the engine does not touch the sprite (main.ts owns "sleeping"). `setLadderOpen(true)` (called by the hint flow) clears signals, ignores new ones and holds level 0.
 - Hotkey `Alt+Shift+H` emits `help-requested('manual')`; if the key is taken the app logs it and continues.
+
+### B3a: hint service
+- `requestHints` / `requestFollowup` (frozen signatures) delegate to `HintService` (`hints/service.ts`), which takes all outside things as injected deps. Callers can pass `assessment=false` and still get assessment mode: the service ORs in the active session's toggle, the stored `sessions.assessment_mode` for `context.sessionId` (web app sessions), and `assessment.domains` (suffix match on the page domain).
+- **Logging:** each ladder request writes one `hint_requests` row for level 1 (what the student sees first); the hint flow calls `logLevelShown` for each later level; follow-ups log the level they answered at. Rows are written only if a `sessions` row with that id exists (FK + NOT NULL). `events` always gets `hint.requested` / `hint.followup` / `hint.level_shown` with no page text.
+- **Word limits** are enforced after the model answers (40 words for levels 1-2, 90 for 3-5, cut on a sentence boundary when possible). Follow-ups are clamped to the current level or one up, never above 5.
+- **Offline ladder:** any `LLMError` after the client's one retry (network, invalid output, daily cap, no key) produces the rule-based ladder with `offline: true` and a `what_i_see` that says "offline hints". If the page had an error message, level 2 quotes it (truncated).
+- **Images** are decoded for the model and written to `<userData>/images` only when `image.storage_enabled`; otherwise nothing touches disk, so nothing needs deleting.
+- Follow-up conversation is sent as one user message (context, transcript, current level, the new utterance), which avoids role-alternation problems with Gemini.

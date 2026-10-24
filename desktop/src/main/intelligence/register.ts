@@ -3,12 +3,14 @@
 // NudgeQueue are ready. Only register files may import `electron` or `../ipc.js`; logic modules
 // get them injected.
 
-import { globalShortcut } from 'electron';
+import { join } from 'path';
+import { app, globalShortcut } from 'electron';
 import type { NudgeResponse } from '@wolfie/shared';
 import { stuckBus } from '../stuck/bus.js';
 import { EscalationEngine } from '../stuck/engine.js';
 import { logEvent } from '../events.js';
 import { setMascotState } from '../overlay/state.js';
+import { configureHintService } from '../hints/index.js';
 import { registerHelpHotkey } from './hotkey.js';
 import { handle, broadcast } from '../ipc.js';
 import { getNudgeQueue } from '../nudge/index.js';
@@ -30,6 +32,7 @@ const voiceHandlers: Partial<Record<Exclude<VoiceIntent, 'stop' | 'repeat' | 'st
 
 export function registerIntelligence(): void {
   initLLMClient();
+  configureHintService({ imageDir: join(app.getPath('userData'), 'images') });
   registerVoice();
   registerEscalation();
 }

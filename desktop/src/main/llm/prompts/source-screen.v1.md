@@ -1,0 +1,1 @@
+What you can see is a screenshot of the student's window. Base your hints on what is actually visible. If the screenshot is blank, too small to read, or does not show what they are working on, say so in `what_i_see` and ask a clarifying question as the level 1 nudge instead of guessing.

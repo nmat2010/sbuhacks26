@@ -1,24 +1,53 @@
-import { HintResponseSchema, type RequestFollowup, type RequestHints } from '@wolfie/shared';
+import type { RequestFollowup, RequestHints } from '@wolfie/shared';
+import { getDatabase } from '../db/index.js';
+import { logEvent } from '../events.js';
 import { getLLMClient } from '../llm/client.js';
-import { renderPrompt } from '../llm/prompts/index.js';
+import { getActiveSession } from '../session/index.js';
+import { getSetting } from '../settings.js';
+import { HintService, type HintServiceDeps } from './service.js';
 
-// Seam: frozen signatures (SPEC 11, contract 3). B3a replaces these bodies with context
-// assembly, logging to hint_requests, image handling, and the offline ladder. Agent A's LAN sync
-// server (A8) routes web app hint.request / hint.followup messages here.
+// Frozen signatures (SPEC 11, contract 3). Agent A's LAN sync server (A8) routes web app
+// hint.request / hint.followup messages here; B3b's hint flow uses the same service.
 
-const LlmHintOutput = HintResponseSchema.omit({ offline: true });
+let imageDir: string | null = null;
+let service: HintService | null = null;
 
-export const requestHints: RequestHints = async (context, source, assessment) => {
-  const out = await getLLMClient().generate({
-    task: 'hints',
-    system: renderPrompt('tutor.v1'),
-    messages: [{ role: 'user', content: JSON.stringify({ source, page: context.pageSummary }) }],
-    schema: LlmHintOutput,
-    mockKey: { problemId: context.problemId ?? context.pageSummary?.problemId, assessment }
-  });
-  return { ...out, offline: false };
-};
+/** register.ts tells the service where stored images may go (<userData>/images). */
+export function configureHintService(opts: { imageDir?: string | null }): void {
+  if (opts.imageDir !== undefined) imageDir = opts.imageDir;
+}
 
-export const requestFollowup: RequestFollowup = async (followup) => {
-  throw new Error(`requestFollowup not implemented yet (B3a); request ${followup.requestId}`);
-};
+export function createDefaultHintDeps(): HintServiceDeps {
+  return {
+    llm: getLLMClient,
+    db: getDatabase,
+    now: Date.now,
+    getSetting,
+    activeSession: () => getActiveSession(),
+    imageDir: () => imageDir,
+    log: (type, payload) => {
+      try {
+        logEvent(type, payload);
+      } catch (error) {
+        console.error('[hints] could not log event:', error);
+      }
+    }
+  };
+}
+
+export function getHintService(): HintService {
+  return (service ??= new HintService(createDefaultHintDeps()));
+}
+
+/** Test helper. */
+export function setHintServiceForTesting(next: HintService | null): void {
+  service = next;
+}
+
+export const requestHints: RequestHints = (context, source, assessment) =>
+  getHintService().requestHints(context, source, assessment);
+
+export const requestFollowup: RequestFollowup = (followup, context, source, assessment) =>
+  getHintService().requestFollowup(followup, context, source, assessment);
+
+export { HintService } from './service.js';
