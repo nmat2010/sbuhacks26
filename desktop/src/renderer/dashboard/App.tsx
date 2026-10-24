@@ -1,38 +1,89 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { TodayView } from './views/TodayView';
+import { GoalsView } from './views/GoalsView';
+import { PapersView } from './views/PapersView';
+import { HistoryView } from './views/HistoryView';
+import { SettingsView } from './views/SettingsView';
+import './styles/Dashboard.css';
+
+type ViewType = 'today' | 'goals' | 'papers' | 'history' | 'settings';
 
 function App() {
-  const [pingResult, setPingResult] = useState<string>('');
+  const [currentView, setCurrentView] = useState<ViewType>('today');
 
-  useEffect(() => {
-    // Test IPC communication
-    window.electronAPI.ping().then(result => {
-      setPingResult(result);
-    });
-  }, []);
+  const renderView = () => {
+    switch (currentView) {
+      case 'today':
+        return <TodayView />;
+      case 'goals':
+        return <GoalsView />;
+      case 'papers':
+        return <PapersView />;
+      case 'history':
+        return <HistoryView />;
+      case 'settings':
+        return <SettingsView />;
+      default:
+        return <TodayView />;
+    }
+  };
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h1>Wolfie Sensei Dashboard</h1>
-      <p>Welcome to Wolfie Sensei - your study companion!</p>
+    <div className="dashboard">
+      {/* Sidebar Navigation */}
+      <aside className="sidebar">
+        <div className="sidebar-header">
+          <h1 className="app-title">Wolfie Sensei</h1>
+          <p className="app-subtitle">Study Companion</p>
+        </div>
 
-      <div style={{
-        marginTop: '20px',
-        padding: '10px',
-        backgroundColor: '#f0f0f0',
-        borderRadius: '5px'
-      }}>
-        <h3>System Status</h3>
-        <p>IPC Test: {pingResult || 'Testing...'}</p>
-      </div>
+        <nav className="nav-menu">
+          <button
+            className={`nav-item ${currentView === 'today' ? 'active' : ''}`}
+            onClick={() => setCurrentView('today')}
+          >
+            <span className="nav-icon">📅</span>
+            <span className="nav-label">Today</span>
+          </button>
 
-      <div style={{ marginTop: '20px' }}>
-        <h2>Quick Start</h2>
-        <ul>
-          <li>Configure your goals and semester info</li>
-          <li>Start a study session</li>
-          <li>Let Wolfie help when you get stuck</li>
-        </ul>
-      </div>
+          <button
+            className={`nav-item ${currentView === 'goals' ? 'active' : ''}`}
+            onClick={() => setCurrentView('goals')}
+          >
+            <span className="nav-icon">🎯</span>
+            <span className="nav-label">Goals & Plan</span>
+          </button>
+
+          <button
+            className={`nav-item ${currentView === 'papers' ? 'active' : ''}`}
+            onClick={() => setCurrentView('papers')}
+          >
+            <span className="nav-icon">📄</span>
+            <span className="nav-label">Papers</span>
+          </button>
+
+          <button
+            className={`nav-item ${currentView === 'history' ? 'active' : ''}`}
+            onClick={() => setCurrentView('history')}
+          >
+            <span className="nav-icon">📊</span>
+            <span className="nav-label">History</span>
+          </button>
+
+          <button
+            className={`nav-item ${currentView === 'settings' ? 'active' : ''}`}
+            onClick={() => setCurrentView('settings')}
+          >
+            <span className="nav-icon">⚙️</span>
+            <span className="nav-label">Settings</span>
+          </button>
+        </nav>
+      </aside>
+
+      {/* Main Content Area */}
+      <main className="main-content">
+        {renderView()}
+      </main>
     </div>
   );
 }
