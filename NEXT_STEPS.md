@@ -1,5 +1,25 @@
 # Next steps: who does what (draft from Tuan, 2026-10-24)
 
+> **Update (later on 2026-10-24): direction change proposed, please read [`WATCH_MODE.md`](WATCH_MODE.md).**
+> Tuan wants Wolfie to follow the *content* of a study session with Gemini, not just which app is open:
+> - **Learning mode** answers questions about the paper or video directly, with citations.
+> - **Homework mode** checks your answers and nudges with the hint ladder.
+>
+> It reuses everything already built. Thu's part:
+> - U1: Watch-mode consent and toggle;
+> - U2: turn `HintConversation` into a real chat panel;
+> - U3: audio playback at 24 kHz and 16 kHz, and mic capture.
+>
+> Please review it before building more overlay or voice UI.
+>
+> **Web app: settled.** Thu has already built `web/` (88bdd1b), so Thu keeps it and section 2 below is closed. Tuan won't touch `web/`.
+>
+> **Still unwired on `main` (as of 1410a5c), from Tuan's first real run:**
+> - **Dashboard:** History doesn't call `history-get`. Settings doesn't call `settings-get/set`, `status-get`, pairing, permissions, or data. Onboarding has a commented-out call to `save-onboarding-data`, which doesn't exist; the real channel is `plan-onboarding-save`.
+> - **Overlay:** the mascot isn't draggable yet (SPEC Phase 0/11). There's no talk button, mic capture, or audio playback. A warning bubble stays after you leave the site. `HintConversation` has a commented-out call to `request-hint`, which doesn't exist: hint steps arrive as normal bubbles, or will come through `watch-ask` (`WATCH_MODE.md`).
+> - **Settings needs per-site on/off for warnings** (e.g. YouTube as a learning source). Use `settings-set('monitored.distractions', [...])` and toggle the entry's `enabled`.
+> - **Already fixed by Tuan** on `tuan/fix-self-window`, not yet merged: the overlay now floats over full-screen apps and on all desktops; the bubble fits in the window and its buttons take clicks; clicking Wolfie no longer counts as an app switch.
+
 Thu, this is a proposal, not a decision. I don't know what you've done locally since "dashboard UI" (5a1f2b9), so **please fill in section 1 first**. Then we can split the rest without redoing each other's work. Until you reply, I'll stay out of `desktop/src/renderer/**` and `web/**`. I'll only do real-hardware testing and fix bugs in the backend folders.
 
 ## 0. What's on `main` now
@@ -30,7 +50,7 @@ Thu, this is a proposal, not a decision. I don't know what you've done locally s
 - **Why:** Tuan's track is finished and yours is the largest. The web app is built mostly against contracts Tuan already wrote: the sync handshake, the shared escalation engine, and the fixtures. The desktop screens are yours already.
 - **If you've already started the web app,** say so in section 1 and we'll split differently. For example, you keep the notebook and Wolfie widget, and Tuan does the sync client, canvas signals, and camera.
 
-Thu, please tick one:
+Thu, please tick one: _(closed: Thu built `web/` and keeps it)_
 - [ ] Yes, Tuan takes the web app.
 - [ ] No, Thu keeps the web app; Tuan takes these desktop screens instead: ____
 - [ ] Other: ____
