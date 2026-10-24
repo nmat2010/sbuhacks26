@@ -45,3 +45,6 @@
 - The overlay should send `nudge-response` with `dismissed` when the student closes a bubble and `timeout` when it fades.
 - Please review the placeholder copy in `desktop/src/main/rules/messages.ts` and `desktop/src/main/streak/messages.ts`.
 - The contract-change proposal in `COORDINATION.md` still needs your acknowledgement, and so does the desktop voice decision.
+
+## Merged
+- 2026-10-24: `main` fast-forwarded to b7d1ce5 and pushed (no new commits on origin/main since 5a1f2b9). `integration/tuan-m3` pushed too.
