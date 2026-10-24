@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mascot, MascotState } from './components/Mascot';
 import { SpeechBubble } from './components/SpeechBubble';
 import { HoverMenu } from './components/HoverMenu';
@@ -15,6 +15,10 @@ function App() {
   const [showHintConversation, setShowHintConversation] = useState(false);
 
   const { currentNudge, dismissNudge, handleButtonClick } = useNudge();
+  // Sprite state pushed by main when no bubble is showing (escalation glance / "?", sleeping)
+  const [baseState, setBaseState] = useState<MascotState>('idle');
+
+  useEffect(() => window.electronAPI.on('overlay-state', setBaseState), []);
 
   // Listen for voice toggle from context menu
   useEffect(() => {
@@ -79,9 +83,9 @@ function App() {
           setMascotState('talking');
       }
     } else {
-      setMascotState('idle');
+      setMascotState(baseState);
     }
-  }, [currentNudge]);
+  }, [currentNudge, baseState]);
 
   const handleMouseEnter = () => {
     // Disable click-through when hovering over mascot
@@ -109,7 +113,9 @@ function App() {
   };
 
   const handleMascotClick = () => {
-    // Open hint conversation
+    // Manual hint entry point (SPEC 4d); main routes it to the escalation engine
+    window.electronAPI.invoke('mascot-click');
+    // Also open hint conversation UI for demo/testing
     setShowHintConversation(true);
   };
 
@@ -172,7 +178,7 @@ function App() {
           pointerEvents: 'auto',
           WebkitAppRegion: 'no-drag',
           position: 'relative'
-        }}
+        } as React.CSSProperties}
       >
         {/* Hover area that includes both mascot and menu */}
         <div

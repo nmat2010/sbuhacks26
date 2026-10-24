@@ -17,11 +17,8 @@ export default defineConfig({
           build: {
             outDir: 'dist-electron',
             rollupOptions: {
-              external: ['better-sqlite3', 'electron'],
-              output: {
-                format: 'cjs',
-                entryFileNames: '[name].cjs'
-              }
+              // Native, Node-only, or browser-field packages load from node_modules at runtime
+              external: ['better-sqlite3', 'electron', 'ws', 'bufferutil', 'utf-8-validate', '@google/genai', 'pdfjs-dist']
             }
           }
         }
@@ -34,11 +31,15 @@ export default defineConfig({
         vite: {
           build: {
             outDir: 'dist-electron',
+            // Sandboxed preload scripts must be CommonJS
+            lib: {
+              entry: 'electron/preload.ts',
+              formats: ['cjs'],
+              // The plugin's default 'es' format is merged in too; keep its output out of the way
+              fileName: (format) => (format === 'cjs' ? 'preload.cjs' : 'preload.mjs')
+            },
             rollupOptions: {
-              output: {
-                format: 'cjs',
-                entryFileNames: '[name].cjs'
-              }
+              external: ['electron']
             }
           }
         }

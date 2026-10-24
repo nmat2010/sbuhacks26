@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
+import type { SessionInfo } from '../../../common/ipc-sensing';
 
 interface Session {
-  id: number;
-  started_at: string;
-  ended_at: string | null;
+  id: string;
+  started_at: number;
+  ended_at: number | null;
 }
+
+const toSession = (info: SessionInfo): Session | null =>
+  info.active ? { id: info.active.id, started_at: info.active.startedAt, ended_at: null } : null;
 
 interface Streak {
   current: number;
@@ -23,19 +27,23 @@ export function TodayView() {
   }, []);
 
   const loadTodayData = async () => {
-    // TODO: Load from IPC
-    // const sessionData = await window.electronAPI.invoke('get-active-session');
-    // const streakData = await window.electronAPI.invoke('get-streak');
-    // setActiveSession(sessionData);
-    // setStreak(streakData);
+    const [sessionData, streakData] = await Promise.all([
+      window.electronAPI.invoke('session-get'),
+      window.electronAPI.invoke('streak-get')
+    ]);
+    setActiveSession(toSession(sessionData));
+    setStreak({
+      current: streakData.current,
+      longest: streakData.longest,
+      freezes_available: streakData.freezesAvailable
+    });
+    setTodayMinutes(streakData.todayMinutes);
   };
 
   const handleStartSession = async () => {
     try {
-      // TODO: Call IPC to start session
-      // const session = await window.electronAPI.invoke('session-start');
-      // setActiveSession(session);
-      console.log('Start session');
+      const session = await window.electronAPI.invoke('session-start');
+      setActiveSession(toSession(session));
     } catch (error) {
       console.error('Failed to start session:', error);
     }
@@ -43,10 +51,8 @@ export function TodayView() {
 
   const handleStopSession = async () => {
     try {
-      // TODO: Call IPC to stop session
-      // await window.electronAPI.invoke('session-stop');
-      // setActiveSession(null);
-      console.log('Stop session');
+      await window.electronAPI.invoke('session-stop');
+      setActiveSession(null);
     } catch (error) {
       console.error('Failed to stop session:', error);
     }

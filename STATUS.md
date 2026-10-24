@@ -14,8 +14,8 @@
 - ⏭️ Ready for Phase 4 hint conversation UI (waiting on Tuan's hint service)
 
 ### Tuan is working on:
-- 🔴 Phase 1: STT/TTS voice providers (pending)
-- 🔴 Phase 2: Session monitoring and extension connection (not started)
+- 🟢 All of Tuan's track is built on branch `integration/tuan-m3`: Phases 2, 3, 4, 5–7 (logic), 9 (engine), 10 (desktop server), 12 (desktop side), and the STT/TTS providers. 525 tests pass. See `tuan/reports/integration-m3.md`.
+- ⏳ Merging into `main` is next. Thu: see "For Thu" in that report.
 
 ---
 
@@ -26,28 +26,28 @@
 | 0 | Scaffold & contracts | Both | ✅ Complete | Ready for Phase 1-2 |
 | 1 | Mascot overlay | Thu | ✅ Complete | With 6 states, animations, hover menu |
 | 1 | Voice UI | Thu | ✅ Complete | Local voice intents, Web Speech API |
-| 1 | STT/TTS providers | Tuan | 🔴 Not started | Eleven Labs integration pending |
-| 2 | Session monitoring | Tuan | 🔴 Not started | - |
-| 2 | Extension connection | Tuan | 🔴 Not started | - |
-| 3 | AI tool warnings | Tuan | 🔴 Not started | - |
-| 4 | Signal detection | Tuan | 🔴 Not started | - |
-| 4 | Escalation engine | Tuan | 🔴 Not started | - |
-| 4 | Hint service | Tuan | 🔴 Not started | - |
-| 4 | Extension PageSummary | Tuan | 🔴 Not started | - |
-| 4 | Demo scenarios | Tuan | 🔴 Not started | - |
+| 1 | STT/TTS providers | Tuan | 🟢 Complete but not tested | ElevenLabs code done; not run with a real key |
+| 2 | Session monitoring | Tuan | 🟢 Complete but not tested | - |
+| 2 | Extension connection | Tuan | 🟢 Complete but not tested | - |
+| 3 | AI tool warnings | Tuan | 🟢 Complete but not tested | - |
+| 4 | Signal detection | Tuan | 🟢 Complete but not tested | - |
+| 4 | Escalation engine | Tuan | 🟢 Complete but not tested | - |
+| 4 | Hint service | Tuan | 🟢 Complete but not tested | - |
+| 4 | Extension PageSummary | Tuan | 🟢 Complete but not tested | - |
+| 4 | Demo scenarios | Tuan | 🟢 Complete but not tested | - |
 | 4 | Escalation sprites | Thu | 🔴 Not started | - |
 | 4 | Hint conversation UI | Thu | 🔴 Not started | - |
-| 5 | Plan generation | Tuan | 🔴 Not started | - |
+| 5 | Plan generation | Tuan | 🟢 Complete but not tested | - |
 | 5 | Onboarding UI | Thu | 🔴 Not started | - |
 | 5 | Plan UI | Thu | 🔴 Not started | - |
-| 6 | Paper recommendations | Tuan | 🔴 Not started | - |
-| 7 | Paper extraction | Tuan | 🔴 Not started | - |
+| 6 | Paper recommendations | Tuan | 🟢 Complete but not tested | - |
+| 7 | Paper extraction | Tuan | 🟢 Complete but not tested | - |
 | 7 | Reading view UI | Thu | 🔴 Not started | - |
 | 8 | Dashboard UI | Thu | 🔴 Not started | - |
-| 8 | Dashboard queries | Tuan | 🔴 Not started | - |
-| 9 | Streak engine | Tuan | 🔴 Not started | - |
+| 8 | Dashboard queries | Tuan | 🟢 Complete but not tested | - |
+| 9 | Streak engine | Tuan | 🟢 Complete but not tested | - |
 | 9 | Streak UI | Thu | 🔴 Not started | - |
-| 10 | Sync server | Tuan | 🔴 Not started | - |
+| 10 | Sync server | Tuan | 🟢 Complete but not tested | - |
 | 10 | Web app sync client | Thu | 🔴 Not started | - |
 | 11 | Web app notebook | Thu | 🔴 Not started | - |
 | 12 | Canvas signals | Thu | 🔴 Not started | - |

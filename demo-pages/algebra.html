@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Practice: Linear equations</title>
+  <style>
+    body { font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; color: #1c1c1e; }
+    .problem-statement { font-size: 22px; padding: 16px; background: #f2f2f7; border-radius: 8px; margin: 16px 0; }
+    input { font-size: 18px; padding: 6px 10px; width: 120px; }
+    button { font-size: 16px; padding: 7px 16px; cursor: pointer; }
+    .feedback { margin-top: 14px; min-height: 24px; font-weight: 600; }
+    .feedback.bad { color: #b3261e; }
+    .feedback.good { color: #1b7f3b; }
+  </style>
+</head>
+<body>
+  <h1>Practice: Linear equations</h1>
+  <p>Scenario A of the Wolfie demo: a wrong-answer loop. Enter a wrong answer twice (the right one is 4) and Wolfie should step in.</p>
+
+  <div class="problem-statement" data-problem-id="demo-algebra-problem">Solve for x: 2x + 5 = 13</div>
+
+  <label for="answer">Your answer: x =</label>
+  <input id="answer" type="text" inputmode="numeric" autocomplete="off">
+  <button id="check" type="button">Check</button>
+
+  <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
+
+  <script>
+    var input = document.getElementById('answer');
+    var feedback = document.getElementById('feedback');
+    function check() {
+      var ok = input.value.trim() === '4';
+      feedback.className = 'feedback ' + (ok ? 'good' : 'bad');
+      // Always rewrite the node so every check is a visible DOM change, even for a repeated message.
+      feedback.textContent = ok ? 'Correct! Well done.' : 'Incorrect, try again.';
+    }
+    document.getElementById('check').addEventListener('click', check);
+    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') check(); });
+  </script>
+</body>
+</html>

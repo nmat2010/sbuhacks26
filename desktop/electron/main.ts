@@ -1,27 +1,43 @@
-import { app, BrowserWindow, ipcMain, screen, Menu } from 'electron';
-import { join, dirname } from 'path';
+import { app, BrowserWindow, screen, Menu } from 'electron';
+import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { config } from 'dotenv';
 import { initDatabase, getDatabase, closeDatabase } from '../src/main/db/index.js';
 import { initNudgeQueue, getNudgeQueue } from '../src/main/nudge/index.js';
+import { handle, onSend, sendTo } from '../src/main/ipc.js';
+import { overlayStateEvents, setMascotState } from '../src/main/overlay/state.js';
+import { stuckBus } from '../src/main/stuck/bus.js';
+import { logEvent } from '../src/main/events.js';
+import { getSetting, setSetting } from '../src/main/settings.js';
+import { startFeatures, stopFeatures } from '../src/main/features/index.js';
+import { isPaused, sessionEvents, setPaused, startSession, stopSession } from '../src/main/session/index.js';
+import { registerSensing, unregisterSensing } from '../src/main/sensing/register.js';
+import { registerIntelligence, unregisterIntelligence } from '../src/main/intelligence/register.js';
 import { Nudge } from '@wolfie/shared';
 
-// Get __dirname equivalent in ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// The main bundle is ESM ("type": "module"), so __dirname does not exist; derive it.
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Load environment variables
 config();
 
-// Initialize database when app is ready
-let dbInitialized = false;
-let nudgeQueueInitialized = false;
+// Separate data dirs let two worktrees run side by side (WOLFIE_USER_DATA=/tmp/wolfie-a ...)
+if (process.env.WOLFIE_USER_DATA) app.setPath('userData', process.env.WOLFIE_USER_DATA);
 
 let overlayWindow: BrowserWindow | null = null;
 let dashboardWindow: BrowserWindow | null = null;
 let testWindow: BrowserWindow | null = null;
 
-const isDev = process.env.NODE_ENV === 'development';
+// Set by vite-plugin-electron in dev; follows Vite if it had to pick another port
+const devServerUrl = process.env.VITE_DEV_SERVER_URL;
+
+function loadPage(win: BrowserWindow, page: string) {
+  if (devServerUrl) {
+    win.loadURL(new URL(page, devServerUrl).toString());
+  } else {
+    win.loadFile(join(__dirname, `../dist/${page}`));
+  }
+}
 
 function createOverlayWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
@@ -51,13 +67,15 @@ function createOverlayWindow() {
     {
       label: 'Start Session',
       click: () => {
-        overlayWindow?.webContents.send('session-control', 'start');
+        startSession();
+        sendTo(overlayWindow?.webContents, 'session-control', 'start');
       }
     },
     {
       label: 'Stop Session',
       click: () => {
-        overlayWindow?.webContents.send('session-control', 'stop');
+        stopSession();
+        sendTo(overlayWindow?.webContents, 'session-control', 'stop');
       }
     },
     { type: 'separator' },
@@ -87,23 +105,17 @@ function createOverlayWindow() {
     {
       label: 'Pause Monitoring',
       type: 'checkbox',
-      checked: false,
-      click: (menuItem) => {
-        const queue = getNudgeQueue();
-        if (menuItem.checked) {
-          queue.pause();
-        } else {
-          queue.resume();
-        }
-      }
+      checked: isPaused(),
+      click: (menuItem) => setPaused(menuItem.checked)
     },
     { type: 'separator' },
     {
       label: 'Voice',
       type: 'checkbox',
-      checked: false,
+      checked: getSetting('voice.enabled'),
       click: (menuItem) => {
-        overlayWindow?.webContents.send('voice-toggle', menuItem.checked);
+        setSetting('voice.enabled', menuItem.checked);
+        sendTo(overlayWindow?.webContents, 'voice-toggle', menuItem.checked);
       }
     },
     { type: 'separator' },
@@ -119,12 +131,8 @@ function createOverlayWindow() {
     contextMenu.popup();
   });
 
-  if (isDev) {
-    overlayWindow.loadURL('http://localhost:5173/overlay.html');
-    overlayWindow.webContents.openDevTools({ mode: 'detach' });
-  } else {
-    overlayWindow.loadFile(join(__dirname, '../dist/overlay.html'));
-  }
+  loadPage(overlayWindow, 'overlay.html');
+  if (devServerUrl && process.env.WOLFIE_SMOKE !== '1') overlayWindow.webContents.openDevTools({ mode: 'detach' });
 
   overlayWindow.on('closed', () => {
     overlayWindow = null;
@@ -142,12 +150,8 @@ function createDashboardWindow() {
     }
   });
 
-  if (isDev) {
-    dashboardWindow.loadURL('http://localhost:5173/dashboard.html');
-    dashboardWindow.webContents.openDevTools({ mode: 'detach' });
-  } else {
-    dashboardWindow.loadFile(join(__dirname, '../dist/dashboard.html'));
-  }
+  loadPage(dashboardWindow, 'dashboard.html');
+  if (devServerUrl && process.env.WOLFIE_SMOKE !== '1') dashboardWindow.webContents.openDevTools({ mode: 'detach' });
 
   dashboardWindow.on('closed', () => {
     dashboardWindow = null;
@@ -172,11 +176,7 @@ function createTestWindow() {
     }
   });
 
-  if (isDev) {
-    testWindow.loadURL('http://localhost:5173/test-nudge.html');
-  } else {
-    testWindow.loadFile(join(__dirname, '../dist/test-nudge.html'));
-  }
+  loadPage(testWindow, 'test-nudge.html');
 
   testWindow.on('closed', () => {
     testWindow = null;
@@ -186,8 +186,7 @@ function createTestWindow() {
 app.whenReady().then(() => {
   // Initialize database
   try {
-    initDatabase();
-    dbInitialized = true;
+    initDatabase(app.getPath('userData'));
     console.log('Database initialized successfully');
   } catch (error) {
     console.error('Failed to initialize database:', error);
@@ -196,21 +195,64 @@ app.whenReady().then(() => {
   // Initialize nudge queue
   try {
     const nudgeQueue = initNudgeQueue();
-    nudgeQueueInitialized = true;
     console.log('NudgeQueue initialized successfully');
 
     // Forward nudges to overlay window
     nudgeQueue.on('show', (nudge: Nudge) => {
-      if (overlayWindow) {
-        overlayWindow.webContents.send('nudge-show', nudge);
-      }
+      sendTo(overlayWindow?.webContents, 'nudge-show', nudge);
     });
   } catch (error) {
     console.error('Failed to initialize nudge queue:', error);
   }
 
+  // Sprite-only states (escalation glance / "?", sleeping) bypass the queue
+  overlayStateEvents.on('change', (state) => {
+    sendTo(overlayWindow?.webContents, 'overlay-state', state);
+  });
+
+  // Pause monitoring (SPEC 7): queue + sleeping sprite here; A1 adds mic and extension
+  sessionEvents.on('pause', (paused) => {
+    const queue = getNudgeQueue();
+    if (paused) queue.pause();
+    else queue.resume();
+    setMascotState(paused ? 'sleeping' : 'idle');
+  });
+
+  // Each agent wires its modules in its own register file; do not add calls to main.ts
+  registerSensing();
+  registerIntelligence();
+
+  startFeatures({
+    pushNudge: (nudge) => getNudgeQueue().push(nudge),
+    logEvent,
+    getSetting,
+    stuckBus
+  });
+
   createOverlayWindow();
   createDashboardWindow();
+
+  // `npm run smoke`: renderer -> preload -> main -> DB round trip, then quit (Phase 0 accept)
+  if (process.env.WOLFIE_SMOKE === '1') {
+    overlayWindow?.webContents.on('preload-error', (_event, path, error) => {
+      console.log(`[smoke] preload error in ${path}: ${error}`);
+    });
+    overlayWindow?.webContents.on('console-message', (event) => {
+      console.log(`[smoke] renderer: ${event.message}`);
+    });
+    overlayWindow?.webContents.once('did-finish-load', async () => {
+      try {
+        const result = await overlayWindow?.webContents.executeJavaScript(
+          "Promise.all([window.electronAPI.ping(), window.electronAPI.invoke('db-test')]).then(JSON.stringify)"
+        );
+        console.log(`[smoke] OK ${result}`);
+      } catch (error) {
+        console.log(`[smoke] FAIL ${error}`);
+        process.exitCode = 1;
+      }
+      app.quit();
+    });
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -228,103 +270,69 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  stopFeatures();
+  unregisterIntelligence();
+  unregisterSensing();
   closeDatabase();
 });
 
-// IPC handlers (will be expanded in later phases)
-ipcMain.handle('ping', async () => {
-  return 'pong';
-});
+// IPC handlers (typed: see src/common/ipc.ts)
+handle('ping', async () => 'pong');
 
-ipcMain.on('set-ignore-mouse-events', (event, ignore: boolean, options?: { forward: boolean }) => {
-  const win = BrowserWindow.fromWebContents(event.sender);
-  if (win) {
-    win.setIgnoreMouseEvents(ignore, options);
-  }
-});
 
 // Test database IPC handler
-ipcMain.handle('db-test', async () => {
-  try {
-    const db = getDatabase();
-    // Test write
-    const testId = `test-${Date.now()}`;
-    db.prepare(
-      'INSERT INTO settings (key, value_json) VALUES (?, ?)'
-    ).run('test_key', JSON.stringify({ value: testId }));
+handle('db-test', async () => {
+  const db = getDatabase();
+  // Test write
+  const testId = `test-${Date.now()}`;
+  db.prepare('INSERT INTO settings (key, value_json) VALUES (?, ?)').run('test_key', JSON.stringify({ value: testId }));
 
-    // Test read
-    const result = db.prepare('SELECT value_json FROM settings WHERE key = ?').get('test_key') as { value_json: string } | undefined;
+  // Test read
+  const result = db.prepare('SELECT value_json FROM settings WHERE key = ?').get('test_key') as
+    | { value_json: string }
+    | undefined;
 
-    // Clean up
-    db.prepare('DELETE FROM settings WHERE key = ?').run('test_key');
+  // Clean up
+  db.prepare('DELETE FROM settings WHERE key = ?').run('test_key');
 
-    return result ? JSON.parse(result.value_json) : null;
-  } catch (error) {
-    console.error('Database test failed:', error);
-    throw error;
-  }
+  return result ? JSON.parse(result.value_json) : null;
+});
+
+// Click-through except on the mascot: the overlay toggles this on hover
+onSend('set-ignore-mouse-events', (sender, ignore, options) => {
+  BrowserWindow.fromWebContents(sender)?.setIgnoreMouseEvents(ignore, options);
 });
 
 // Nudge API IPC handlers
-ipcMain.handle('nudge-push', async (_event, nudge: Nudge) => {
+const guarded = (fn: () => void) => {
   try {
-    const queue = getNudgeQueue();
-    const result = queue.push(nudge);
-    return { success: result };
+    fn();
+    return { success: true };
+  } catch (error) {
+    console.error('[IPC] Nudge call failed:', error);
+    return { success: false, error: String(error) };
+  }
+};
+
+handle('nudge-push', async (nudge) => {
+  try {
+    const id = getNudgeQueue().push(nudge);
+    return id ? { success: true, id } : { success: false };
   } catch (error) {
     console.error('Failed to push nudge:', error);
     return { success: false, error: String(error) };
   }
 });
+handle('nudge-snooze', async () => guarded(() => getNudgeQueue().snooze()));
+handle('nudge-pause', async () => guarded(() => setPaused(true)));
+handle('nudge-resume', async () => guarded(() => setPaused(false)));
+handle('nudge-status', async () => getNudgeQueue().getStatus());
+handle('nudge-response', async (response) => guarded(() => getNudgeQueue().respond(response)));
 
-ipcMain.handle('nudge-snooze', async () => {
-  try {
-    const queue = getNudgeQueue();
-    queue.snooze();
-    return { success: true };
-  } catch (error) {
-    console.error('Failed to snooze:', error);
-    return { success: false, error: String(error) };
-  }
-});
+// Manual hint entry point (SPEC 4d); the escalation engine (B2) listens on stuckBus
+handle('mascot-click', async () => guarded(() => stuckBus.emit('help-requested', 'manual')));
 
-ipcMain.handle('nudge-pause', async () => {
-  try {
-    const queue = getNudgeQueue();
-    queue.pause();
-    return { success: true };
-  } catch (error) {
-    console.error('Failed to pause:', error);
-    return { success: false, error: String(error) };
-  }
-});
-
-ipcMain.handle('nudge-resume', async () => {
-  try {
-    const queue = getNudgeQueue();
-    queue.resume();
-    return { success: true };
-  } catch (error) {
-    console.error('Failed to resume:', error);
-    return { success: false, error: String(error) };
-  }
-});
-
-ipcMain.handle('nudge-status', async () => {
-  try {
-    const queue = getNudgeQueue();
-    return queue.getStatus();
-  } catch (error) {
-    console.error('Failed to get status:', error);
-    throw error;
-  }
-});
-
-ipcMain.handle('open-test-panel', async () => {
-  createTestWindow();
-  return { success: true };
-});
+handle('open-test-panel', async () => guarded(() => createTestWindow()));
 
 // Export for other modules
 export { overlayWindow, dashboardWindow, testWindow };

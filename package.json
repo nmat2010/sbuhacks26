@@ -10,9 +10,12 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace=desktop",
+    "smoke": "npm run smoke --workspace=desktop",
     "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present"
+    "lint": "npm run lint --workspaces --if-present",
+    "build:extension": "npm run build --workspace=extension"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.0.0",

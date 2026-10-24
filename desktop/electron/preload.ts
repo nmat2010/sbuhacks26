@@ -1,38 +1,50 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
+import type {
+  EventChannel,
+  EventChannels,
+  InvokeChannel,
+  InvokeChannels,
+  SendChannels
+} from '../src/common/ipc';
 
-// Expose protected methods that allow the renderer process to use
-// ipcRenderer without exposing the entire object
-contextBridge.exposeInMainWorld('electronAPI', {
-  // Test IPC
-  ping: () => ipcRenderer.invoke('ping'),
+type Listener = (payload: never) => void;
+type Wrapped = (event: IpcRendererEvent, payload: unknown) => void;
 
-  // Window controls
-  setIgnoreMouseEvents: (ignore: boolean, options?: { forward: boolean }) =>
-    ipcRenderer.send('set-ignore-mouse-events', ignore, options),
+// on() wraps each callback, so keep the wrapper to let off() remove the same function.
+const wrappers = new Map<Listener, Map<string, Wrapped>>();
 
-  // Event listeners
-  on: (channel: string, callback: (...args: any[]) => void) => {
-    ipcRenderer.on(channel, (_, ...args) => callback(...args));
+const api = {
+  ping: () => ipcRenderer.invoke('ping') as Promise<string>,
+
+  setIgnoreMouseEvents: (...args: SendChannels['set-ignore-mouse-events']) =>
+    ipcRenderer.send('set-ignore-mouse-events', ...args),
+
+  invoke: <C extends InvokeChannel>(channel: C, ...args: InvokeChannels[C]['args']) =>
+    ipcRenderer.invoke(channel, ...args) as Promise<InvokeChannels[C]['result']>,
+
+  /** Returns an unsubscribe function; off() also works. */
+  on: <C extends EventChannel>(channel: C, callback: (payload: EventChannels[C]) => void) => {
+    const wrapped: Wrapped = (_event, payload) => callback(payload as EventChannels[C]);
+    const byChannel = wrappers.get(callback as Listener) ?? new Map<string, Wrapped>();
+    byChannel.set(channel, wrapped);
+    wrappers.set(callback as Listener, byChannel);
+    ipcRenderer.on(channel, wrapped);
+    return () => api.off(channel, callback);
   },
 
-  off: (channel: string, callback: (...args: any[]) => void) => {
-    ipcRenderer.removeListener(channel, callback);
-  },
-
-  // Invoke methods (request-response)
-  invoke: (channel: string, ...args: any[]) => {
-    return ipcRenderer.invoke(channel, ...args);
+  off: <C extends EventChannel>(channel: C, callback: (payload: EventChannels[C]) => void) => {
+    const byChannel = wrappers.get(callback as Listener);
+    const wrapped = byChannel?.get(channel);
+    if (!wrapped) return;
+    ipcRenderer.removeListener(channel, wrapped);
+    byChannel!.delete(channel);
+    if (byChannel!.size === 0) wrappers.delete(callback as Listener);
   }
-});
+};
 
-// Type definitions for window.electronAPI
-export interface ElectronAPI {
-  ping: () => Promise<string>;
-  setIgnoreMouseEvents: (ignore: boolean, options?: { forward: boolean }) => void;
-  on: (channel: string, callback: (...args: any[]) => void) => void;
-  off: (channel: string, callback: (...args: any[]) => void) => void;
-  invoke: (channel: string, ...args: any[]) => Promise<any>;
-}
+contextBridge.exposeInMainWorld('electronAPI', api);
+
+export type ElectronAPI = typeof api;
 
 declare global {
   interface Window {

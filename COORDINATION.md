@@ -1,5 +1,7 @@
 # Coordination Protocol for Thu and Tuan
 
+> **Start here (2026-10-24):** read [`NEXT_STEPS.md`](NEXT_STEPS.md). It has the proposed split of the remaining work. Thu, please fill in its section 1 so we don't duplicate work.
+
 This document provides a structured way for both developers (and their Claude Code agents) to coordinate work, report progress, and integrate features.
 
 ## Daily Status Updates
@@ -42,8 +44,8 @@ Each developer should update their section at the start and end of each work ses
 
 ### Tuan's Status
 
-**Current Phase:** Phase 0 (Scaffold)
-**Status:** ⏳ Ready to start
+**Current Phase:** Phase 0 fix-up (branch `tuan/phase0-fixes`)
+**Status:** 🟢 Done, waiting on Thu's review of the contract change below
 **Last Updated:** 2026-10-24
 
 **Completed:**
@@ -60,6 +62,122 @@ Each developer should update their section at the start and end of each work ses
 
 **Notes for Thu:**
 - (Tuan will update here)
+
+---
+
+## Agent A
+_(Agent A: status notes, integration offers, proposals.)_
+
+### Integration Offer: session, monitor, rules (A1-A4)
+**By:** Agent A
+**Provides (for Agent B, Thu):**
+```typescript
+// desktop/src/main/session/index.ts
+getActiveSession(); isPaused(); sessionEvents.on('change' | 'pause', ...);
+setAssessmentMode(bool);   // in place, no 'change' event
+isMicAllowed();            // active session && !paused && voice.enabled
+// desktop/src/main/sync/context.ts (A2 fills it): requestPageSummary() -> PageSummary | null
+// stuckBus 'problem-changed' fires only when PageSummary.problemId changes (A2)
+```
+**IPC (Thu):** `session-start {assessmentMode?, goalId?}`, `session-stop`, `session-get`, `session-set-assessment`, `permissions-get`, `permissions-request`, `extension-pairing-get`, `extension-pairing-regenerate`; events `session-changed`, `mic-allowed`, `extension-status`. All typed in `desktop/src/common/ipc-sensing.ts`.
+**Nudge button actions (Agent B voice intents, Thu):** AI-tool and distraction warnings answer with action ids `taking_break`, `need_for_task`, `ignore_session`. Voice phrases such as "taking a break", "I need this", "ignore" are also understood if sent as the `action` string.
+**Pause marker:** while paused, `app_events` gets one row with `app_name='(paused)'`; history/streak treat time until the next row as paused.
+**Tests:** `npm test --workspace=desktop` (monitor, session, sync, rules suites).
+
+### Integration Offer: settings, history, status, streak, data controls (A9, A10) - for Thu's dashboard
+**By:** Agent A. All channels are typed in `desktop/src/common/ipc-sensing.ts`; call with `window.electronAPI.invoke(channel, ...args)`.
+| Channel | Returns |
+|---|---|
+| `streak-get` / event `streak-changed` | `StreakSnapshot`: `current, longest, freezesAvailable, todayQualified, todayMinutes, week[7]{localDate,status}` (same as `streak.snapshot` on the web app) |
+| `history-get {limit?, sinceTs?}` | `{sessions[], totals}`: per session `seconds{work,ai_tool,distraction,idle}`, `nudgeCount`, `hintCount`, `deepestHintLevel`, `deepestEscalationLevel` |
+| `settings-get` / `settings-set {key, value}` / event `settings-changed` | all settings except `pairing.*`; writes are validated and return `{success, error?, value?}` |
+| `status-get` | `{extensionConnected, extensionListening, syncListening, pairedDevices, geminiKeyPresent, elevenLabsKeyPresent, demoMode, sessionActive, paused}` |
+| `extension-pairing-get` / `-regenerate`, `sync-info-get` / `sync-regenerate-code` / `sync-unpair`, `permissions-get` / `-request` | pairing, LAN pairing code + IPs for the QR, permission status |
+| `data-export` | asks where to save, writes every table as JSON (pairing secrets left out) |
+| `data-clear {keepSettings?}` | deletes everything and re-seeds the streak row; confirm in the UI first; event `data-cleared` means reload |
+**Streak copy** (celebration, milestone, freeze, reset, reminder) is placeholder text in `desktop/src/main/streak/messages.ts` for Thu to edit; rule-warning copy is in `desktop/src/main/rules/messages.ts`.
+**For Agent B (B2):** History reads the deepest escalation level from events `stuck.level` with `payload.level` (0-4); please log that shape.
+
+### Integration Offer: LAN sync (A8) - M3
+**By:** Agent A
+**For Thu (web app client):** protocol, step by step, over `ws://<desktop-ip>:45679` (message envelope `{id, type, ts, payload}` from `shared/src/schemas/sync.ts`):
+1. Server sends `auth.challenge {nonce}` on connect.
+2. New device: send `pair.request {code, deviceName}` (the 6 digits shown in Wolfie's settings). Reply `pair.result {ok, deviceId, secret}`: store both in localStorage. The socket is authenticated.
+3. Paired device: send `auth.hello {deviceId, hmac}` with `hmac = hex(HMAC-SHA256(key=secret, data=nonce))`, lower-case hex, both as UTF-8 strings (WebCrypto: import the secret string's UTF-8 bytes as the HMAC key). Test vector: `HMAC('abc','xyz') = c03d0898b76731130f3e2134b39b824c53c4e62a55b3c020a4be6d5ada606102`. Reply `auth.result {ok:true}` then `plan.snapshot` and `streak.snapshot`.
+4. `auth.result {ok:false, reason:'unpaired'}` means the desktop forgot this device: delete the stored secret and show the pairing screen.
+5. Every other message gets `ack {ackId}`. Keep messages in `pendingSync` until acked; replay in order after reconnect with the **same ids** (the desktop dedupes and re-acks). Hints: `hint.request` is acked at once, then `hint.response` or `hint.error {requestId, message}` arrives; fail fast yourself if the socket is down.
+6. IPC for the desktop settings screen: `sync-info-get` -> `{listening, port, addresses[], code, codeExpiresAt, devices[]}` (build the QR from `addresses[0]`, `port`, `code`), `sync-regenerate-code`, `sync-unpair {deviceId}`; event `sync-changed`.
+**For Agent B (B6):** call `setPlanSnapshotProvider(getPlanSnapshot)` (from `desktop/src/main/sync/snapshots.ts`) in `intelligence/register.ts` and `notifySnapshotsChanged('plan')` after plan changes; until then the web app gets an empty plan. `hints/index.ts` `requestHints`/`requestFollowup` are called as-is for `hint.request`/`hint.followup`.
+**For Tuan at merge:** `desktop/src/main/__tests__/db.test.ts` (core) was edited to compare only core migrations, since agent migration files add names to the list; keep either side's version.
+
+### Integration Offer: signals for the escalation engine (A5, A6) - M2
+**By:** Agent A
+**Provides (for Agent B / B2):**
+```typescript
+stuckBus.on('signal', (s: StruggleSignal) => ...)   // web: wrong_answer_loop, dead_control_clicks (strong); validation_errors, backtracking (weak)
+                                                    // desktop: context_switch_loop, idle_on_work, long_on_problem (weak)
+stuckBus.on('input', (at: number) => ...)           // every 1 s while the user is typing/clicking, during an unpaused session
+stuckBus.on('problem-changed', (problemId) => ...)  // only when PageSummary.problemId changes to a new defined id
+requestPageSummary()                                // sync/context.ts: asks the extension, falls back to the latest
+```
+**Re-emission (for the signal lifetime rule):** strong web signals re-fire on every further occurrence (wrong_answer_loop on each failed check from the 2nd; dead clicks on each further click while >= 3 within 20 s); desktop weak signals re-fire every 60 s while their condition persists. Every signal is also stored in `web_signals` and logged as event `stuck.signal` by A's sink.
+**Demo pages:** `demo-pages/` (A: `demo-algebra-problem`, B: `demo-disabled-button`, C: `demo-code-error`); serve with `npx vite demo-pages --port 5174`. `extension/src/content/__tests__/demo-pages.test.ts` shows the exact signal each page raises. For the M2-int test: wrong answers on page A (right answer is 4) produce `wrong_answer_loop` with `problemId: 'demo-algebra-problem'` after the second check.
+
+## Agent B
+_(Agent B: status notes, integration offers, proposals.)_
+
+**Status (Agent B, branch `tuan/b-intelligence`):** B1, B5a, B2, B3a, B3b, B4, B6, B5b, B7, B8 and M2-int are done. Details, verification steps and merge notes (three small post-merge fixes, with a ready patch) are in `tuan/reports/agent-b.md`.
+
+### Integration Offer: hint service (for Agent A, A8)
+**By:** Agent B
+**Provides:** the web app hint round trip.
+```typescript
+import { requestHints, requestFollowup, getHintService } from '../hints/index.js';
+const res = await requestHints(request.context, request.source, request.assessment);       // HintResponse
+const reply = await requestFollowup(followup, context, source, assessment);                // HintFollowupResponse
+```
+Model failures never throw: they come back as `offline: true` (the labeled rule-based ladder). `assessment` may be false; the service also checks the stored session's `assessment_mode` and `assessment.domains`. With `DEMO_MODE=1` (or no key) the deterministic mock answers, keyed by `context.problemId`.
+
+### Integration Offer: voice intents (for Agent A, A4)
+**By:** Agent B
+**Provides:** `voiceBus` (`desktop/src/main/voice/bus.ts`) announces every local intent. Listen for `taking_a_break`, `need_this` and `ignore` to answer an open distraction/AI-tool nudge by voice; use `getNudgeQueue().respond({ id, action, via: 'voice' })` with your buttons' action strings so the answer is logged like a click.
+**Also:** any nudge with `spokenText` is spoken when voice mode is on (hook in `voice/nudge-speech.ts`, wired in `intelligence/register.ts`). Set `spokenText` on distraction and streak nudges and they get voice with no extra code. Do not set it on nudges where you do not want speech.
+
+### Integration Note: front window (for Agent A, A1)
+**By:** Agent B
+**What I need:** the frontmost window's app name and title, so the screenshot fallback can capture the right window instead of the primary screen.
+**API:** `setFrontWindowProvider(() => ({ app, title }))` in `desktop/src/main/hints/capture.ts`. Optional; without it the primary screen is captured.
+
+### Integration Note: clear-all-data (for Agent A, A10)
+Agent B tables are in `migrations-b.ts` `tables` (already included in `DATA_TABLES`). Stored hint images live in `<userData>/images/`; "Clear all data" should delete that folder too.
+
+### Integration Offer: plan (for Agent A, A8 / A4 optional hook)
+**By:** Agent B
+```typescript
+import { getPlanSnapshot, getTodayPlanContext } from '../plan/index.js';
+getPlanSnapshot();      // PlanSnapshotType for the `plan.snapshot` sync message (items from 7 days ago to 14 days ahead)
+getTodayPlanContext();  // { text: "Today's goal: ...", title, dueDate, goalTitle, itemId } | null, for nudge copy
+```
+
+### Integration Offer: plan IPC for Thu (onboarding and plan UI)
+**By:** Agent B. Types are in `desktop/src/common/ipc-intelligence.ts` (`PlanOnboardingInput`, `PlanView`, ...). Channels: `plan-onboarding-get`, `plan-onboarding-save` (validates; returns a friendly `error` string), `plan-get`, `plan-generate` (slow, show a spinner; optional `{goalId}`), `plan-item-add`, `plan-item-update` (status/title/dueDate/notes; checking off = `status: 'completed'`), `plan-item-delete`, `plan-reorder`, `plan-item-regenerate`. All results are `{ success, error?, data? }`. Dates are `YYYY-MM-DD`.
+
+### Integration Offer: ideas and papers IPC for Thu
+**By:** Agent B. `ideas-suggest(goalId)` (slow: up to ~15 s because paper checks are rate limited; show a spinner) returns `IdeasResult` (3-5 ideas, up to 5 verified papers with links, how many were dropped, and `verificationUnavailable`). `paper-add({title, url, goalId?, authors?, year?, arxivId?, planItemDueDate?})` creates the paper and optionally the plan item "Read: ...". `papers-list`, `paper-set-status`, `paper-delete`. Types are in `ipc-intelligence.ts`.
+
+### Integration Offer: paper reading IPC for Thu (reading view)
+**By:** Agent B. Types in `ipc-intelligence.ts` (`PaperAnswer`, `PaperSection`, `PaperQuestionView`, `AskPaperInput`).
+- Adding papers: `paper-import-pdf` (opens a native file picker; cancelled = `{success:false}` with no `error`), `paper-import-arxiv(urlOrId, goalId?)`, `paper-make-readable(id)` (for papers added from recommendations). All return the `PaperView`; `readable` tells you whether text has been extracted.
+- Reading view: `paper-content(id)` gives `sections: [{title, page, text}]` (render these beside the chat) and `localPath` (the PDF on disk, if you want to render it). `paper-questions(id)` lists saved Q&A.
+- Asking: `paper-ask({paperId, question, mode: 'explain' | 'check' | 'where', inputMode: 'text' | 'voice', selection?})`. Show `answer` together with `label` (always: "From the paper" or "General knowledge (not from this paper)") and make `citations` clickable (`section`, `page`, `snippet`). Use `selection` for "select text then Explain"; `mode: 'check'` returns a question for the student to answer; `mode: 'where'` returns where the topic is discussed, no model call. In voice mode `paper-ask` speaks the first two sentences itself.
+- Voice: call `paper-focus(id)` when the reading view opens and `paper-focus(null)` when it closes. While focused, spoken non-command questions are answered from the paper and arrive on the `paper-answer` event (also spoken).
+
+### Integration Offer: IPC for Thu (voice and hint bubbles)
+**By:** Agent B. Channels are typed in `desktop/src/common/ipc-intelligence.ts`.
+- `voice-audio-in` (invoke, mic frames, 16 kHz 16-bit mono PCM; the preload has no generic `send`, so this is an invoke), `voice-audio-out` / `voice-stop-playback` (events: play or drop encoded audio), `voice-mic` (green dot), `voice-trouble` (message for a bubble), `voice-utterance` (invoke: typed text as if spoken, for the developer panel), `voice-status`.
+- Bubble button actions the overlay will see on `nudge-response`: `accept_hint`, `decline`, `im_good` (offer), `another_hint`, `got_it`, `show_answer` (ladder).
+- **Please send** `nudge-response {id, action: 'dismissed'}` when the student closes a bubble with the X and `{action: 'timeout'}` when a bubble fades on its own. A dismissal counts as a decline and closes a hint ladder; a timeout is neither.
+- Escalation levels 1 and 2 arrive as `overlay-state` (`glance`, `question-mark`). The level-3 offer and every ladder level are `kind: 'stuck', level: 3` bubbles with buttons. A `stuck` bubble with `spokenText` is spoken by main, so the renderer does not need to call TTS for it.
 
 ---
 
@@ -159,6 +277,19 @@ Track when features from both tracks need to come together.
 5. **IPC Channels** (`desktop/electron/preload.ts`)
    - Used by: Both
    - Status: ⚠️ Can extend, don't break existing
+
+## Contract Change Proposal: Phase 0 fix-up
+**Proposed by:** Tuan
+**Affects:** `shared/` (all schemas and fixtures), `desktop/src/main/nudge/`, `desktop/electron/{main,preload}.ts`, `desktop/src/renderer/overlay/{App.tsx,hooks/useNudge.ts}`, `extension/`
+**Reason:** `npm install` failed on Node 24, the overlay crashed (`React` not imported, preload could not load), the schemas said `ipad` while the DB said `webapp`, most fixtures were missing, and Phases 3–4 need nudge ids, responses, and sprite-only escalation states.
+**Change:** the full list is in `DECISIONS.md` → "Phase 0 fix-up". The parts that touch Thu's code:
+- `NudgeQueue.push()` returns `string | null` (the id) instead of `boolean`; new `respond()` / `'response'` event; `push(n, { userInitiated: true })` for hint replies.
+- Overlay sends `nudge-response {id, action}` from `handleButtonClick`, listens to `overlay-state`, and invokes `mascot-click`.
+- New IPC channels must be added to `desktop/src/common/ipc.ts`; `window.electronAPI.on()` returns an unsubscribe.
+- `web/` must use `device: 'webapp'`, the `SyncMessageSchema` envelope, and the shared escalation engine plus `runEscalationScenario` in its tests.
+- **Voice (needs Thu's decision):** `useVoiceIntents` uses Web Speech, which does not work inside Electron, and its words (help/dismiss/close) are not the spec's. Proposal: the desktop overlay uses Tuan's STT provider and local intent parser (B5); Web Speech stays for the web app.
+**Impact:** Thu pulls `tuan/phase0-fixes` (or main after merge), reruns `npm install`, and builds Phase 1+ on top.
+**Status:** ⏳ Waiting for Thu
 
 ### How to Propose Changes to Shared Contracts
 

@@ -1,5 +1,6 @@
-import { Nudge, NudgeKindType } from '@wolfie/shared';
+import { Nudge, NudgeInput, NudgeKindType, NudgeResponse, NudgeSchema } from '@wolfie/shared';
 import { EventEmitter } from 'events';
+import { randomUUID } from 'crypto';
 
 export interface NudgeQueueConfig {
   maxNudgesPerHour: number;
@@ -8,7 +9,18 @@ export interface NudgeQueueConfig {
 }
 
 interface QueuedNudge extends Nudge {
+  id: string;
   timestamp: number;
+  userInitiated: boolean;
+}
+
+export interface PushOptions {
+  /**
+   * The user asked for this (e.g. "Another hint", a reply in the hint conversation). Skips
+   * per-kind cooldowns, the hourly cap, and snooze, and does not count toward them. Pause
+   * still applies.
+   */
+  userInitiated?: boolean;
 }
 
 export class NudgeQueue extends EventEmitter {
@@ -36,43 +48,50 @@ export class NudgeQueue extends EventEmitter {
   }
 
   /**
-   * Push a nudge to the queue
+   * Push a nudge to the queue. Returns the nudge id if it was shown, or null if it was
+   * dropped (paused, snoozed, on cooldown, or over the hourly cap).
    */
-  push(nudge: Nudge): boolean {
+  push(input: NudgeInput, opts: PushOptions = {}): string | null {
     const now = Date.now();
+    const nudge = NudgeSchema.parse(input);
+    const userInitiated = opts.userInitiated ?? false;
 
     // Check if paused
     if (this.paused) {
       console.log('[NudgeQueue] Paused, ignoring nudge');
-      return false;
+      return null;
     }
 
-    // Check if snoozed
-    if (this.snoozedUntil > now) {
-      console.log('[NudgeQueue] Snoozed, ignoring nudge');
-      return false;
-    }
+    if (!userInitiated) {
+      // Check if snoozed
+      if (this.snoozedUntil > now) {
+        console.log('[NudgeQueue] Snoozed, ignoring nudge');
+        return null;
+      }
 
-    // Check per-kind cooldown
-    const lastNudge = this.lastNudgeByKind.get(nudge.kind);
-    const cooldownMs = this.config.cooldownMinutes[nudge.kind] * 60 * 1000;
+      // Check per-kind cooldown
+      const lastNudge = this.lastNudgeByKind.get(nudge.kind);
+      const cooldownMs = this.config.cooldownMinutes[nudge.kind] * 60 * 1000;
 
-    if (lastNudge && (now - lastNudge) < cooldownMs) {
-      console.log(`[NudgeQueue] Kind '${nudge.kind}' on cooldown`);
-      return false;
-    }
+      if (lastNudge && (now - lastNudge) < cooldownMs) {
+        console.log(`[NudgeQueue] Kind '${nudge.kind}' on cooldown`);
+        return null;
+      }
 
-    // Check max nudges per hour
-    this.cleanupHistory(now);
-    if (this.nudgeHistory.length >= this.config.maxNudgesPerHour) {
-      console.log('[NudgeQueue] Max nudges per hour reached');
-      return false;
+      // Check max nudges per hour
+      this.cleanupHistory(now);
+      if (this.nudgeHistory.length >= this.config.maxNudgesPerHour) {
+        console.log('[NudgeQueue] Max nudges per hour reached');
+        return null;
+      }
     }
 
     // Add to queue
     const queuedNudge: QueuedNudge = {
       ...nudge,
-      timestamp: now
+      id: nudge.id ?? randomUUID(),
+      timestamp: now,
+      userInitiated
     };
 
     this.queue.push(queuedNudge);
@@ -83,7 +102,14 @@ export class NudgeQueue extends EventEmitter {
     // Process queue immediately
     this.processQueue();
 
-    return true;
+    return queuedNudge.id;
+  }
+
+  /**
+   * Route the user's answer to a shown nudge (button, voice, or auto-dismiss) to listeners.
+   */
+  respond(response: NudgeResponse): void {
+    this.emit('response', response);
   }
 
   /**
@@ -94,12 +120,14 @@ export class NudgeQueue extends EventEmitter {
       return;
     }
 
-    const nudge = this.queue.shift()!;
+    const { timestamp: _timestamp, userInitiated, ...nudge } = this.queue.shift()!;
     const now = Date.now();
 
     // Record this nudge
-    this.lastNudgeByKind.set(nudge.kind, now);
-    this.nudgeHistory.push(now);
+    if (!userInitiated) {
+      this.lastNudgeByKind.set(nudge.kind, now);
+      this.nudgeHistory.push(now);
+    }
 
     // Emit to overlay
     this.emit('show', nudge);

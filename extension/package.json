@@ -3,16 +3,20 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "build": "tsc && npm run copy-files",
-    "copy-files": "cp manifest.json dist/ && cp popup.html dist/ && cp -r icons dist/ 2>/dev/null || true",
-    "watch": "tsc --watch",
-    "lint": "eslint src"
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit -p .",
+    "lint": "eslint src",
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@wolfie/shared": "*"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.258",
-    "@types/node": "^20.11.5"
+    "@types/jsdom": "^30.0.0",
+    "@types/node": "^20.11.5",
+    "esbuild": "^0.21.5",
+    "jsdom": "^30.1.2",
+    "vitest": "^1.6.1"
   }
 }

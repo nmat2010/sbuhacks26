@@ -4,34 +4,49 @@
   <meta charset="UTF-8">
   <title>Wolfie Sensei</title>
   <style>
-    body {
-      width: 300px;
-      padding: 15px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    }
-    h1 {
-      font-size: 18px;
-      margin: 0 0 10px 0;
-    }
-    .status {
-      padding: 8px;
-      border-radius: 4px;
-      margin: 10px 0;
-      font-size: 14px;
-    }
-    .connected {
-      background-color: #d4edda;
-      color: #155724;
-    }
-    .disconnected {
-      background-color: #f8d7da;
-      color: #721c24;
-    }
+    body { width: 320px; padding: 14px; margin: 0; font: 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1c1c1e; }
+    h1 { font-size: 17px; margin: 0 0 10px; }
+    h2 { font-size: 13px; margin: 14px 0 6px; }
+    .status { padding: 8px 10px; border-radius: 6px; font-size: 13px; }
+    .connected { background: #d4edda; color: #155724; }
+    .disconnected { background: #f8d7da; color: #721c24; }
+    .waiting { background: #fff3cd; color: #664d03; }
+    .row { display: flex; gap: 6px; }
+    .row input { flex: 1; min-width: 0; padding: 5px 7px; }
+    button { padding: 5px 9px; cursor: pointer; }
+    ul { list-style: none; padding: 0; margin: 4px 0; max-height: 120px; overflow-y: auto; }
+    li { display: flex; justify-content: space-between; align-items: center; padding: 2px 0; font-size: 13px; }
+    li.managed { color: #6b6b70; }
+    li button { padding: 0 6px; }
+    .hint { font-size: 12px; color: #6b6b70; margin: 4px 0; }
+    .error { font-size: 12px; color: #721c24; min-height: 14px; }
   </style>
 </head>
 <body>
-  <h1>🐺 Wolfie Sensei</h1>
+  <h1>Wolfie Sensei</h1>
   <div id="status" class="status disconnected">Not connected to desktop</div>
-  <script src="dist/popup.js"></script>
+
+  <h2>Pairing</h2>
+  <div class="row">
+    <input id="token" type="text" placeholder="XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false">
+    <button id="save-token">Pair</button>
+  </div>
+  <div class="hint">Find the code in the Wolfie desktop app under Settings.</div>
+
+  <h2>Reporting</h2>
+  <button id="pause">Pause reporting</button>
+  <div id="pause-note" class="hint"></div>
+
+  <h2>Excluded sites</h2>
+  <div class="hint">Wolfie reports nothing on these sites or in incognito windows.</div>
+  <ul id="managed"></ul>
+  <ul id="local"></ul>
+  <div class="row">
+    <input id="new-domain" type="text" placeholder="example.com" autocomplete="off" spellcheck="false">
+    <button id="add-domain">Add</button>
+  </div>
+  <div id="error" class="error"></div>
+
+  <script src="popup.js"></script>
 </body>
 </html>

@@ -1,0 +1,116 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [6 0 R 8 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Length 3626 >>
+stream
+BT
+/F2 17 Tf 1 0 0 1 64 740 Tm (Spaced Retrieval Practice in Introductory Programming: A Small) Tj
+/F2 17 Tf 1 0 0 1 64 718 Tm (Classroom Study) Tj
+/F1 9.5 Tf 1 0 0 1 64 692 Tm (Maya Okafor and Daniel Reyes, Department of Computer Science, Example State College) Tj
+/F2 13 Tf 1 0 0 1 64 660.5 Tm (Abstract) Tj
+/F1 10 Tf 1 0 0 1 64 643.0 Tm (We test whether spacing short retrieval quizzes over several days helps novice programmers) Tj
+/F1 10 Tf 1 0 0 1 64 629.5 Tm (remember loop and function concepts better than massing the same quizzes into one sitting.) Tj
+/F1 10 Tf 1 0 0 1 64 616.0 Tm (In a classroom study with 48 students, the spaced group gained an average of 14 points on a) Tj
+/F1 10 Tf 1 0 0 1 64 602.5 Tm (delayed test, while the massed group gained 6 points. The benefit was largest for questions) Tj
+/F1 10 Tf 1 0 0 1 64 589.0 Tm (about nested loops. We conclude that low-stakes spaced quizzes are a cheap and effective) Tj
+/F1 10 Tf 1 0 0 1 64 575.5 Tm (addition to a first programming course.) Tj
+/F2 13 Tf 1 0 0 1 64 548.0 Tm (1 Introduction) Tj
+/F1 10 Tf 1 0 0 1 64 530.5 Tm (Novice programmers often feel that they understand a concept right after seeing it, and then) Tj
+/F1 10 Tf 1 0 0 1 64 517.0 Tm (struggle to use it a week later. Retrieval practice, the act of recalling information from) Tj
+/F1 10 Tf 1 0 0 1 64 503.5 Tm (memory instead of rereading it, is known to improve long-term retention. Spacing the) Tj
+/F1 10 Tf 1 0 0 1 64 490.0 Tm (practice over time is known to improve it further. Few studies have tested both ideas) Tj
+/F1 10 Tf 1 0 0 1 64 476.5 Tm (together in a real introductory programming classroom.) Tj
+/F1 10 Tf 1 0 0 1 64 457.0 Tm (Our research question is simple: does spacing retrieval quizzes over days produce better) Tj
+/F1 10 Tf 1 0 0 1 64 443.5 Tm (delayed-test performance than taking the same number of quizzes in a single sitting? We also) Tj
+/F1 10 Tf 1 0 0 1 64 430.0 Tm (ask which kinds of questions benefit most.) Tj
+/F2 13 Tf 1 0 0 1 64 402.5 Tm (2 Related Work) Tj
+/F1 10 Tf 1 0 0 1 64 385.0 Tm (Earlier work in cognitive psychology shows the spacing effect for vocabulary and facts.) Tj
+/F1 10 Tf 1 0 0 1 64 371.5 Tm (Studies in programming education have mostly looked at tools, such as automated feedback,) Tj
+/F1 10 Tf 1 0 0 1 64 358.0 Tm (rather than at the timing of practice. Our study is closest to classroom experiments that) Tj
+/F1 10 Tf 1 0 0 1 64 344.5 Tm (vary the schedule of homework, but we use short quizzes that take under five minutes.) Tj
+/F2 13 Tf 1 0 0 1 64 317.0 Tm (3 Method) Tj
+/F2 11 Tf 1 0 0 1 64 291.5 Tm (3.1 Participants) Tj
+/F1 10 Tf 1 0 0 1 64 274.0 Tm (Forty-eight students in two sections of an introductory programming course took part.) Tj
+/F1 10 Tf 1 0 0 1 64 260.5 Tm (Students were assigned to the spaced group or the massed group by section, and neither group) Tj
+/F1 10 Tf 1 0 0 1 64 247.0 Tm (had prior programming experience beyond one week of the course.) Tj
+/F2 11 Tf 1 0 0 1 64 219.5 Tm (3.2 Procedure) Tj
+/F1 10 Tf 1 0 0 1 64 202.0 Tm (Both groups took four five-question quizzes on loops and functions. The spaced group took) Tj
+/F1 10 Tf 1 0 0 1 64 188.5 Tm (one quiz every three days, so the quizzes covered twelve days. The massed group took all) Tj
+/F1 10 Tf 1 0 0 1 64 175.0 Tm (four quizzes back to back on the first day. Each quiz asked students to write short answers) Tj
+/F1 10 Tf 1 0 0 1 64 161.5 Tm (from memory, and correct answers were shown after each quiz. Twelve days after the last quiz) Tj
+/F1 10 Tf 1 0 0 1 64 148.0 Tm (of the spaced group, every student took a 20-question delayed test.) Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 2708 >>
+stream
+BT
+/F2 11 Tf 1 0 0 1 64 740 Tm (3.3 Measures) Tj
+/F1 10 Tf 1 0 0 1 64 722.5 Tm (The main measure was the gain from a pre-test to the delayed test, in percentage points. We) Tj
+/F1 10 Tf 1 0 0 1 64 709.0 Tm (also scored the nested-loop questions separately, because instructors reported that these) Tj
+/F1 10 Tf 1 0 0 1 64 695.5 Tm (were the hardest for beginners.) Tj
+/F2 13 Tf 1 0 0 1 64 668.0 Tm (4 Results) Tj
+/F1 10 Tf 1 0 0 1 64 650.5 Tm (The spaced group gained 14 points on average from the pre-test to the delayed test, compared) Tj
+/F1 10 Tf 1 0 0 1 64 637.0 Tm (with 6 points for the massed group. The difference was statistically significant. On the) Tj
+/F1 10 Tf 1 0 0 1 64 623.5 Tm (nested-loop questions the spaced group's advantage grew to 19 points over the massed group.) Tj
+/F1 10 Tf 1 0 0 1 64 604.0 Tm (Students in the spaced group also reported feeling less confident after each quiz than the) Tj
+/F1 10 Tf 1 0 0 1 64 590.5 Tm (massed group did, even though they remembered more later.) Tj
+/F2 13 Tf 1 0 0 1 64 563.0 Tm (5 Discussion) Tj
+/F1 10 Tf 1 0 0 1 64 545.5 Tm (The results suggest that the timing of practice matters as much as its amount. Spacing) Tj
+/F1 10 Tf 1 0 0 1 64 532.0 Tm (forces students to retrieve a concept after they have partly forgotten it, and this) Tj
+/F1 10 Tf 1 0 0 1 64 518.5 Tm (effortful recall strengthens memory. The lower confidence reported by the spaced group is) Tj
+/F1 10 Tf 1 0 0 1 64 505.0 Tm (consistent with the idea of desirable difficulties: practice that feels harder can work) Tj
+/F1 10 Tf 1 0 0 1 64 491.5 Tm (better.) Tj
+/F1 10 Tf 1 0 0 1 64 472.0 Tm (The study has limits. Students were assigned by section instead of at random, the sample is) Tj
+/F1 10 Tf 1 0 0 1 64 458.5 Tm (small, and we measured memory twelve days after practice rather than at the end of the) Tj
+/F1 10 Tf 1 0 0 1 64 445.0 Tm (semester.) Tj
+/F2 13 Tf 1 0 0 1 64 417.5 Tm (6 Conclusion) Tj
+/F1 10 Tf 1 0 0 1 64 400.0 Tm (Short quizzes spaced three days apart produced larger delayed-test gains than the same) Tj
+/F1 10 Tf 1 0 0 1 64 386.5 Tm (quizzes taken at once. Instructors can adopt this at almost no cost by spreading existing) Tj
+/F1 10 Tf 1 0 0 1 64 373.0 Tm (practice questions across the week. Future work should use random assignment and a longer) Tj
+/F1 10 Tf 1 0 0 1 64 359.5 Tm (retention interval.) Tj
+/F2 13 Tf 1 0 0 1 64 332.0 Tm (References) Tj
+/F1 10 Tf 1 0 0 1 64 314.5 Tm ([1] Example Author. The Spacing Effect in Memory. Journal of Imaginary Learning, 2015.) Tj
+/F1 10 Tf 1 0 0 1 64 295.0 Tm ([2] Sample Writer. Retrieval Practice for Novices. Proceedings of the Fictional Education) Tj
+/F1 10 Tf 1 0 0 1 64 281.5 Tm (Conference, 2018.) Tj
+ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 7 0 R >>
+endobj
+9 0 obj
+<< /Title (Spaced Retrieval Practice in Introductory Programming) /Author (Maya Okafor and Daniel Reyes) >>
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000191 00000 n 
+0000000266 00000 n 
+0000003944 00000 n 
+0000004080 00000 n 
+0000006840 00000 n 
+0000006976 00000 n 
+trailer
+<< /Size 10 /Root 1 0 R /Info 9 0 R >>
+startxref
+7099
+%%EOF

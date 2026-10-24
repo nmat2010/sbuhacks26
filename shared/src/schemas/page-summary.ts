@@ -18,6 +18,9 @@ export const PageSummarySchema = z.object({
   errorMessages: z.array(z.string()).max(10),
   openDialogs: z.array(z.string()).max(5),
   problemRegion: z.string().optional(),
+  // Stable id for the problem on screen (e.g. demo pages' data-problem-id). Used by the mock
+  // hint bank and to scope "I'm good" suppression to one problem.
+  problemId: z.string().optional(),
   timestamp: z.number()
 });
 

@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-package-lock.json
 
 # Build outputs
 dist/
@@ -37,3 +36,6 @@ npm-debug.log*
 # User data
 userData/
 data/
+
+# Claude Code agent worktrees
+.claude/worktrees/

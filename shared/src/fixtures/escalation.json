@@ -1,112 +1,130 @@
 {
+  "$comment": "Escalation scenarios (SPEC 4c). Run with runEscalationScenario from @wolfie/shared/testing. Each step sets now=at, applies events, replaces the active signals if `signals` is given, sets flags, computes the level and records it as shown. `expected` lists the level after each step. S = strong wrong_answer_loop, W1 = weak idle_on_work, W2 = weak validation_errors.",
+  "signals": {
+    "S": { "type": "wrong_answer_loop", "strength": "strong", "timestamp": 0, "problemId": "p1" },
+    "W1": { "type": "idle_on_work", "strength": "weak", "timestamp": 0 },
+    "W2": { "type": "validation_errors", "strength": "weak", "timestamp": 0 }
+  },
   "scenarios": [
     {
-      "name": "single_weak_signal",
-      "signals": [
-        {
-          "type": "idle_on_work",
-          "strength": "weak",
-          "timestamp": 1000
-        }
-      ],
-      "expected_level": 2
+      "name": "no_signals_stays_at_zero",
+      "voiceMode": true,
+      "steps": [{ "at": 0, "signals": [] }, { "at": 60000 }],
+      "expected": [0, 0]
     },
     {
-      "name": "strong_signal_reaches_level_3",
-      "signals": [
-        {
-          "type": "wrong_answer_loop",
-          "strength": "strong",
-          "timestamp": 1000
-        }
+      "name": "strong_signal_steps_every_45s_and_caps_at_3_without_voice",
+      "voiceMode": false,
+      "steps": [
+        { "at": 0, "signals": ["S"] },
+        { "at": 10000 },
+        { "at": 45000 },
+        { "at": 90000 },
+        { "at": 200000 }
       ],
-      "expected_level": 3,
-      "description": "Strong signal can reach level 3"
+      "expected": [1, 1, 2, 3, 3]
     },
     {
-      "name": "two_weak_signals_reach_level_3",
-      "signals": [
-        {
-          "type": "idle_on_work",
-          "strength": "weak",
-          "timestamp": 1000
-        },
-        {
-          "type": "validation_errors",
-          "strength": "weak",
-          "timestamp": 2000
-        }
-      ],
-      "expected_level": 3,
-      "description": "Two weak signals together can reach level 3"
+      "name": "weak_signal_alone_caps_at_2",
+      "voiceMode": true,
+      "steps": [{ "at": 0, "signals": ["W1"] }, { "at": 45000 }, { "at": 90000 }, { "at": 300000 }],
+      "expected": [1, 2, 2, 2]
     },
     {
-      "name": "level_4_requires_voice_mode_and_time",
-      "signals": [
-        {
-          "type": "wrong_answer_loop",
-          "strength": "strong",
-          "timestamp": 1000
-        }
-      ],
-      "voice_mode": true,
-      "wait_time": 60000,
-      "expected_level": 4,
-      "description": "Level 4 requires voice mode on and 60s wait at level 3"
+      "name": "two_weak_signals_reach_3",
+      "voiceMode": false,
+      "steps": [{ "at": 0, "signals": ["W1", "W2"] }, { "at": 45000 }, { "at": 90000 }],
+      "expected": [1, 2, 3]
     },
     {
-      "name": "level_4_capped_without_voice",
-      "signals": [
-        {
-          "type": "wrong_answer_loop",
-          "strength": "strong",
-          "timestamp": 1000
-        }
+      "name": "level_4_after_level_3_unanswered_60s_in_voice_mode",
+      "voiceMode": true,
+      "steps": [
+        { "at": 0, "signals": ["S"] },
+        { "at": 45000 },
+        { "at": 90000 },
+        { "at": 120000 },
+        { "at": 150000 },
+        { "at": 160000 }
       ],
-      "voice_mode": false,
-      "wait_time": 60000,
-      "expected_level": 3,
-      "description": "Without voice mode, max level is 3"
+      "expected": [1, 2, 3, 3, 4, 4]
     },
     {
-      "name": "decline_starts_cooldown",
-      "signals": [
-        {
-          "type": "wrong_answer_loop",
-          "strength": "strong",
-          "timestamp": 1000
-        }
+      "name": "accept_resets_to_zero",
+      "voiceMode": false,
+      "steps": [
+        { "at": 0, "signals": ["S"] },
+        { "at": 45000 },
+        { "at": 90000 },
+        { "at": 100000, "events": ["accepted"], "signals": [] }
       ],
-      "user_action": "decline",
-      "expected_cooldown": 180000,
-      "expected_level": 2,
-      "description": "Decline starts 3-minute cooldown and lowers intensity"
+      "expected": [1, 2, 3, 0]
     },
     {
-      "name": "i_am_good_suppresses_for_session",
-      "signals": [
-        {
-          "type": "wrong_answer_loop",
-          "strength": "strong",
-          "timestamp": 1000
-        }
+      "name": "decline_3min_cooldown_then_one_level_lower_for_10min",
+      "voiceMode": false,
+      "steps": [
+        { "at": 0, "signals": ["S"] },
+        { "at": 45000 },
+        { "at": 90000 },
+        { "at": 100000, "events": ["declined"] },
+        { "at": 150000 },
+        { "at": 280000 },
+        { "at": 325000 },
+        { "at": 370000 },
+        { "at": 700000 }
       ],
-      "user_action": "i_am_good",
-      "expected_level": 0,
-      "description": "I'm good suppresses offers for the problem for the session"
+      "expected": [1, 2, 3, 0, 0, 1, 2, 2, 3]
     },
     {
-      "name": "recent_input_prevents_offer",
-      "signals": [
-        {
-          "type": "wrong_answer_loop",
-          "strength": "strong",
-          "timestamp": 1000
-        }
+      "name": "im_good_suppresses_offers_for_that_problem_only",
+      "voiceMode": true,
+      "steps": [
+        { "at": 0, "signals": ["S"], "problemId": "p1" },
+        { "at": 45000 },
+        { "at": 90000 },
+        { "at": 100000, "events": ["im_good"] },
+        { "at": 150000 },
+        { "at": 195000 },
+        { "at": 300000 },
+        { "at": 400000, "problemId": "p2" }
       ],
-      "last_input_time": 500,
-      "expected_level": 0,
-      "description": "No offer within 5 seconds of recent input"
+      "expected": [1, 2, 3, 0, 1, 2, 2, 1]
+    },
+    {
+      "name": "no_escalation_within_5s_of_input",
+      "voiceMode": false,
+      "steps": [
+        { "at": 0, "signals": ["S"], "events": ["input"] },
+        { "at": 3000 },
+        { "at": 5000 },
+        { "at": 50000, "events": ["input"] },
+        { "at": 56000 }
+      ],
+      "expected": [0, 0, 1, 1, 2]
+    },
+    {
+      "name": "pause_and_snooze_force_zero",
+      "voiceMode": false,
+      "steps": [
+        { "at": 0, "signals": ["S"] },
+        { "at": 45000, "paused": true },
+        { "at": 90000, "paused": false },
+        { "at": 100000, "snoozed": true },
+        { "at": 200000, "snoozed": false }
+      ],
+      "expected": [1, 0, 1, 0, 1]
+    },
+    {
+      "name": "level_drops_when_signals_weaken",
+      "voiceMode": false,
+      "steps": [
+        { "at": 0, "signals": ["S"] },
+        { "at": 45000 },
+        { "at": 90000 },
+        { "at": 100000, "signals": ["W1"] }
+      ],
+      "expected": [1, 2, 3, 2]
     }
   ]
 }
