@@ -19,9 +19,22 @@ export function migrations(db: Database.Database): Migration[] {
           CREATE INDEX IF NOT EXISTS idx_a_sync_seen_at ON a_sync_seen(seen_at);
         `);
       }
+    },
+    {
+      // Streak (A9): the IANA time zone a desktop session ran in, so a day keeps the date it had
+      // when it happened even if the user later changes time zone.
+      name: '102_a_session_tz',
+      up: () => {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS a_session_tz (
+            session_id TEXT PRIMARY KEY,
+            tz TEXT NOT NULL
+          );
+        `);
+      }
     }
   ];
 }
 
 /** Tables created here, so "Clear all data" and export include them. */
-export const tables: readonly string[] = ['a_sync_seen'];
+export const tables: readonly string[] = ['a_sync_seen', 'a_session_tz'];

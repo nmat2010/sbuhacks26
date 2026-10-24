@@ -51,11 +51,22 @@ export function startSession(opts: { assessmentMode?: boolean; goalId?: string; 
       )
       .run(session.id, 'desktop', session.startedAt, session.goalId ?? null, opts.label ?? null, session.assessmentMode ? 1 : 0);
     logEvent('session.start', { sessionId: session.id, assessmentMode: session.assessmentMode }, { ts: session.startedAt });
+    recordSessionTimeZone(session.id);
   } catch (error) {
     console.error('[session] failed to persist session start:', error);
   }
   setActiveSession(session);
   return session;
+}
+
+/** Remembers the zone a session ran in, so streak days keep their date if the zone changes later. */
+function recordSessionTimeZone(sessionId: string): void {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz) getDatabase().prepare('INSERT OR REPLACE INTO a_session_tz (session_id, tz) VALUES (?, ?)').run(sessionId, tz);
+  } catch {
+    // streak falls back to the current zone
+  }
 }
 
 export function stopSession(): void {

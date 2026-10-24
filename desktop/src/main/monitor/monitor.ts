@@ -15,6 +15,9 @@ import { WindowSourceError, type WindowSource } from './window-source.js';
  */
 export const PAUSED_APP = '(paused)';
 
+/** A gap between polls longer than this means the computer slept. */
+const SLEEP_GAP_MS = 30_000;
+
 export interface ForegroundSnapshot {
   sessionId: string;
   ts: number;
@@ -64,6 +67,7 @@ export class Monitor {
   private lastKey: string | null = null;
   private last: ForegroundSnapshot | null = null;
   private pauseMarked = false;
+  private lastPollAt: number | null = null;
   private studyAppFront = false;
   private automation: PermissionState = 'unknown';
 
@@ -169,6 +173,7 @@ export class Monitor {
 
     const idleSeconds = deps.getIdleSeconds();
     const isIdle = idleSeconds >= deps.settings.idleTimeoutSeconds();
+    this.markSleepGap(session.id, deps.now());
     const isBrowser = isBrowserApp(info.appName);
     const snapshot: ForegroundSnapshot = {
       sessionId: session.id,
@@ -191,12 +196,26 @@ export class Monitor {
     this.events.emit('tick', snapshot);
   }
 
+  /**
+   * The Mac slept (or the app was suspended) between two polls: nothing was written for that
+   * stretch, so it would be counted as the previous window's time. Close it as idle instead.
+   */
+  private markSleepGap(sessionId: string, now: number): void {
+    const prev = this.lastPollAt;
+    this.lastPollAt = now;
+    const last = this.last;
+    if (prev === null || !last || last.sessionId !== sessionId || now - prev <= SLEEP_GAP_MS || last.isIdle) return;
+    this.insert(sessionId, prev + 1000, last.appName, last.windowTitle, last.domain, true);
+    this.lastKey = JSON.stringify([last.appName, last.windowTitle, last.domain, true]);
+  }
+
   /** Not in a session: forget per-session state so the next session writes a fresh first row. */
   private resetForNoSession(): void {
     this.lastSessionId = null;
     this.lastKey = null;
     this.last = null;
     this.pauseMarked = false;
+    this.lastPollAt = null;
   }
 
   private async maybeAutoStart(paused: boolean): Promise<void> {

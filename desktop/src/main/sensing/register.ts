@@ -36,8 +36,9 @@ import { startExtensionLink, type ExtensionLink } from '../sync/extension-link.j
 import { setLatestPageSummary, setPageSummaryRequester } from '../sync/context.js';
 import { EXTENSION_WS_PORT, SYNC_WS_PORT } from '@wolfie/shared';
 import { requestFollowup, requestHints } from '../hints/index.js';
+import { StreakEngine } from '../streak/engine.js';
 import { startLanLink, type LanLink } from '../sync/lan-link.js';
-import { getPlanSnapshotForSync, getStreakSnapshotForSync } from '../sync/snapshots.js';
+import { getPlanSnapshotForSync, getStreakSnapshotForSync, notifySnapshotsChanged, setStreakSnapshotProvider } from '../sync/snapshots.js';
 import type { SyncInfo } from '../../common/ipc-sensing.js';
 
 const execFileAsync = promisify(execFile);
@@ -47,6 +48,7 @@ let monitor: Monitor | null = null;
 let extensionLink: ExtensionLink | null = null;
 let signalSink: SignalSink | null = null;
 let lanLink: LanLink | null = null;
+let streakEngine: StreakEngine | null = null;
 const domainTracker = new DomainTracker();
 
 function sessionInfo(): SessionInfo {
@@ -250,6 +252,44 @@ export function registerSensing(): void {
     };
   });
 
+  // ---- A9: streak engine ----------------------------------------------------------------------
+  guarded('streak', () => {
+    const engine = new StreakEngine({
+      db: getDatabase,
+      now: Date.now,
+      getTimeZone: () => Intl.DateTimeFormat().resolvedOptions().timeZone,
+      qualifyingMinutes: () => getSetting('streak.qualifying_minutes'),
+      reminderEnabled: () => getSetting('streak.reminder_enabled'),
+      reminderTime: () => getSetting('streak.reminder_time'),
+      getLists: () => ({ aiTools: getSetting('monitored.ai_tools'), distractions: getSetting('monitored.distractions') }),
+      push: (nudge) => getNudgeQueue().push(nudge),
+      logEvent: (type, payload, opts) => logEvent(type, payload, opts),
+      onChange: (snapshot) => {
+        broadcast('streak-changed', snapshot);
+        notifySnapshotsChanged('streak');
+      }
+    });
+    streakEngine = engine;
+    setStreakSnapshotProvider(() => engine.getStreak());
+    handle('streak-get', async () => engine.getStreak());
+    const run = () => {
+      try {
+        engine.tick();
+      } catch (error) {
+        console.error('[streak] tick failed:', error instanceof Error ? error.message : error);
+      }
+    };
+    run();
+    // A running session grows today's minutes, so check every 30 s; also when a session starts or ends.
+    const timer = setInterval(run, 30_000);
+    const offs = [sessionEvents.on('change', run), settingsEvents.on('change', (key) => key.startsWith('streak.') && run())];
+    return () => {
+      clearInterval(timer);
+      offs.forEach((off) => off());
+      streakEngine = null;
+    };
+  });
+
   // ---- A8: LAN sync server for the web app --------------------------------------------------
   guarded('lan-sync', () => {
     handle('sync-info-get', async () => lanLink?.getInfo() ?? offlineSync());
@@ -265,7 +305,9 @@ export function registerSensing(): void {
       getPlanSnapshot: getPlanSnapshotForSync,
       getStreakSnapshot: getStreakSnapshotForSync,
       logEvent: (type, payload, opts) => logEvent(type, payload, opts),
-      networkInterfaces
+      networkInterfaces,
+      // A web session finished (possibly synced late): recompute the streak for the days it touches
+      onSessionEnded: () => void streakEngine?.recalculate()
     })
       .then((link) => {
         lanLink = link;

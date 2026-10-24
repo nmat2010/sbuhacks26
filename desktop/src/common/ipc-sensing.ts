@@ -1,4 +1,5 @@
 // Agent A's IPC channels. Merged into the maps in ipc.ts; only Agent A edits this file.
+import type { StreakSnapshotType } from '@wolfie/shared';
 
 export type PermissionState = 'granted' | 'denied' | 'not-determined' | 'restricted' | 'unknown';
 export type PermissionKind = 'screen' | 'accessibility' | 'automation' | 'microphone';
@@ -65,6 +66,8 @@ export interface SensingInvoke {
   'sync-regenerate-code': { args: []; result: SyncInfo };
   /** Deletes the device's secret and cuts it off. */
   'sync-unpair': { args: [deviceId: string]; result: SyncInfo };
+  /** Current streak, longest, freezes, today's minutes and the 7-day calendar (same shape as streak.snapshot). */
+  'streak-get': { args: []; result: StreakSnapshotType };
 }
 
 /** renderer -> main, fire-and-forget: 'channel': [...args] */
@@ -79,4 +82,6 @@ export interface SensingEvents {
   'extension-status': { connected: boolean };
   /** Paired devices or the pairing code changed. */
   'sync-changed': SyncInfo;
+  /** The streak changed (a session grew today's minutes, a day qualified, a late sync repaired the past). */
+  'streak-changed': StreakSnapshotType;
 }

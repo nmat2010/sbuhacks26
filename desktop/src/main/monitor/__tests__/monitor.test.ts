@@ -101,6 +101,37 @@ describe('Monitor app_events', () => {
     expect(rows()[2].ts).toBe(1_006_000);
   });
 
+  it('closes a gap between polls (the Mac slept) as idle instead of counting it as work', async () => {
+    startSession();
+    const m = makeMonitor();
+    await m.tick();
+    clock += 2000;
+    await m.tick(); // normal poll: no row
+    clock += 20 * 60_000; // lid closed for 20 minutes
+    await m.tick();
+    expect(rows().map((r) => [r.ts - 1_000_000, r.app_name, r.is_idle])).toEqual([
+      [0, 'Xcode', 0],
+      [3000, 'Xcode', 1], // idle starts just after the last poll that saw the user
+      [2000 + 20 * 60_000, 'Xcode', 0]
+    ]);
+  });
+
+  it('does not mistake a long pause for sleep', async () => {
+    startSession();
+    const m = makeMonitor();
+    await m.tick();
+    setPaused(true);
+    await m.tick();
+    clock += 60 * 60_000;
+    setPaused(false);
+    await m.tick();
+    expect(rows().map((r) => [r.app_name, r.is_idle])).toEqual([
+      ['Xcode', 0],
+      [PAUSED_APP, 0],
+      ['Xcode', 0]
+    ]);
+  });
+
   it('attaches a domain only while a browser is frontmost', async () => {
     startSession();
     const m = makeMonitor();
