@@ -108,6 +108,13 @@ getTodayPlanContext();  // { text: "Today's goal: ...", title, dueDate, goalTitl
 ### Integration Offer: ideas and papers IPC for Thu
 **By:** Agent B. `ideas-suggest(goalId)` (slow: up to ~15 s because paper checks are rate limited; show a spinner) returns `IdeasResult` (3-5 ideas, up to 5 verified papers with links, how many were dropped, and `verificationUnavailable`). `paper-add({title, url, goalId?, authors?, year?, arxivId?, planItemDueDate?})` creates the paper and optionally the plan item "Read: ...". `papers-list`, `paper-set-status`, `paper-delete`. Types are in `ipc-intelligence.ts`.
 
+### Integration Offer: paper reading IPC for Thu (reading view)
+**By:** Agent B. Types in `ipc-intelligence.ts` (`PaperAnswer`, `PaperSection`, `PaperQuestionView`, `AskPaperInput`).
+- Adding papers: `paper-import-pdf` (opens a native file picker; cancelled = `{success:false}` with no `error`), `paper-import-arxiv(urlOrId, goalId?)`, `paper-make-readable(id)` (for papers added from recommendations). All return the `PaperView`; `readable` tells you whether text has been extracted.
+- Reading view: `paper-content(id)` gives `sections: [{title, page, text}]` (render these beside the chat) and `localPath` (the PDF on disk, if you want to render it). `paper-questions(id)` lists saved Q&A.
+- Asking: `paper-ask({paperId, question, mode: 'explain' | 'check' | 'where', inputMode: 'text' | 'voice', selection?})`. Show `answer` together with `label` (always: "From the paper" or "General knowledge (not from this paper)") and make `citations` clickable (`section`, `page`, `snippet`). Use `selection` for "select text then Explain"; `mode: 'check'` returns a question for the student to answer; `mode: 'where'` returns where the topic is discussed, no model call. In voice mode `paper-ask` speaks the first two sentences itself.
+- Voice: call `paper-focus(id)` when the reading view opens and `paper-focus(null)` when it closes. While focused, spoken non-command questions are answered from the paper and arrive on the `paper-answer` event (also spoken).
+
 ### Integration Offer: IPC for Thu (voice and hint bubbles)
 **By:** Agent B. Channels are typed in `desktop/src/common/ipc-intelligence.ts`.
 - `voice-audio-in` (invoke, mic frames, 16 kHz 16-bit mono PCM; the preload has no generic `send`, so this is an invoke), `voice-audio-out` / `voice-stop-playback` (events: play or drop encoded audio), `voice-mic` (green dot), `voice-trouble` (message for a bubble), `voice-utterance` (invoke: typed text as if spoken, for the developer panel), `voice-status`.

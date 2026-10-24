@@ -20,6 +20,7 @@ export interface VoiceServiceDeps {
   handlers: Partial<Record<Exclude<VoiceIntent, 'stop' | 'repeat' | 'stuck'>, IntentHandler>>;
   hasOpenLadder: () => boolean;
   onFollowup: (utterance: string) => void | Promise<void>;
+  onFreeSpeech?: (utterance: string) => boolean | Promise<boolean>;
   requestHelp: (trigger: HintTriggerType) => void;
   announce?: (intent: VoiceIntent, transcript: string) => void;
   // Outputs to the renderer (Thu plays audio, shows the green dot, shows the trouble bubble)
@@ -74,6 +75,7 @@ export function createVoiceService(deps: VoiceServiceDeps): VoiceService {
     handlers: deps.handlers,
     hasOpenLadder: deps.hasOpenLadder,
     onFollowup: deps.onFollowup,
+    onFreeSpeech: deps.onFreeSpeech,
     requestHelp: deps.requestHelp,
     announce: deps.announce
   });

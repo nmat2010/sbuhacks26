@@ -5,11 +5,12 @@
 
 import { join } from 'path';
 import WebSocket from 'ws';
-import { app, desktopCapturer, dialog, globalShortcut, nativeImage, systemPreferences } from 'electron';
+import { app, BrowserWindow, desktopCapturer, dialog, globalShortcut, nativeImage, systemPreferences } from 'electron';
 import type { NudgeResponse } from '@wolfie/shared';
 import { stuckBus } from '../stuck/bus.js';
 import { ACTIONS } from '../stuck/actions.js';
 import { EscalationEngine } from '../stuck/engine.js';
+import { getDatabase } from '../db/index.js';
 import { logEvent } from '../events.js';
 import { setMascotState } from '../overlay/state.js';
 import { requestPageSummary } from '../sync/context.js';
@@ -18,6 +19,9 @@ import { HintFlow } from '../hints/flow.js';
 import { configureHintService, getHintService } from '../hints/index.js';
 import { getPlanService } from '../plan/index.js';
 import { getIdeasService, getPapersService } from '../papers/index.js';
+import { configureReading, getReadingService } from '../reading/index.js';
+import { ReadingStore } from '../reading/store.js';
+import { firstSentences } from '../voice/text.js';
 import { registerHelpHotkey } from './hotkey.js';
 import { handle, broadcast } from '../ipc.js';
 import { getNudgeQueue } from '../nudge/index.js';
@@ -36,6 +40,8 @@ const cleanups: Array<() => void> = [];
 let voice: VoiceService | null = null;
 let engine: EscalationEngine | null = null;
 let flow: HintFlow | null = null;
+/** The paper open in the reading view; spoken questions are answered from it. */
+let focusedPaperId: string | null = null;
 
 /** Voice intent handlers, filled in below as the modules they act on are created. */
 const voiceHandlers: Partial<Record<Exclude<VoiceIntent, 'stop' | 'repeat' | 'stuck'>, IntentHandler>> = {};
@@ -51,10 +57,12 @@ function safeLog(type: Parameters<typeof logEvent>[0], payload: Record<string, u
 export function registerIntelligence(): void {
   initLLMClient();
   configureHintService({ imageDir: join(app.getPath('userData'), 'images') });
+  configureReading({ papersDir: join(app.getPath('userData'), 'papers') });
   registerVoice();
   registerEscalation();
   registerHintFlow();
   registerPlan();
+  registerReading();
 }
 
 function registerEscalation(): void {
@@ -172,6 +180,35 @@ function registerPlan(): void {
   handle('paper-delete', async (id) => getPapersService().delete(id));
 }
 
+/** What Wolfie says out loud for a paper answer: the first two sentences, without the source line. */
+function spokenAnswer(answer: string): string {
+  return firstSentences(answer.split('\n\nSource:')[0]);
+}
+
+function registerReading(): void {
+  const reading = () => getReadingService();
+
+  handle('paper-import-pdf', async () => {
+    const parent = BrowserWindow.getFocusedWindow() ?? undefined;
+    const options = { title: 'Choose a paper (PDF)', properties: ['openFile' as const], filters: [{ name: 'PDF', extensions: ['pdf'] }] };
+    const picked = parent ? await dialog.showOpenDialog(parent, options) : await dialog.showOpenDialog(options);
+    if (picked.canceled || picked.filePaths.length === 0) return { success: false };
+    return reading().importPdfFile(picked.filePaths[0]);
+  });
+  handle('paper-import-arxiv', async (urlOrId, goalId) => reading().importArxiv(urlOrId, goalId));
+  handle('paper-make-readable', async (id) => reading().makeReadable(id));
+  handle('paper-content', async (id) => reading().content(id));
+  handle('paper-questions', async (paperId) => new ReadingStore(getDatabase).listQuestions(paperId));
+  handle('paper-focus', async (id) => {
+    focusedPaperId = id;
+  });
+  handle('paper-ask', async (input) => {
+    const res = await reading().ask(input);
+    if (res.success && res.data && input.inputMode === 'voice') void voice?.speakIfVoice(spokenAnswer(res.data.answer));
+    return res;
+  });
+}
+
 function registerVoice(): void {
   // ElevenLabs when a key is set (and not DEMO_MODE), mock otherwise; `ws` is used so the
   // xi-api-key header can be sent.
@@ -199,6 +236,17 @@ function registerVoice(): void {
     handlers: voiceHandlers,
     hasOpenLadder: () => flow?.hasOpenLadder() ?? false,
     onFollowup: (utterance) => flow?.followup(utterance),
+    onFreeSpeech: async (utterance) => {
+      if (!focusedPaperId) return false;
+      const res = await getReadingService().ask({ paperId: focusedPaperId, mode: 'explain', inputMode: 'voice', question: utterance });
+      if (res.success && res.data) {
+        broadcast('paper-answer', res.data);
+        void voice?.speakIfVoice(spokenAnswer(res.data.answer));
+      } else if (res.error) {
+        broadcast('voice-trouble', res.error);
+      }
+      return true;
+    },
     requestHelp: (trigger) => stuckBus.emit('help-requested', trigger),
     announce: (intent, transcript) => voiceBus.emit('intent', intent, transcript),
     sendAudio: (chunk, meta) => broadcast('voice-audio-out', { ...meta, chunk }),

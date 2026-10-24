@@ -89,6 +89,21 @@ export function migrations(db: Database.Database): Migration[] {
           CREATE INDEX IF NOT EXISTS idx_paper_chunks_paper ON paper_chunks(paper_id);
         `);
       }
+    },
+    {
+      // B8: how each saved answer was grounded (core paper_questions has no room for it)
+      name: '204_b_paper_answers',
+      up: () => {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS paper_answer_meta (
+            question_id INTEGER PRIMARY KEY,
+            mode TEXT NOT NULL,
+            grounded INTEGER NOT NULL,
+            citations_json TEXT
+          );
+          ALTER TABLE paper_meta ADD COLUMN local_path TEXT;
+        `);
+      }
     }
   ];
 }
@@ -102,5 +117,6 @@ export const tables: readonly string[] = [
   'plan_item_meta',
   'paper_lookup_cache',
   'paper_meta',
-  'paper_chunks'
+  'paper_chunks',
+  'paper_answer_meta'
 ];

@@ -105,6 +105,24 @@ export class PapersStore {
     return this.get(id);
   }
 
+  setLocalPath(id: string, path: string | null): void {
+    this.db.prepare('UPDATE paper_meta SET local_path = ? WHERE paper_id = ?').run(path, id);
+  }
+
+  getLocalPath(id: string): string | null {
+    const row = this.db.prepare('SELECT local_path FROM paper_meta WHERE paper_id = ?').get(id) as { local_path: string | null } | undefined;
+    return row?.local_path ?? null;
+  }
+
+  /** Fills in what a PDF told us, without overwriting a title the student or a recommendation gave. */
+  updateDetails(id: string, details: { title?: string; authors?: string[]; year?: number | null; arxivId?: string | null }): void {
+    const db = this.db;
+    if (details.title) db.prepare('UPDATE papers SET title = ? WHERE id = ?').run(details.title, id);
+    if (details.authors) db.prepare('UPDATE paper_meta SET authors_json = ? WHERE paper_id = ?').run(JSON.stringify(details.authors), id);
+    if (details.year !== undefined) db.prepare('UPDATE paper_meta SET year = ? WHERE paper_id = ?').run(details.year, id);
+    if (details.arxivId !== undefined) db.prepare('UPDATE paper_meta SET arxiv_id = ? WHERE paper_id = ?').run(details.arxivId, id);
+  }
+
   setStatus(id: string, status: PaperStatus): PaperView {
     this.get(id);
     this.db.prepare('UPDATE papers SET status = ? WHERE id = ?').run(status, id);
@@ -115,6 +133,7 @@ export class PapersStore {
     this.get(id);
     const db = this.db;
     db.transaction(() => {
+      db.prepare('DELETE FROM paper_answer_meta WHERE question_id IN (SELECT id FROM paper_questions WHERE paper_id = ?)').run(id);
       db.prepare('DELETE FROM paper_questions WHERE paper_id = ?').run(id);
       db.prepare('DELETE FROM paper_chunks WHERE paper_id = ?').run(id);
       db.prepare('DELETE FROM paper_meta WHERE paper_id = ?').run(id);

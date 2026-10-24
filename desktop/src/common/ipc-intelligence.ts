@@ -153,6 +153,59 @@ export interface AddPaperInput {
   planItemDueDate?: string;
 }
 
+// ---- Paper reading (SPEC Phase 7) -------------------------------------------------------------
+
+export type ReadingMode = 'explain' | 'check' | 'where';
+
+export interface PaperCitation {
+  /** Heading the passage sits under, e.g. "3.2 Procedure". */
+  section: string;
+  page: number | null;
+  /** The start of the cited passage, for hover or "show me where". */
+  snippet: string;
+  chunkId: number;
+}
+
+export interface PaperAnswer {
+  paperId: string;
+  question: string;
+  mode: ReadingMode;
+  /** The text to show (and, in voice mode, the first two sentences are spoken). */
+  answer: string;
+  /** True only if the answer is based on passages of this paper, which are listed in `citations`. */
+  grounded: boolean;
+  /** Always shown with the answer: "From the paper" or "General knowledge (not from this paper)". */
+  label: string;
+  citations: PaperCitation[];
+}
+
+export interface PaperQuestionView {
+  id: number;
+  question: string;
+  answer: string;
+  inputMode: 'text' | 'voice';
+  ts: number;
+  mode: ReadingMode;
+  grounded: boolean;
+  citations: PaperCitation[];
+}
+
+export interface PaperSection {
+  title: string;
+  page: number | null;
+  /** The section's text, paragraphs separated by blank lines. */
+  text: string;
+}
+
+export interface AskPaperInput {
+  paperId: string;
+  question: string;
+  mode: ReadingMode;
+  inputMode: 'text' | 'voice';
+  /** Text the student selected in the reading view ("what does this mean?"). */
+  selection?: string;
+}
+
 // ---- Channels --------------------------------------------------------------------------------
 
 /** renderer -> main, request/response: 'channel': { args: [...]; result: ... } */
@@ -193,6 +246,23 @@ export interface IntelligenceInvoke {
   'papers-list': { args: []; result: PaperView[] };
   'paper-set-status': { args: [id: string, status: PaperStatus]; result: BResult<PaperView> };
   'paper-delete': { args: [id: string]; result: BResult };
+
+  /** Opens a file picker (PDF). Resolves with the new paper, or success:false with no error if cancelled. */
+  'paper-import-pdf': { args: []; result: BResult<{ paper: PaperView }> };
+  /** An arXiv link or id (abs/pdf URL, "2301.12345", "arXiv:2301.12345v2"): downloads the PDF and reads it. */
+  'paper-import-arxiv': { args: [urlOrId: string, goalId?: string]; result: BResult<{ paper: PaperView }> };
+  /** Makes a library paper readable by fetching its arXiv PDF (for papers added from recommendations). */
+  'paper-make-readable': { args: [id: string]; result: BResult<{ paper: PaperView }> };
+  /** The paper's text by section, for the reading view. */
+  'paper-content': { args: [id: string]; result: BResult<{ paper: PaperView; sections: PaperSection[] }> };
+  /** Ask about the paper: explain simply, a check-my-understanding question, or show me where. */
+  'paper-ask': { args: [input: AskPaperInput]; result: BResult<PaperAnswer> };
+  'paper-questions': { args: [paperId: string]; result: PaperQuestionView[] };
+  /**
+   * The paper open in the reading view. While set, spoken questions that are not commands are
+   * answered from this paper and delivered on the 'paper-answer' event.
+   */
+  'paper-focus': { args: [paperId: string | null]; result: void };
 }
 
 /** renderer -> main, fire-and-forget: 'channel': [...args] */
@@ -209,4 +279,6 @@ export interface IntelligenceEvents {
   'voice-mic': boolean;
   /** Friendly message for a bubble when voice breaks (STT reconnects exhausted). */
   'voice-trouble': string;
+  /** A spoken question answered from the focused paper (the answer is also spoken, first two sentences). */
+  'paper-answer': PaperAnswer;
 }

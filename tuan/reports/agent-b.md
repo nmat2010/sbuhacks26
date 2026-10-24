@@ -14,7 +14,7 @@
 | B6 Plan | done |
 | B5b ElevenLabs | done (no real call verified) |
 | B7 Ideas + papers | done |
-| B8 Paper reading | not started |
+| B8 Paper reading | done |
 | M2-int | pending (needs A7) |
 
 ## B1 details
@@ -79,3 +79,9 @@ WOLFIE_USER_DATA=/tmp/wolfie-b npm run smoke
 - Tests: `papers/__tests__/papers.test.ts` (21, HTTP and model faked, no network): Atom parsing (multi-line titles, entities, ids), request URL and 3 s spacing even for overlapping callers, HTTP/network failures; Semantic Scholar mapping, API key header, 429 retry once; verifier: arXiv then Semantic Scholar then drop, similar-but-different titles rejected, unavailable vs not found, caching (memory + SQLite, negative expiry), sequential checks with a cap of 5 and dedupe; ideas: unverifiable papers dropped with the verified link and API metadata, 5-paper cap, "could not verify" state, goal type rules, bad model output, and the DEMO_MODE offline path (5 verified, 1 invented dropped, no network); adding papers: row + metadata + "Read:" plan item, dedupe by link, validation, list/status/delete cleanup.
 - Verified: typecheck, tests, lint (workaround).
 - Not verified: the live arXiv and Semantic Scholar APIs (no network calls were made in tests). The request and Atom format match the arXiv API user manual (https://info.arxiv.org/help/api/user-manual.html, read 2026-10-24); the Semantic Scholar response shape is from my knowledge of their Graph API, not re-read. Worth one real request by hand: `curl 'https://export.arxiv.org/api/query?search_query=ti:%22attention%20is%20all%20you%20need%22&max_results=5'`.
+
+## B8 details
+- Files: `desktop/src/main/reading/{extract,chunk,bm25,store,service,arxiv-fetch,index}.ts`, `llm/mock-reading.ts`, prompt `reading.v1.md`, migration `204_b_paper_answers` (also `paper_meta.local_path`), IPC in `ipc-intelligence.ts` / `register.ts` (file picker, `paper-focus`, voice route), fixture `reading/__tests__/fixtures/sample-paper.pdf`.
+- Tests: `reading/__tests__/reading.test.ts` (26) on the committed PDF, no network: line extraction with pages and font sizes; section split (11 sections, no chunk crosses a section); heading detection incl. false positives; unreadable PDF errors; BM25 ranking and rarity-weighted coverage; arXiv id parsing; import (real title, re-import updates the same paper); a selected paragraph + "what does this mean?" cites `3.2 Procedure` (page 1); keyword questions cite `4 Results` / `3.1 Participants`; an off-topic question is labeled general knowledge with no citations; a model claiming "grounded" without valid citations is downgraded; only retrieved excerpts reach the model (none for off-topic); check-my-understanding; show-me-where makes no model call and reports "not found"; every question saved with its input mode; arXiv import with faked HTTP (download, save, metadata, make-readable in place, friendly failures). Plus the router's free-speech path in `voice.test.ts`.
+- Verified: typecheck, 228 tests, lint (workaround). pdf.js also verified by hand inside Electron 44.7's Node (`ELECTRON_RUN_AS_NODE=1 electron probe.mjs`: 2 pages, 47 text items).
+- Not verified: the native file picker, a real arXiv download, answer quality from real Gemini.

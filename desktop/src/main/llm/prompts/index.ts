@@ -8,6 +8,7 @@ import sourceScreenV1 from './source-screen.v1.md?raw';
 import planV1 from './plan.v1.md?raw';
 import planItemV1 from './plan-item.v1.md?raw';
 import ideasV1 from './ideas.v1.md?raw';
+import readingV1 from './reading.v1.md?raw';
 
 // Versioned prompt files (SPEC 6: prompts are files, not inline strings). To change a prompt,
 // add a new version file and point the caller at it; the old one stays for comparison.
@@ -22,7 +23,8 @@ export const PROMPTS = {
   'source-screen.v1': sourceScreenV1,
   'plan.v1': planV1,
   'plan-item.v1': planItemV1,
-  'ideas.v1': ideasV1
+  'ideas.v1': ideasV1,
+  'reading.v1': readingV1
 } as const;
 
 export type PromptName = keyof typeof PROMPTS;

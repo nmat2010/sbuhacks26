@@ -28,6 +28,11 @@ export interface VoiceRouterDeps {
   hasOpenLadder: () => boolean;
   /** "I don't get step 2": goes to the hint service with the conversation so far. */
   onFollowup: (utterance: string) => void | Promise<void>;
+  /**
+   * Speech that is not a command and has no hint ladder to follow up on. Return true if something
+   * took it (e.g. a question about the paper open in the reading view); otherwise it is ignored.
+   */
+  onFreeSpeech?: (utterance: string) => boolean | Promise<boolean>;
   /** "I'm stuck": stuckBus.emit('help-requested', trigger). */
   requestHelp: (trigger: HintTriggerType) => void;
   /** Announces every recognized intent (voiceBus). */
@@ -38,6 +43,7 @@ export type RouteResult =
   | { kind: 'dropped'; reason: 'paused' | 'echo' | 'empty' }
   | { kind: 'intent'; intent: VoiceIntent; applied: boolean }
   | { kind: 'followup' }
+  | { kind: 'question' }
   | { kind: 'ignored' };
 
 export class VoiceRouter {
@@ -70,6 +76,7 @@ export class VoiceRouter {
       await deps.onFollowup(text.trim());
       return { kind: 'followup' };
     }
+    if (deps.onFreeSpeech && (await deps.onFreeSpeech(text.trim()))) return { kind: 'question' };
     return { kind: 'ignored' };
   }
 

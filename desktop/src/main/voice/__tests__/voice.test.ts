@@ -392,3 +392,22 @@ describe('attachNudgeSpeech', () => {
     expect(spoken).toHaveLength(1);
   });
 });
+
+describe('VoiceRouter free speech (reading view)', () => {
+  it('hands non-command speech to onFreeSpeech when no ladder is open, and still prefers commands and ladders', async () => {
+    const taken: string[] = [];
+    const t = makeRouter({
+      onFreeSpeech: (u) => {
+        taken.push(u);
+        return u.includes('paper');
+      }
+    });
+    expect((await t.router.handleTranscript('what does the paper say about spacing')).kind).toBe('question');
+    expect((await t.router.handleTranscript('lovely weather today')).kind).toBe('ignored');
+    expect(taken).toEqual(['what does the paper say about spacing', 'lovely weather today']);
+    expect((await t.router.handleTranscript('snooze')).kind).toBe('intent');
+    t.setLadder(true);
+    expect((await t.router.handleTranscript('the paper confuses me')).kind).toBe('followup');
+    expect(taken).toHaveLength(2);
+  });
+});
