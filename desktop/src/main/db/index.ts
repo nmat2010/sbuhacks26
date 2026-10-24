@@ -45,7 +45,7 @@ function runMigrations(database: Database.Database) {
         database.exec(`
           CREATE TABLE IF NOT EXISTS sessions (
             id TEXT PRIMARY KEY,
-            device TEXT NOT NULL CHECK(device IN ('desktop', 'ipad')),
+            device TEXT NOT NULL CHECK(device IN ('desktop', 'webapp')),
             started_at INTEGER NOT NULL,
             ended_at INTEGER,
             goal_id TEXT,
@@ -78,7 +78,7 @@ function runMigrations(database: Database.Database) {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             session_id TEXT NOT NULL,
             ts INTEGER NOT NULL,
-            device TEXT NOT NULL CHECK(device IN ('desktop', 'ipad')),
+            device TEXT NOT NULL CHECK(device IN ('desktop', 'webapp')),
             kind TEXT NOT NULL CHECK(kind IN ('distraction', 'ai_tool', 'stuck', 'streak', 'other')),
             level INTEGER NOT NULL,
             payload_json TEXT NOT NULL,
@@ -128,7 +128,7 @@ function runMigrations(database: Database.Database) {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             session_id TEXT NOT NULL,
             ts INTEGER NOT NULL,
-            device TEXT NOT NULL CHECK(device IN ('desktop', 'ipad')),
+            device TEXT NOT NULL CHECK(device IN ('desktop', 'webapp')),
             source TEXT NOT NULL CHECK(source IN ('screen', 'page', 'handwriting', 'camera')),
             trigger TEXT NOT NULL CHECK(trigger IN ('auto', 'manual', 'voice')),
             image_path TEXT,
@@ -137,7 +137,7 @@ function runMigrations(database: Database.Database) {
             FOREIGN KEY (session_id) REFERENCES sessions(id)
           );
 
-          CREATE TABLE IF NOT EXISTS ipad_activity (
+          CREATE TABLE IF NOT EXISTS webapp_activity (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             session_id TEXT NOT NULL,
             ts INTEGER NOT NULL,
@@ -169,7 +169,7 @@ function runMigrations(database: Database.Database) {
           CREATE TABLE IF NOT EXISTS events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             ts INTEGER NOT NULL,
-            device TEXT NOT NULL CHECK(device IN ('desktop', 'ipad')),
+            device TEXT NOT NULL CHECK(device IN ('desktop', 'webapp')),
             type TEXT NOT NULL,
             payload_json TEXT
           );

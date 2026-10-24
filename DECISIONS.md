@@ -22,10 +22,11 @@ This document tracks decisions made during implementation where the spec was amb
 - Foreign keys enabled via pragma
 
 ### LLM Provider
-- Created provider interface with Claude and Mock implementations
+- Created provider interface with Gemini and Mock implementations
 - Mock provider returns deterministic hints based on demo problem IDs
-- Claude provider stubbed for Phase 4 implementation
+- Gemini provider stubbed for Phase 4 implementation (Tuan's work)
 - DEMO_MODE=1 forces mock provider regardless of API key presence
+- Using Gemini API instead of Claude per updated spec requirements
 
 ### Extension Architecture
 - Using WebSocket for desktop communication (loopback only)
@@ -39,9 +40,23 @@ This document tracks decisions made during implementation where the spec was amb
 - Overlay click-through enabled except when hovering over mascot
 - Both windows use separate React apps
 
-## iOS App
-- Deferred to later phases (Thu's work)
-- Will use SwiftUI + PencilKit as per spec
+## Tablet/iPad Support: Web App Instead of Native iOS
+- **Decision**: Use a React web app instead of a native iOS/SwiftUI app for tablet support
+- **Rationale**:
+  - Faster development for hackathon timeline (no App Store, no Xcode required)
+  - Cross-platform: works on iPad, Android tablets, and any device with a browser
+  - Code reuse: can share React components with desktop dashboard
+  - HTML5 Canvas provides drawing capabilities (though not as advanced as PencilKit)
+  - Web Speech API provides voice (browser-native, on-device)
+  - Camera API via `<input capture>` allows photographing physical paper
+  - WebSocket sync works the same way as native would
+- **Trade-offs**:
+  - ❌ No native Apple Pencil pressure sensitivity
+  - ❌ No PencilKit's advanced features
+  - ❌ Web app feel instead of native iOS feel
+  - ✅ But core functionality preserved: drawing, stuck detection, hints, voice, camera, sync
+- **Storage**: IndexedDB instead of SwiftData/Core Data
+- **Implementation**: Thu's responsibility (Phases 10, 11, 12)
 
 ## Notes for Future Phases
 - Icon assets needed for extension (16px, 48px, 128px)

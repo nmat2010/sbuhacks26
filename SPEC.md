@@ -35,12 +35,12 @@ A companion that sits on the student's laptop and iPad during study/work session
 
 - **Desktop:** macOS first. Electron + TypeScript + React (Vite).
 - **Browser sensor:** Chrome extension, Manifest V3, TypeScript. It is a sensor only: Wolfie's character lives in the desktop overlay, not injected into web pages.
-- **iPad:** Swift + SwiftUI, PencilKit, iPadOS 17+, Apple Pencil supported.
-- **Storage:** desktop local SQLite (`better-sqlite3`); iPad SwiftData (or Core Data).
-- **LLM:** Claude API, called only from the desktop main process. The iPad and the extension never hold API keys.
-- **Voice (desktop):** provider interfaces for speech-to-text and text-to-speech, default implementation using a streaming speech API (Deepgram), keys in `.env`. A mock provider is used in dev and demo mode.
-- **Voice (iPad):** on-device speech recognition and speech synthesis (Apple frameworks), so audio stays on the device.
-- **Sync:** the iPad pairs with the desktop over the local network (Bonjour + WebSocket, 6-digit pairing code, shared secret in the OS keychain). The extension connects to the desktop over loopback only. No cloud server in v1.
+- **iPad/Tablet:** Web app (React + TypeScript), works in Safari on iPad and other tablet browsers. HTML5 Canvas for drawing, Web Speech API for voice, Camera API for photographing paper.
+- **Storage:** desktop local SQLite (`better-sqlite3`); web app uses IndexedDB for offline queue and localStorage for pairing token.
+- **LLM:** Gemini API, called only from the desktop main process. The web app and the extension never hold API keys.
+- **Voice (desktop):** provider interfaces for speech-to-text and text-to-speech, default implementation using Eleven Labs for TTS and speech-to-text, keys in `.env`. A mock provider is used in dev and demo mode.
+- **Voice (web app):** Web Speech API (browser-native, on-device), so audio stays on the device.
+- **Sync:** the web app connects to the desktop over the local network via WebSocket (6-digit pairing code, shared secret in localStorage). The extension connects to the desktop over loopback only. No cloud server in v1.
 - **Mascot art:** placeholder sprite sheet for now. The team supplies final art and confirms it may use the university mascot. Do not generate or imitate mascot artwork.
 
 ---
@@ -67,13 +67,13 @@ Chrome extension (MV3)
  ├─ background/   connection to desktop, tab tracking, exclusions
  └─ popup/        status, pause, excluded sites, pairing token
 
-iPad (SwiftUI)
- ├─ Notebook/     PencilKit canvas, pages, lasso
+Web App (React, for tablets/iPad)
+ ├─ Notebook/     HTML5 Canvas drawing, pages, selection tool
  ├─ Wolfie/       mascot widget, bubbles, NudgeQueue
- ├─ Stuck/        stroke-activity signals, escalation engine
- ├─ Voice/        on-device speech in/out
- ├─ Capture/      page render, camera snapshot of physical paper
- ├─ Sync/         Bonjour browse, WebSocket client, offline queue
+ ├─ Stuck/        canvas-activity signals, escalation engine
+ ├─ Voice/        Web Speech API (browser-native)
+ ├─ Capture/      canvas render, Camera API for physical paper photos
+ ├─ Sync/         WebSocket client to desktop, IndexedDB offline queue
  └─ Today/        read-only plan items + streak
 ```
 
@@ -83,21 +83,21 @@ wolfie/
   shared/        Zod schemas, JSON Schemas, types, mock hint bank, test fixtures
   desktop/       Electron app
   extension/     Chrome MV3 extension
-  ios/           SwiftUI app
+  web/           React web app for tablets/iPad
   demo-pages/    scripted demo scenarios (see Phase 4 and section 8)
   DECISIONS.md  TESTING.md
 ```
 
 ### Shared contracts
-- `shared/schemas/` holds JSON Schemas for: nudge, hint request/response, sync messages, extension messages, `PageSummary`, struggle signals. Zod types for TypeScript are generated from or kept in sync with them; Swift `Codable` models are generated or hand-written from the same JSON Schemas.
-- `shared/fixtures/` holds example JSON for every message and `escalation.json` (signal sequences with expected levels). Both the TypeScript and Swift test suites must pass against the same fixtures, so the two implementations of the escalation engine stay identical.
+- `shared/schemas/` holds JSON Schemas for: nudge, hint request/response, sync messages, extension messages, `PageSummary`, struggle signals. Zod types for TypeScript are exported and used across desktop, extension, and web app.
+- `shared/fixtures/` holds example JSON for every message and `escalation.json` (signal sequences with expected levels). Both the desktop and web app TypeScript test suites must pass against the same fixtures, so the two implementations of the escalation engine stay identical.
 
 ### Rules
 - Monitoring and rule matching run locally on each device. Images (screenshots, page renders, camera photos) leave a device only when the user triggers or accepts a hint request, and go only to the paired desktop and then to the LLM API.
 - Audio is never stored and never sent to the LLM; only transcripts of the student's turns are used, in memory, for the current session.
 - The desktop renderer never touches the database or API keys; typed IPC only.
 - Every user-visible nudge goes through one `NudgeQueue` per device that enforces cooldowns.
-- **iOS limitation:** the iPad app can only observe itself. It cannot see which other apps are open or what is written in other note apps. Handwriting monitoring therefore happens inside the Wolfie notebook. Leaving the app during a session is detectable (app goes to background) but which app was opened is not.
+- **Web app limitation:** the web app can only observe itself (the browser tab). It cannot see which other apps or browser tabs are open. Drawing/handwriting monitoring therefore happens inside the Wolfie web notebook. The Page Visibility API can detect when the user switches tabs or apps, but which tab/app was opened is not known.
 
 ---
 
@@ -105,7 +105,7 @@ wolfie/
 
 ### Desktop SQLite
 ```
-sessions(id, device, started_at, ended_at, goal_id NULL, label, assessment_mode)  -- device: desktop | ipad
+sessions(id, device, started_at, ended_at, goal_id NULL, label, assessment_mode)  -- device: desktop | webapp
 app_events(id, session_id, ts, app_name, window_title, url_domain NULL, is_idle)
 web_signals(id, session_id, ts, type, strength, meta_json)                         -- from the extension, see Phase 4
 nudges(id, session_id, ts, device, kind, level, payload_json, user_response)       -- kind: distraction | ai_tool | stuck | streak | other
@@ -114,20 +114,20 @@ plan_items(id, goal_id, title, due_date, status, notes)
 papers(id, goal_id NULL, title, url_or_path, status, added_at)
 paper_questions(id, paper_id, question, answer, input_mode, ts)                    -- input_mode: text | voice
 hint_requests(id, session_id, ts, device, source, trigger, image_path NULL, hint_level, hint_text) -- source: screen | page | handwriting | camera
-ipad_activity(id, session_id, ts, type, meta_json)                                 -- stroke_burst | erase | undo | pause | background | foreground
+webapp_activity(id, session_id, ts, type, meta_json)                               -- canvas_stroke | erase | undo | clear | tab_hidden | tab_visible
 streak_days(local_date, qualified, focus_minutes, freeze_used)
 streak_state(current, longest, freezes_available, last_freeze_grant)
 settings(key, value_json)
 events(id, ts, device, type, payload_json)                                         -- generic append-only log, see section 9
 ```
 
-### iPad (SwiftData)
+### Web App (IndexedDB)
 ```
-Notebook(id, title, createdAt)
-Page(id, notebookID, drawingData /* PKDrawing */, updatedAt)
-PendingSync(id, kind, payload, createdAt)                                          -- queue for offline events
+notebooks (id, title, createdAt)
+pages (id, notebookId, canvasDataUrl /* base64 PNG */, updatedAt)
+pendingSync (id, kind, payload, createdAt)                                         -- queue for offline events
 ```
-Notebook content stays on the iPad. Only session metadata, activity summaries, and requested images are sent to the desktop.
+Notebook content stays in the browser. Only session metadata, activity summaries, and requested images are sent to the desktop.
 
 Window titles and page text can be sensitive. Provide a "clear history" button, a setting to disable title capture (app name only), and a setting to disable the extension's page text (domain only).
 
@@ -137,14 +137,14 @@ Window titles and page text can be sensitive. Provide a "clear history" button, 
 
 ### Phase 0: Scaffold and contracts
 **Owner: Thu and Tuan together (the first working session; see section 11).**
-- Monorepo with `shared/`, `desktop/`, `extension/`, `ios/`, `demo-pages/`.
+- Monorepo with `shared/`, `desktop/`, `extension/`, `web/`, `demo-pages/`.
 - Desktop: Electron + Vite + React + TypeScript, ESLint, Prettier, Vitest. Two windows: overlay (transparent, frameless, always-on-top, click-through except on the mascot) and dashboard. Typed IPC, SQLite with migrations, `.env` loading.
 - Extension: MV3 skeleton that builds and loads unpacked, with a popup.
-- iOS: empty SwiftUI app that builds and runs on the iPad.
-- `llm/` provider interface with `claude` and `mock` implementations; `DEMO_MODE=1` forces mock providers (LLM, STT, TTS).
+- Web app: React + Vite + TypeScript skeleton that serves on a local dev server and can be opened on any device.
+- `llm/` provider interface with `gemini` and `mock` implementations; `DEMO_MODE=1` forces mock providers (LLM, STT, TTS).
 - Write and freeze the contracts in section 11 (schemas, nudge API, settings keys), with fixtures.
 
-**Accept:** `npm run dev` opens both desktop windows; the overlay shows a draggable placeholder mascot. The extension loads in Chrome. The iOS app runs on a device. A test IPC round trip writes and reads a DB row. Contract fixtures validate in TypeScript and decode in Swift.
+**Accept:** `npm run dev` opens both desktop windows; the overlay shows a draggable placeholder mascot. The extension loads in Chrome. The web app loads in a browser (desktop or tablet). A test IPC round trip writes and reads a DB row. Contract fixtures validate in TypeScript.
 
 ### Phase 1: Mascot overlay and voice
 **Owner: Thu (overlay, NudgeQueue, voice UI) with Tuan providing the speech provider implementations.**
@@ -158,7 +158,7 @@ Window titles and page text can be sensitive. Provide a "clear history" button, 
 
 *Voice*
 - Mic capture in a hidden renderer (AudioWorklet to 16 kHz PCM) streamed to the STT provider; end-of-turn detection from the provider (fall back to a simple voice-activity timeout). Streaming TTS played back through Web Audio, starting on the first audio frame.
-- `SttProvider` / `TtsProvider` interfaces with a Deepgram implementation and a mock (typed utterances from the developer panel; TTS shown as text only). If no key is set, voice is off with a friendly note and everything still works by text.
+- `SttProvider` / `TtsProvider` interfaces with an Eleven Labs implementation and a mock (typed utterances from the developer panel; TTS shown as text only). If no key is set, voice is off with a friendly note and everything still works by text.
 - Voice mode toggle (default `Alt+Shift+V`) plus optional hold-to-talk. A green dot on the mascot means the mic is live; one click mutes. The mic is only ever live during an active session with voice mode on.
 - **Barge-in:** speech that is not an echo of Wolfie's own words stops playback immediately and interrupts the TTS stream. Echo suppression compares incoming transcripts to the text just spoken; recommend headphones in the UI.
 - **Local intents (no model call, under 200 ms):** "stop", "wait", "hold on", "quiet" (stop talking); "snooze"; "mute"; "I'm good" (decline an offer); "another hint"; "I got it"; "repeat that".
@@ -278,67 +278,67 @@ Window titles and page text can be sensitive. Provide a "clear history" button, 
 **Owner: Tuan (engine), Thu (streak UI and Wolfie reactions).**
 A Duolingo-style streak that tracks consecutive days the student showed up and did focused work.
 
-- **Qualifying day:** at least one session totaling at least 20 focused minutes that day (desktop and iPad combined; focused means work-category time, excluding idle, AI-tool and distraction time). The threshold is a setting. The rule is a single swappable function `dayQualifies(day) -> boolean` in `streak/rules.ts`.
+- **Qualifying day:** at least one session totaling at least 20 focused minutes that day (desktop and web app combined; focused means work-category time, excluding idle, AI-tool and distraction time). The threshold is a setting. The rule is a single swappable function `dayQualifies(day) -> boolean` in `streak/rules.ts`.
 - **Day boundary:** the user's local calendar date, handled correctly across time zones and DST. Store `local_date` strings.
 - **Streak state:** current streak, longest streak, a weekly calendar view (filled / missed / frozen).
 - **Streak freeze:** earn 1 freeze per week of streak (maximum 2 stored). A missed day consumes a freeze automatically if available; otherwise the streak resets to 0.
 - **Wolfie reactions:** a small celebration when today first qualifies; milestone messages at 3, 7, 14, 30, 60, 100 days; a gentle evening reminder (default 8 pm, configurable, off-able) if today has not qualified and a streak is at stake; a kind, non-guilt message after a reset. Spoken in voice mode.
-- Streak shows on the dashboard Today view, the mascot menu, and the iPad Today screen.
-- The desktop streak engine is the source of truth; iPad sessions count once synced, and late-synced sessions trigger recalculation of affected days.
+- Streak shows on the dashboard Today view, the mascot menu, and the web app Today screen.
+- The desktop streak engine is the source of truth; web app sessions count once synced, and late-synced sessions trigger recalculation of affected days.
 
-**Accept:** Unit tests with simulated multi-day histories cover qualifying and non-qualifying days, freeze earn and consume, reset, longest streak, timezone change, DST transition, and late-synced iPad sessions. In the app, finishing a 20-minute session triggers the celebration once and updates the dashboard.
+**Accept:** Unit tests with simulated multi-day histories cover qualifying and non-qualifying days, freeze earn and consume, reset, longest streak, timezone change, DST transition, and late-synced web app sessions. In the app, finishing a 20-minute session triggers the celebration once and updates the dashboard.
 
 ### Phase 10: Pairing and sync
-**Owner: Tuan (desktop server), Thu (iPad client).**
-- Desktop advertises a Bonjour service and runs a WebSocket server on the LAN for the iPad (separate from the loopback endpoint used by the extension). Settings shows a 6-digit pairing code and paired devices with "Unpair."
-- The iPad finds the desktop, enters the code, and both store a shared secret. All messages are authenticated; unauthenticated connections are rejected.
-- Message types: `session.start/end`, `ipad.activity` (batched), `nudge.log`, `hint.request`, `hint.followup`, `hint.response`, `plan.snapshot` and `streak.snapshot` (desktop to iPad, read-only).
-- The iPad queues outbound messages in `PendingSync` when the desktop is unreachable and replays them in order on reconnect; the desktop dedupes by message ID.
-- `hint.request` and `hint.followup` fail fast with a clear iPad message when the desktop is unreachable ("Wolfie's desktop isn't reachable. Your notebook still works.").
+**Owner: Tuan (desktop server), Thu (web app client).**
+- Desktop runs a WebSocket server on the LAN for the web app (separate from the loopback endpoint used by the extension). Settings shows a 6-digit pairing code and paired devices with "Unpair."
+- The web app finds the desktop via manual IP entry or QR code, enters the code, and both store a shared secret (desktop in DB, web app in localStorage). All messages are authenticated; unauthenticated connections are rejected.
+- Message types: `session.start/end`, `webapp.activity` (batched), `nudge.log`, `hint.request`, `hint.followup`, `hint.response`, `plan.snapshot` and `streak.snapshot` (desktop to web app, read-only).
+- The web app queues outbound messages in IndexedDB `pendingSync` table when the desktop is unreachable and replays them in order on reconnect; the desktop dedupes by message ID.
+- `hint.request` and `hint.followup` fail fast with a clear web app message when the desktop is unreachable ("Wolfie's desktop isn't reachable. Your notebook still works.").
 
-**Accept:** Pairing works with the correct code and fails with a wrong one. An iPad session created offline appears in the desktop History after reconnect with no duplicates. Unpairing stops all traffic. All message fixtures validate on both sides.
+**Accept:** Pairing works with the correct code and fails with a wrong one. A web app session created offline appears in the desktop History after reconnect with no duplicates. Unpairing stops all traffic. All message fixtures validate in TypeScript.
 
-### Phase 11: iPad notebook, Wolfie, and voice
+### Phase 11: Web app notebook, Wolfie, and voice
 **Owner: Thu.**
-- Notebooks and pages with a PencilKit canvas: pen, highlighter, eraser, lasso, undo/redo, colors, page add/delete, thumbnails. Pencil double-tap switches tools or opens Wolfie (user setting).
+- Notebooks and pages with an HTML5 Canvas: pen, highlighter, eraser, selection tool, undo/redo, colors, page add/delete, thumbnails. Touch and stylus support (works with Apple Pencil in Safari on iPad).
 - Wolfie widget in a screen corner: draggable, sprite states (including glance and question-mark), speech bubbles, same `NudgeQueue` rules.
-- Sessions: start/stop in the notebook, or auto-start on the first stroke after a gap (configurable). Session time counts toward the streak.
-- Leave-app detection using scene phase: if the app is backgrounded longer than a configurable time (default 60 seconds) during a session, Wolfie says something on return. Be explicit in-app that the specific app visited is not known.
-- **Voice:** a push-to-talk button on the Wolfie widget. On-device speech recognition and speech synthesis; transcripts go to the desktop as `hint.followup` messages. Barge-in stops synthesis when the student speaks (use an audio session mode with echo cancellation). Local intents ("stop", "another hint", "I got it", "I'm good") work without a round trip. Mic permission is requested on first use; audio is never stored.
+- Sessions: start/stop in the notebook, or auto-start on the first canvas stroke after a gap (configurable). Session time counts toward the streak.
+- Tab visibility detection using Page Visibility API: if the tab is hidden longer than a configurable time (default 60 seconds) during a session, Wolfie says something on return. Be explicit in-app that the specific app/tab visited is not known.
+- **Voice:** a push-to-talk button on the Wolfie widget. Web Speech API (browser-native) for recognition and synthesis; transcripts go to the desktop as `hint.followup` messages. Barge-in stops synthesis when the student speaks. Local intents ("stop", "another hint", "I got it", "I'm good") work without a round trip. Mic permission is requested on first use; audio is never stored.
 - **Today** screen: plan items due today (read-only), streak, start-session button.
 
-**Accept:** On a real iPad, handwriting is smooth with Pencil, pages persist after restart, a session logs correctly and appears on the desktop, and backgrounding the app past the threshold triggers the return message. Voice works with push-to-talk, "stop" cuts speech immediately, and a spoken follow-up while offline shows the unreachable message.
+**Accept:** On an iPad (or any tablet), drawing is responsive with touch/stylus, pages persist in IndexedDB after browser reload, a session logs correctly and appears on the desktop, and hiding the tab past the threshold triggers the return message. Voice works with push-to-talk, "stop" cuts speech immediately, and a spoken follow-up while offline shows the unreachable message.
 
-### Phase 12: Handwriting stuck detection, hints, and camera check
-**Owner: Thu (stroke signals, UI, camera), Tuan (hint service support for handwriting and camera sources).**
+### Phase 12: Canvas-based stuck detection, hints, and camera check
+**Owner: Thu (canvas signals, UI, camera), Tuan (hint service support for handwriting and camera sources).**
 
-**Stroke-activity signals** (on-device; raw strokes are never uploaded):
-- `idle_on_page` (weak): no strokes for N minutes (default 4) on a page that has content.
-- `scribble_outs` (strong): repeated erasing or scribbling out over the same area (3 or more in 90 seconds).
+**Canvas-activity signals** (tracked locally; raw canvas data is never uploaded automatically):
+- `idle_on_page` (weak): no drawing activity for N minutes (default 4) on a page that has content.
+- `scribble_outs` (strong): repeated erasing or drawing over the same area (3 or more in 90 seconds).
 - `undo_burst` (weak): 5 or more undos in 60 seconds.
-- `abandoned_start` (weak): began writing, then a long pause with the pen lifted.
+- `abandoned_start` (weak): began drawing, then a long pause with no mouse/touch input.
 
-The iPad uses a Swift port of the same escalation engine (levels 0 to 4, cooldowns, decline and "I'm good" behavior, no offer within 5 seconds of recent writing), tested against `shared/fixtures/escalation.json`. Level 4 is spoken only when voice mode is on. Wolfie never gives a hint unasked.
+The web app uses the same escalation engine (levels 0 to 4, cooldowns, decline and "I'm good" behavior, no offer within 5 seconds of recent drawing), tested against `shared/fixtures/escalation.json`. Level 4 is spoken only when voice mode is on. Wolfie never gives a hint unasked.
 
-**Hint flow for handwriting:**
-1. The student taps Wolfie, double-taps Pencil, says "I'm stuck", or accepts an offer.
-2. They may lasso a region ("circle the part you're stuck on"); otherwise the whole page is used.
-3. The app renders the region from the `PKDrawing` to an image, shows a preview, and sends `hint.request` with `source: handwriting` to the desktop, which runs the Phase 4 hint service. The same five-level ladder, assessment mode, and offline fallback apply.
+**Hint flow for handwritten work:**
+1. The student taps Wolfie, clicks "Get hint", says "I'm stuck", or accepts an offer.
+2. They may use the selection tool to select a region ("select the part you're stuck on"); otherwise the whole canvas is used.
+3. The app converts the canvas region to an image (PNG), shows a preview, and sends `hint.request` with `source: handwriting` to the desktop, which runs the Phase 4 hint service. The same five-level ladder, assessment mode, and offline fallback apply.
 4. If the handwriting is illegible or ambiguous, the hint says what could not be read and asks the student to clarify instead of guessing.
 
 **Camera check of physical paper:**
-- A "Check paper" button opens the camera. The student photographs their handwritten work with document edge detection and perspective correction (VisionKit document scanner), previews it, and confirms. Same hint flow with `source: camera`.
+- A "Check paper" button opens the device camera via `<input type="file" capture="environment">`. The student photographs their handwritten work, previews it, and confirms. Same hint flow with `source: camera`.
 - On demand only. No continuous video or background camera use, ever.
 
-**Demo support:** a developer-only "simulate stall" control and a pre-filled demo page so the escalation and hint flow can be shown without waiting for a real pause.
+**Demo support:** a developer-only "simulate stall" control and a pre-filled demo canvas so the escalation and hint flow can be shown without waiting for a real pause.
 
-**Accept:** Simulated stroke streams trigger each signal as specified and none during active writing, with identical levels to the TypeScript engine on the shared fixtures. A lassoed handwritten math or code problem returns five distinct hint levels. A photographed paper returns hints. With image storage off on the desktop, no image persists after the call. Camera permission denial shows a clear message. The demo scenario runs end to end with `DEMO_MODE=1` and no network.
+**Accept:** Simulated canvas activity triggers each signal as specified and none during active drawing, with identical levels to the desktop TypeScript engine on the shared fixtures. A selected handwritten math or code problem returns five distinct hint levels. A photographed paper returns hints. With image storage off on the desktop, no image persists after the call. Camera permission denial shows a clear message. The demo scenario runs end to end with `DEMO_MODE=1` and no network.
 
 ---
 
 ## 6. LLM usage rules
 
-- All calls go through `llm/client.ts` behind a provider interface (`claude`, `mock`), with a request timeout, one retry, and a per-day call cap in settings.
+- All calls go through `llm/client.ts` behind a provider interface (`gemini`, `mock`), with a request timeout, one retry, and a per-day call cap in settings.
 - Use structured JSON outputs validated with Zod. Reject and retry once on schema failure.
 - Prompts live in `llm/prompts/` as versioned files, not inline strings.
 - The tutor persona prompt must: ask before telling, give the smallest useful hint first, follow the five-level ladder, stay within the word limits, and keep a warm, encouraging voice. It receives an `assessment` flag and must never give a final answer when it is true.
@@ -347,35 +347,35 @@ The iPad uses a Swift port of the same escalation engine (levels 0 to 4, cooldow
 
 ## 7. Privacy and safety requirements
 
-- First-run consent screen on each device explaining what is monitored, what stays local, and what is sent to the API (images and page summaries only when a hint is requested or accepted).
+- First-run consent screen on each app (desktop and web) explaining what is monitored, what stays local, and what is sent to the API (images and page summaries only when a hint is requested or accepted).
 - Window-title capture, page text, and image storage are each off-able in settings.
-- One-click "pause monitoring" in the mascot menu on both devices, reflected by a sleeping sprite. Pausing also mutes the mic and tells the extension to stop reporting.
+- One-click "pause monitoring" in the mascot menu on both desktop and web app, reflected by a sleeping sprite. Pausing also mutes the mic and tells the extension to stop reporting.
 - Nothing is monitored outside an active session.
 - The extension requests broad host access in v1 so it can run on any site; note this in `DECISIONS.md` and restrict it to an allowlist before any public release. Excluded domains and incognito windows report nothing.
 - Audio is never stored. Saving transcript history is opt-in and off by default.
-- iPad: camera, microphone, and speech permissions requested only when first used. Raw strokes and notebooks never leave the iPad.
-- Sync is local-network only for the iPad and loopback only for the extension; both require pairing, and unpairing deletes the shared secret on both sides.
+- Web app: camera and microphone permissions requested only when first used (browser-managed). Raw canvas data and notebooks never leave the browser automatically.
+- Sync is local-network only for the web app and loopback only for the extension; both require pairing, and unpairing deletes the shared secret on both sides.
 
 ## 8. Testing
 
-- Unit tests: rule matching (apps and domains), cooldown logic, stuck signals, `computeLevel` against shared fixtures (TypeScript and Swift), NudgeQueue limits, plan JSON validation, streak engine, sync dedupe, `PageSummary` redaction of sensitive fields, voice local intents.
-- Contract tests: every JSON fixture in `shared/fixtures/` validates in TypeScript and decodes in Swift.
-- Integration tests: a simulated session event stream produces expected nudges and DB rows; a simulated iPad client against the sync server covers pairing, offline replay, and a hint round trip; a simulated extension client covers domain reporting and `PageSummary` delivery.
+- Unit tests: rule matching (apps and domains), cooldown logic, stuck signals, `computeLevel` against shared fixtures (TypeScript), NudgeQueue limits, plan JSON validation, streak engine, sync dedupe, `PageSummary` redaction of sensitive fields, voice local intents.
+- Contract tests: every JSON fixture in `shared/fixtures/` validates in TypeScript (desktop and web app).
+- Integration tests: a simulated session event stream produces expected nudges and DB rows; a simulated web app client against the sync server covers pairing, offline replay, and a hint round trip; a simulated extension client covers domain reporting and `PageSummary` delivery.
 - Demo suite: each scenario in `demo-pages/` runs with `DEMO_MODE=1`, offline, and produces the expected escalation and hints.
-- Manual checklist in `TESTING.md` for permissions (screen, accessibility, microphone, camera), overlay click-through, multi-monitor, sleep/wake, Pencil behavior, voice barge-in with and without headphones, and network loss mid-hint.
+- Manual checklist in `TESTING.md` for permissions (screen, accessibility, microphone, camera), overlay click-through, multi-monitor, sleep/wake, touch/stylus behavior, voice barge-in with and without headphones, and network loss mid-hint.
 
 ## 9. Hooks for more resilience features (not built in v1)
 
 The streak (Phase 9) is the only resilience mechanic in v1. The team may add more, so keep the foundation:
 - A generic `events` table and `logEvent(type, payload)` helper called for: session start/end, nudge shown/answered with level, stuck signals, hint requested and deepest level used, offers accepted/declined, plan item completed, streak qualified/frozen/reset.
 - Timestamps on everything, so durations such as time-to-first-hint can be computed later.
-- A `features/` directory on desktop (and `Features/` on iPad) where new mascot behaviors can be registered without editing core code.
+- A `features/` directory on desktop (and `/features/` on web app) where new mascot behaviors can be registered without editing core code.
 
 Do not implement any scoring, predictions, or training logic beyond the streak.
 
 ## 10. Definition of done for v1
 
-A student can set up both devices, install the extension, pair them, enter their semester and goals, and get a plan. On the laptop they can start a session, get warned when opening AI tools or distractions, see Wolfie escalate gently when they struggle, and get a five-level hint ladder by text or voice, with assessment mode available. They can add a paper and ask questions about it by text or voice. On the iPad they can write in a notebook, get Wolfie's offer and hints when their handwriting stalls, talk to Wolfie, and photograph physical paper for a hint. Focused time from both devices builds a daily streak with freezes and Wolfie reactions, and the dashboard shows sessions, plan, and streak. All monitoring data is stored locally and clearable, and the full demo runs offline in demo mode.
+A student can set up the desktop app and web app, install the extension, pair them, enter their semester and goals, and get a plan. On the laptop they can start a session, get warned when opening AI tools or distractions, see Wolfie escalate gently when they struggle, and get a five-level hint ladder by text or voice, with assessment mode available. They can add a paper and ask questions about it by text or voice. On a tablet (iPad or other) they can draw in a notebook, get Wolfie's offer and hints when their work stalls, talk to Wolfie, and photograph physical paper for a hint. Focused time from both devices builds a daily streak with freezes and Wolfie reactions, and the dashboard shows sessions, plan, and streak. All monitoring data is stored locally and clearable, and the full demo runs offline in demo mode.
 
 ---
 
@@ -393,20 +393,20 @@ Freeze these in Phase 0 so the two tracks can build against stubs:
 ### Tuan: Desktop and intelligence
 Phases 2, 3, 4 (signals, escalation, hint service, extension, demo pages), 5 and 7 (logic), 6, 9 (engine), 10 (desktop server), plus the speech provider implementations from Phase 1, the LLM client and prompts, mock/demo mode, and desktop-side support for the handwriting and camera sources in Phase 12.
 
-### Thu: Experience and iPad
-Phases 1 (overlay, NudgeQueue, voice UI), 5, 7 and 8 (all dashboard and reading UI), 9 (streak UI and reactions), 10 (iPad client), 11, and 12 (stroke signals, lasso, camera, Swift escalation port), plus mascot animation and demo scripting on the iPad.
+### Thu: Experience and Web App
+Phases 1 (overlay, NudgeQueue, voice UI), 5, 7 and 8 (all dashboard and reading UI), 9 (streak UI and reactions), 10 (web app client), 11, and 12 (canvas signals, selection tool, camera, web app escalation engine), plus mascot animation and demo scripting for the web app.
 
-Whoever is more comfortable with Swift should take Thu's iPad work and trade smaller desktop UI pieces to the other person if the load feels uneven.
+Whoever is more comfortable with React/frontend should take Thu's web app work and trade smaller desktop UI pieces to the other person if the load feels uneven.
 
 ### Milestones and integration checkpoints
 - **M0, together:** Phase 0 and the contracts. Exit: both tracks can run against mocks.
 - **M1:** Tuan builds monitoring, extension connection, and warnings; Thu builds the overlay, NudgeQueue, and dashboard shell. **Integrate:** a distraction warning appears on the overlay, spoken in voice mode.
-- **M2:** Tuan builds the signals, escalation engine, and hint service; Thu builds the iPad notebook and Wolfie widget (no sync yet) and the escalation sprite states. **Integrate:** desktop demo scenario A runs end to end.
-- **M3:** Tuan builds plan, papers, and the sync server; Thu builds dashboard screens and the sync client. **Integrate:** an iPad hint request round-trips through the desktop.
-- **M4:** Tuan builds the streak engine, voice pipeline polish, and handwriting source support; Thu builds streak UI, iPad stroke signals, camera, and iPad voice. **Integrate:** the iPad stall demo and a streak update across both devices.
+- **M2:** Tuan builds the signals, escalation engine, and hint service; Thu builds the web app notebook and Wolfie widget (no sync yet) and the escalation sprite states. **Integrate:** desktop demo scenario A runs end to end.
+- **M3:** Tuan builds plan, papers, and the sync server; Thu builds dashboard screens and the web app sync client. **Integrate:** a web app hint request round-trips through the desktop.
+- **M4:** Tuan builds the streak engine, voice pipeline polish, and handwriting source support; Thu builds streak UI, web app canvas signals, camera, and web voice. **Integrate:** the web app stall demo and a streak update across both devices.
 - **M5, together:** demo mode polish, all demo scenarios offline, full test pass, privacy review, and the pitch walkthrough.
 
 ### Working agreements
 - Changes to anything in `shared/` need the other person's review, since both tracks depend on it.
 - Each person owns their phases' tests; the shared fixtures are owned jointly.
-- If one track slips, cut in this order: voice on iPad, camera check, per-site extension adapters, paper recommendations. The core loop (monitor, escalate, hint, streak) must survive.
+- If one track slips, cut in this order: voice on web app, camera check, per-site extension adapters, paper recommendations. The core loop (monitor, escalate, hint, streak) must survive.

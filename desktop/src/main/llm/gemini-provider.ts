@@ -1,48 +1,48 @@
 import { HintResponse } from '@wolfie/shared';
 import { LLMProvider, HintContext, ChatMessage, LLMError } from './provider.js';
 
-export class ClaudeProvider implements LLMProvider {
-  name = 'claude';
+export class GeminiProvider implements LLMProvider {
+  name = 'gemini';
   private apiKey: string;
-  private baseUrl = 'https://api.anthropic.com/v1/messages';
+  private baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
 
   constructor(apiKey: string) {
     if (!apiKey) {
-      throw new Error('Claude API key is required');
+      throw new Error('Gemini API key is required');
     }
     this.apiKey = apiKey;
   }
 
   async requestHints(context: HintContext): Promise<HintResponse> {
-    // TODO: Implement Claude API call for hint generation
+    // TODO: Implement Gemini API call for hint generation
     // This will be implemented by Tuan in Phase 4
     throw new LLMError(
-      'Claude provider not yet implemented. Use DEMO_MODE=1 for testing.',
+      'Gemini provider not yet implemented. Use DEMO_MODE=1 for testing.',
       'NOT_IMPLEMENTED',
-      'claude'
+      'gemini'
     );
   }
 
   async chatCompletion(messages: ChatMessage[], schema?: any): Promise<any> {
-    // TODO: Implement Claude API call for chat completion
+    // TODO: Implement Gemini API call for chat completion
     // This will be implemented by Tuan
     throw new LLMError(
-      'Claude provider not yet implemented. Use DEMO_MODE=1 for testing.',
+      'Gemini provider not yet implemented. Use DEMO_MODE=1 for testing.',
       'NOT_IMPLEMENTED',
-      'claude'
+      'gemini'
     );
   }
 
-  private async callClaude(
+  private async callGemini(
     messages: ChatMessage[],
     schema?: any,
     maxRetries = 1
   ): Promise<any> {
-    // TODO: Implement actual Claude API call with retry logic
+    // TODO: Implement actual Gemini API call with retry logic
     throw new LLMError(
-      'Claude provider not yet implemented',
+      'Gemini provider not yet implemented',
       'NOT_IMPLEMENTED',
-      'claude'
+      'gemini'
     );
   }
 }
