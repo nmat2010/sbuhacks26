@@ -28,6 +28,10 @@ export interface LlmCall<T> {
   schema: z.ZodType<T, z.ZodTypeDef, unknown>;
   mockKey?: Record<string, unknown>;
   temperature?: number;
+  /** Overrides the client's per-attempt timeout for this call. */
+  timeoutMs?: number;
+  /** One attempt only: no transport retry (the caller has its own fallback). */
+  noRetry?: boolean;
 }
 
 export interface LLMClientOptions {
@@ -73,16 +77,19 @@ export class LLMClient {
     let lastIssue = '';
 
     for (let schemaAttempt = 0; schemaAttempt < 2; schemaAttempt++) {
-      const raw = await this.callWithRetry({
-        task: call.task,
-        system: call.system,
-        messages,
-        images: call.images,
-        videos: call.videos,
-        jsonSchema,
-        mockKey: call.mockKey,
-        temperature: call.temperature
-      });
+      const raw = await this.callWithRetry(
+        {
+          task: call.task,
+          system: call.system,
+          messages,
+          images: call.images,
+          videos: call.videos,
+          jsonSchema,
+          mockKey: call.mockKey,
+          temperature: call.temperature
+        },
+        { timeoutMs: call.timeoutMs ?? this.timeoutMs, maxAttempts: call.noRetry ? 1 : 2 }
+      );
       if (raw.ok) {
         const parsed = call.schema.safeParse(raw.value);
         if (parsed.success) return parsed.data;
@@ -108,7 +115,8 @@ export class LLMClient {
 
   /** One logical call: transient failures are retried once. Invalid JSON is reported, not thrown. */
   private async callWithRetry(
-    req: Omit<LlmRequest, 'signal'>
+    req: Omit<LlmRequest, 'signal'>,
+    opts: { timeoutMs: number; maxAttempts: number }
   ): Promise<{ ok: true; value: unknown } | { ok: false; issue: string }> {
     let transportAttempt = 0;
     for (;;) {
@@ -116,7 +124,7 @@ export class LLMClient {
       this.reserveCall();
       const started = this.now();
       try {
-        const value = await this.withTimeout((signal) => this.provider.generateJson({ ...req, signal }));
+        const value = await this.withTimeout((signal) => this.provider.generateJson({ ...req, signal }), opts.timeoutMs);
         this.log(`[llm] task=${req.task} provider=${this.provider.name} attempt=${transportAttempt} ms=${this.now() - started} ok`);
         return { ok: true, value };
       } catch (error) {
@@ -125,7 +133,7 @@ export class LLMClient {
           `[llm] task=${req.task} provider=${this.provider.name} attempt=${transportAttempt} ms=${this.now() - started} error=${err.code} ${redactForLog(err.message, 120)}`
         );
         if (err.code === 'INVALID_JSON') return { ok: false, issue: 'reply was not parseable JSON' };
-        if (!err.retryable || transportAttempt >= 2) throw err;
+        if (!err.retryable || transportAttempt >= opts.maxAttempts) throw err;
         await new Promise((resolve) => setTimeout(resolve, this.retryDelayMs));
       }
     }
@@ -141,14 +149,14 @@ export class LLMClient {
     this.usage.increment(day);
   }
 
-  private async withTimeout<R>(run: (signal: AbortSignal) => Promise<R>): Promise<R> {
+  private async withTimeout<R>(run: (signal: AbortSignal) => Promise<R>, timeoutMs: number): Promise<R> {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_, reject) => {
       timer = setTimeout(() => {
         controller.abort();
-        reject(new LLMError(`Timed out after ${this.timeoutMs} ms`, 'TIMEOUT', this.provider.name, true));
-      }, this.timeoutMs);
+        reject(new LLMError(`Timed out after ${timeoutMs} ms`, 'TIMEOUT', this.provider.name, true));
+      }, timeoutMs);
     });
     try {
       return await Promise.race([run(controller.signal), timeout]);

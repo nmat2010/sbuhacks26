@@ -261,7 +261,8 @@ function registerWatch(): void {
     paperTitle: (paperId) => memory.listSources().find((s) => s.paperId === paperId)?.title ?? null,
     currentFrame: (maxAgeMs) => w.captureNow(maxAgeMs),
     assessment: () =>
-      (getActiveSession()?.assessmentMode ?? false) || domainListed(getForeground()?.domain ?? null, getSetting('assessment.domains')),
+      (getActiveSession()?.assessmentMode ?? false) ||
+      domainListed(getForeground()?.reportedDomain ?? null, getSetting('assessment.domains')),
     log: safeLog
   });
   watchAnswers = answers;
@@ -271,8 +272,8 @@ function registerWatch(): void {
     mode: () => answers.mode(),
     contextText: () => memory.toPromptText(6000),
     currentFrame: () => w.captureNow(20_000),
-    explain: async (question) => {
-      const res = await answers.ask({ question: question ?? '', inputMode: 'text', proactive: question === null });
+    explain: async (question, previousAnswer) => {
+      const res = await answers.ask({ question: question ?? '', inputMode: 'text', proactive: question === null, previousAnswer });
       return res.success && res.data
         ? { ok: true as const, text: res.data.answer, label: res.data.label }
         : { ok: false as const, message: res.error ?? FALLBACK_WATCH_ERROR };

@@ -199,6 +199,7 @@ export class Watcher {
       deps.log('watch.observed', { activity: obs.activity, mode: obs.mode, stuck: obs.stuck.likely });
       this.setState('watching');
     } catch (error) {
+      if (stale()) return; // stopped meanwhile: stay idle
       if (error instanceof LLMError && error.code === 'DAILY_CAP') this.setState('limit_reached');
       else {
         console.error('[watch] observe failed:', (error as Error).message);

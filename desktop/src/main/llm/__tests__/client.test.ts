@@ -177,3 +177,26 @@ describe('selectProvider', () => {
     expect(() => selectProvider({ GEMINI_API_KEY: 'k', GEMINI_MODEL: 'gemini-pro' })).toThrow(/retired/);
   });
 });
+
+describe('LLMClient per-call options (Watch-mode video attempts)', () => {
+  it('noRetry makes one attempt; timeoutMs overrides the client timeout', async () => {
+    let attempts = 0;
+    const provider = {
+      name: 'slow',
+      countsTowardCap: false,
+      generateJson: () => {
+        attempts++;
+        return new Promise(() => {}); // never answers
+      }
+    };
+    const { LLMClient: Client } = await import('../client.js');
+    const { z } = await import('zod');
+    const client = new Client({ provider, timeoutMs: 60_000, retryDelayMs: 1, log: () => {} });
+    const started = Date.now();
+    await expect(
+      client.generate({ task: 'generic', system: '', messages: [{ role: 'user', content: 'x' }], schema: z.object({}), timeoutMs: 30, noRetry: true })
+    ).rejects.toMatchObject({ code: 'TIMEOUT' });
+    expect(attempts).toBe(1);
+    expect(Date.now() - started).toBeLessThan(2000);
+  });
+});

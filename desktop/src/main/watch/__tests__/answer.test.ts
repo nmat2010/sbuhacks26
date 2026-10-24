@@ -151,3 +151,16 @@ describe('WatchAnswerService: video problems', () => {
     expect(calls).toHaveLength(1);
   });
 });
+
+describe('WatchAnswerService: follow-ups and video attempts (re-review)', () => {
+  it('sends the previous answer with a follow-up', async () => {
+    await make().ask({ question: 'why does that work?', inputMode: 'voice', previousAnswer: 'He gates scores with a mask.' });
+    expect(JSON.parse(calls[0].messages[0].content).previous_answer).toBe('He gates scores with a mask.');
+  });
+
+  it('the video attempt is a single short try', async () => {
+    memory.record(obs({ activity: 'watching_video', source: { kind: 'video', title: 'V', locator: null } }), videoCtx);
+    await make().ask({ question: 'what did he say in the video?', inputMode: 'text' });
+    expect(calls[0]).toMatchObject({ noRetry: true, timeoutMs: 40_000 });
+  });
+});

@@ -121,3 +121,17 @@ describe('WatchController', () => {
     expect(seen.at(-1)).toBe('watching');
   });
 });
+
+describe('WatchController: imports vs clearing (re-review)', () => {
+  it('an import that finishes after "Clear memory" does not reattach the paper', async () => {
+    settings['watch.auto_import_papers'] = true;
+    let finish: (v: { paperId: string; title: string }) => void = () => {};
+    const c = make(() => new Promise((r) => (finish = r)));
+    c.onContentUrl('https://example.edu/a.pdf');
+    c.clearMemory();
+    finish({ paperId: 'p1', title: 'Late' });
+    await new Promise((r) => setTimeout(r, 0));
+    memory.record(obs(), { ts: 1, appName: 'Chrome', windowTitle: null, contentUrl: 'https://example.edu/a.pdf', elapsedMs: 0 });
+    expect(memory.paperIds()).toEqual([]);
+  });
+});

@@ -57,8 +57,14 @@ export interface WatchHooks {
   contextText: () => string;
   /** The newest watcher frame, or a fresh capture (no confirmation needed: Watch-mode consent). */
   currentFrame: () => Promise<string | null>;
-  /** Answer a question (or, with no question, explain what the student seems stuck on). */
-  explain: (question: string | null) => Promise<{ ok: true; text: string; label: string } | { ok: false; message: string }>;
+  /**
+   * Answer a question (or, with no question, explain what the student seems stuck on).
+   * `previousAnswer` is the explanation being followed up on.
+   */
+  explain: (
+    question: string | null,
+    previousAnswer?: string
+  ) => Promise<{ ok: true; text: string; label: string } | { ok: false; message: string }>;
 }
 
 export interface HintFlowDeps {
@@ -111,7 +117,7 @@ interface Ladder {
 export class HintFlow {
   private ladder: Ladder | null = null;
   /** A Watch-mode explanation on screen (learning mode); it holds offers back like a ladder does. */
-  private explanation: { nudgeId: string | null; lastTouch: number } | null = null;
+  private explanation: { nudgeId: string | null; lastTouch: number; text: string } | null = null;
   private busy = false;
   private confirmedSessions = new Set<string>();
   private unsubs: Array<() => void> = [];
@@ -323,7 +329,7 @@ export class HintFlow {
    * Learning mode: explain from the whole session instead of a hint ladder. `question` is null
    * when the student just asked for help (mascot click, accepted offer, "I'm stuck").
    */
-  private async explainFromSession(trigger: HintTriggerType, question: string | null): Promise<void> {
+  private async explainFromSession(trigger: HintTriggerType, question: string | null, previousAnswer?: string): Promise<void> {
     const { deps } = this;
     const watch = deps.watch!;
     this.busy = true;
@@ -333,7 +339,7 @@ export class HintFlow {
       deps.thinkingDelayMs ?? 800
     );
     try {
-      const res = await watch.explain(question);
+      const res = await watch.explain(question, previousAnswer);
       clearTimeout(thinkingTimer);
       if (!res.ok) {
         deps.setLadderOpen(false);
@@ -352,7 +358,7 @@ export class HintFlow {
         ],
         priority: 8
       });
-      this.explanation = { nudgeId: id, lastTouch: deps.now() };
+      this.explanation = { nudgeId: id, lastTouch: deps.now(), text: res.text };
       deps.log('watch.explained', { trigger, followup: question !== null });
     } catch (error) {
       clearTimeout(thinkingTimer);
@@ -367,8 +373,9 @@ export class HintFlow {
   /** A spoken follow-up ("explain that more simply", "why does that work?") while an explanation is up. */
   async followupExplanation(utterance: string): Promise<boolean> {
     if (!this.explanation || !this.deps.watch || this.busy) return false;
+    const previous = this.explanation.text;
     this.explanation = null; // replaced by the answer; offers stay held meanwhile
-    await this.explainFromSession('voice', utterance);
+    await this.explainFromSession('voice', utterance, previous);
     return true;
   }
 
@@ -376,10 +383,12 @@ export class HintFlow {
     if (!this.explanation) return;
     this.explanation.lastTouch = this.deps.now();
     switch (action) {
-      case EXPLAIN_SIMPLER:
+      case EXPLAIN_SIMPLER: {
+        const previous = this.explanation.text;
         this.explanation = null;
-        void this.explainFromSession('manual', FLOW_TEXT.simpler);
+        void this.explainFromSession('manual', FLOW_TEXT.simpler, previous);
         return;
+      }
       case ACTIONS.GOT_IT:
         this.closeExplanation('got_it');
         this.say(FLOW_TEXT.gotIt);

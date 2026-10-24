@@ -15,6 +15,9 @@ export const LABEL_SESSION = 'From your session';
 export const LABEL_GENERAL = 'General knowledge (not from your sources)';
 export const LABEL_HINT = 'Hint (homework mode: no final answers)';
 
+/** A call that includes a video gets one try of this long; then the answer is retried without it. */
+const VIDEO_ATTEMPT_MS = 40_000;
+
 /** A frame older than this is not sent with a question. */
 const FRAME_MAX_AGE_MS = 20_000;
 /** Videos seen within this window can be attached so the model watches them. */
@@ -41,6 +44,8 @@ export interface AskInput {
   inputMode: 'text' | 'voice';
   /** Wolfie offered help (or the mascot was clicked) with no question typed. */
   proactive?: boolean;
+  /** Wolfie's previous answer, when this is a follow-up to it ("why does that work?"). */
+  previousAnswer?: string;
 }
 
 interface NumberedSource {
@@ -77,6 +82,7 @@ export class WatchAnswerService {
 
     const payload = {
       question: question || null,
+      previous_answer: input.previousAnswer?.slice(0, 2500),
       proactive: !!input.proactive,
       mode,
       assessment: deps.assessment(),
@@ -103,7 +109,8 @@ export class WatchAnswerService {
         videos: withVideos.length ? withVideos : undefined,
         schema: WatchAnswerSchema,
         mockKey: { question, mode, sources: sources.map((s) => ({ n: s.n, title: s.title })) },
-        temperature: 0.3
+        temperature: 0.3,
+        ...(withVideos.length ? { timeoutMs: VIDEO_ATTEMPT_MS, noRetry: true } : {})
       });
 
     let out;

@@ -54,7 +54,7 @@ function make(over: Partial<WatcherDeps> = {}): Watcher {
 beforeEach(() => {
   now = 1_000_000;
   active = true;
-  fg = { appName: 'Google Chrome', windowTitle: 'paper.pdf', isBrowser: true, domain: 'example.edu', contentUrl: 'https://example.edu/paper.pdf', ts: now };
+  fg = { appName: 'Google Chrome', windowTitle: 'paper.pdf', isBrowser: true, domain: 'example.edu', contentUrl: 'https://example.edu/paper.pdf', reportedDomain: null, ts: now };
   frame = FRAME_A;
   reply = obs();
   calls = [];
@@ -89,11 +89,11 @@ describe('Watcher', () => {
 
   it('never captures excluded apps, excluded domains, or a browser page it cannot identify', async () => {
     const w = make();
-    fg = { appName: 'Messages', windowTitle: 'Mom', isBrowser: false, domain: null, contentUrl: null, ts: now };
+    fg = { appName: 'Messages', windowTitle: 'Mom', isBrowser: false, domain: null, contentUrl: null, reportedDomain: null, ts: now };
     await w.tick();
-    fg = { appName: 'Google Chrome', windowTitle: 'Chase', isBrowser: true, domain: 'secure.chase.com', contentUrl: null, ts: now };
+    fg = { appName: 'Google Chrome', windowTitle: 'Chase', isBrowser: true, domain: 'secure.chase.com', contentUrl: null, reportedDomain: null, ts: now };
     await w.tick();
-    fg = { appName: 'Google Chrome', windowTitle: 'New Tab', isBrowser: true, domain: null, contentUrl: null, ts: now };
+    fg = { appName: 'Google Chrome', windowTitle: 'New Tab', isBrowser: true, domain: null, contentUrl: null, reportedDomain: null, ts: now };
     await w.tick();
     expect(captures).toBe(0);
     expect(calls).toHaveLength(0);

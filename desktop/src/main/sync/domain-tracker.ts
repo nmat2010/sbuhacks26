@@ -1,6 +1,11 @@
 import { TypedEmitter } from '../typed-emitter.js';
 
 /** The active tab as last reported by the extension; the monitor reads it each poll. */
+/** Lower-case, trimmed, without a leading unread count like "(3) ". */
+function normalizeTitle(title: string | null | undefined): string {
+  return (title ?? '').trim().replace(/^\(\d+\)\s+/, '').toLowerCase();
+}
+
 /** Tab reports older than this are not trusted for Watch mode. */
 export const TAB_REPORT_MAX_AGE_MS = 45_000;
 
@@ -43,10 +48,17 @@ export class DomainTracker {
    */
   matchesWindow(windowTitle: string | null, now: number): boolean {
     if (!this.domain || this.reportedAt === null || now - this.reportedAt > TAB_REPORT_MAX_AGE_MS) return false;
-    const tab = this.title?.trim().toLowerCase();
-    const win = windowTitle?.trim().toLowerCase();
-    if (!tab || !win) return true;
-    return win.includes(tab) || tab.includes(win);
+    // Fail closed: without both titles we can't tell this tab from an incognito or other-browser window
+    const tab = normalizeTitle(this.title);
+    const win = normalizeTitle(windowTitle);
+    if (!tab || !win) return false;
+    // The window title is the tab title, optionally followed by " - <browser/profile>"
+    return win === tab || [' - ', ' – ', ' — '].some((sep) => win.startsWith(tab + sep));
+  }
+
+  /** Forget the report, unless a newer one arrived since `reportedAt` (used for delayed clears). */
+  clearIfUnchanged(reportedAt: number | null): void {
+    if (this.reportedAt === reportedAt) this.clear();
   }
 
   /** Paper or video URL for the current tab (see ext.tab `contentUrl`); null otherwise. */

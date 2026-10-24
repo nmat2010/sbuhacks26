@@ -14,6 +14,12 @@ export interface ExtensionBridgeDeps {
   emitProblemChanged(problemId: string | null): void;
   /** A6 forwards extension signals into stuckBus + web_signals. */
   onSignal?(signal: StruggleSignal, domain: string): void;
+  /**
+   * Chrome reports focus loss also when the student just clicks into Wolfie. When set, clearing is
+   * handed to this scheduler (which can wait and skip it while Wolfie is in front); otherwise the
+   * tab is forgotten at once.
+   */
+  scheduleTabNone?(clear: () => void): void;
 }
 
 export interface ExtensionBridge {
@@ -65,7 +71,10 @@ export function createExtensionBridge(deps: ExtensionBridgeDeps): ExtensionBridg
         deps.tracker.set(domain, title ?? null, contentUrl && sameSite(hostOf(contentUrl), domain) ? contentUrl : null);
       },
       onTabNone() {
-        deps.tracker.clear();
+        if (!deps.scheduleTabNone) return deps.tracker.clear();
+        const at = deps.tracker.getReportedAt();
+        // A newer tab report in the meantime wins over this "nothing here"
+        deps.scheduleTabNone(() => deps.tracker.clearIfUnchanged(at));
       },
       onPageSummary(summary) {
         if (!allowed(summary.domain, true)) return;

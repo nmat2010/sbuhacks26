@@ -9,6 +9,11 @@ export interface ForegroundInfo {
   domain: string | null;
   /** Paper or video URL from the extension (PDF, arXiv, YouTube watch page); null otherwise. */
   contentUrl: string | null;
+  /**
+   * The extension's last reported domain even when it can't be matched to this window. Only for
+   * deciding "graded work" (assessment domains), never for capturing.
+   */
+  reportedDomain: string | null;
   /** When the monitor last saw this window. */
   ts: number;
 }

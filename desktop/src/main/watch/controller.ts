@@ -29,6 +29,8 @@ export class WatchController {
   private sessionId: string | null = null;
   /** URLs already imported (or tried) this session, so each paper is fetched once. */
   private seenUrls = new Set<string>();
+  /** Bumped whenever memory is cleared, so an import that finishes later can't refill it. */
+  private memoryEpoch = 0;
 
   constructor(private readonly deps: WatchControllerDeps) {}
 
@@ -119,6 +121,7 @@ export class WatchController {
   }
 
   clearMemory(): WatchStatus {
+    this.memoryEpoch++;
     this.deps.memory.clear();
     this.deps.watcher.reset();
     this.seenUrls.clear();
@@ -149,10 +152,11 @@ export class WatchController {
     if (this.seenUrls.has(url)) return;
     this.seenUrls.add(url);
     if (!PAPER_URL.test(url) || !deps.getSetting('watch.auto_import_papers')) return;
+    const epoch = this.memoryEpoch;
     void deps
       .importPaper(url)
       .then((paper) => {
-        if (!paper) return;
+        if (!paper || epoch !== this.memoryEpoch) return;
         deps.memory.attachPaper(url, paper.paperId, paper.title);
         deps.log('watch.paper_imported', {});
       })
@@ -176,6 +180,7 @@ export class WatchController {
         minutes: Math.round(sources.reduce((t, s) => t + s.seconds, 0) / 60)
       });
     }
+    this.memoryEpoch++;
     deps.memory.clear();
     deps.watcher.reset();
     this.seenUrls.clear();

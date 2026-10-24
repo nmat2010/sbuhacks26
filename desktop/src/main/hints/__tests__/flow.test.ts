@@ -497,7 +497,7 @@ describe('hint flow with Watch mode on', () => {
     const t = setup({ watch: h.watch });
     t.bus.emit('help-requested', 'manual');
     await t.settle();
-    expect(h.explain).toHaveBeenCalledWith(null);
+    expect(h.explain).toHaveBeenCalledWith(null, undefined);
     expect(t.requestHintsSpy).not.toHaveBeenCalled();
     expect(t.confirm).not.toHaveBeenCalled();
     expect(t.last().text).toContain('He gates each score with a mask.');
@@ -515,7 +515,8 @@ describe('hint flow with Watch mode on', () => {
     await t.settle();
     t.press('explain_simpler');
     await t.settle();
-    expect(h.explain).toHaveBeenLastCalledWith(FLOW_TEXT.simpler);
+    // The follow-up carries the explanation it refers to
+    expect(h.explain).toHaveBeenLastCalledWith(FLOW_TEXT.simpler, 'He gates each score with a mask. That keeps heads sparse.');
     t.press(ACTIONS.GOT_IT);
     expect(t.flow.hasOpenExplanation()).toBe(false);
     expect(t.ladderOpen.at(-1)).toBe(false);
@@ -623,7 +624,7 @@ describe('Watch-mode explanation: voice and capture (review fixes)', () => {
     t.bus.emit('help-requested', 'manual');
     await t.settle();
     expect(await t.flow.followupExplanation('why does the mask help?')).toBe(true);
-    expect(w.explain).toHaveBeenLastCalledWith('why does the mask help?');
+    expect(w.explain).toHaveBeenLastCalledWith('why does the mask help?', 'Gated attention. It keeps heads sparse.');
     expect(t.flow.hasOpenExplanation()).toBe(true);
     expect(await setup({ session: { id: 's2', assessmentMode: false } }).flow.followupExplanation('x')).toBe(false); // nothing open
   });

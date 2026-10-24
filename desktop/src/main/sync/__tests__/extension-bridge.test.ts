@@ -75,11 +75,61 @@ describe('DomainTracker.matchesWindow', () => {
     const tracker = new DomainTracker(() => now);
     tracker.set('arxiv.org', 'Attention Is All You Need');
     expect(tracker.matchesWindow('Attention Is All You Need', now)).toBe(true);
-    expect(tracker.matchesWindow(null, now)).toBe(true); // window titles turned off
+    expect(tracker.matchesWindow('Attention Is All You Need - Work', now)).toBe(true); // profile suffix
+    expect(tracker.matchesWindow(null, now)).toBe(false); // titles off: fail closed
     expect(tracker.matchesWindow('Chase - Accounts', now)).toBe(false); // another tab or browser
     now += 46_000;
     expect(tracker.matchesWindow('Attention Is All You Need', now)).toBe(false); // stale
     tracker.clear();
     expect(tracker.matchesWindow('Attention Is All You Need', now)).toBe(false);
+  });
+});
+
+describe('DomainTracker.matchesWindow strictness (re-review)', () => {
+  it('a short tab title does not match a different page that merely contains it', () => {
+    const tracker = new DomainTracker(() => 0);
+    tracker.set('www.google.com', 'Google');
+    expect(tracker.matchesWindow('Google', 0)).toBe(true);
+    expect(tracker.matchesWindow('Google Search – chase', 0)).toBe(false);
+    expect(tracker.matchesWindow('New Tab', 0)).toBe(false);
+  });
+
+  it('ignores an unread-count prefix on either side', () => {
+    const tracker = new DomainTracker(() => 0);
+    tracker.set('www.youtube.com', '(3) Attention explained - YouTube');
+    expect(tracker.matchesWindow('Attention explained - YouTube', 0)).toBe(true);
+    expect(tracker.matchesWindow('(4) Attention explained - YouTube', 0)).toBe(true);
+  });
+
+  it('a delayed clear is skipped when a newer report arrived', () => {
+    let t = 0;
+    const tracker = new DomainTracker(() => t);
+    tracker.set('arxiv.org', 'Paper');
+    const at = tracker.getReportedAt();
+    t = 1000;
+    tracker.set('arxiv.org', 'Paper');
+    tracker.clearIfUnchanged(at);
+    expect(tracker.getDomain()).toBe('arxiv.org');
+    tracker.clearIfUnchanged(tracker.getReportedAt());
+    expect(tracker.getDomain()).toBeNull();
+  });
+});
+
+describe('ext.tab_none with a scheduler (focus moved to Wolfie)', () => {
+  it('hands the clear to the scheduler, which can skip it', () => {
+    const tracker = new DomainTracker();
+    const scheduled: Array<() => void> = [];
+    const bridge = createExtensionBridge({
+      tracker,
+      getDeskState: () => state,
+      setLatestPageSummary: () => {},
+      emitProblemChanged: () => {},
+      scheduleTabNone: (clear) => void scheduled.push(clear)
+    });
+    bridge.handlers.onTab({ domain: 'arxiv.org', title: 'Paper' });
+    bridge.handlers.onTabNone?.();
+    expect(tracker.getDomain()).toBe('arxiv.org'); // not yet
+    scheduled[0]();
+    expect(tracker.getDomain()).toBeNull();
   });
 });

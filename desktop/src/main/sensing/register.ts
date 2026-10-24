@@ -56,6 +56,8 @@ let signalSink: SignalSink | null = null;
 let lanLink: LanLink | null = null;
 let streakEngine: StreakEngine | null = null;
 const domainTracker = new DomainTracker();
+/** Longer than a monitor poll (2 s), so a switch to Wolfie is seen before the tab is forgotten. */
+const TAB_NONE_GRACE_MS = 3_000;
 
 function sessionInfo(): SessionInfo {
   const s = getActiveSession();
@@ -156,6 +158,7 @@ export function registerSensing(): void {
         isBrowser: last.isBrowser,
         domain: tab ? domainTracker.getDomain() : null,
         contentUrl: tab ? domainTracker.getContentUrl() : null,
+        reportedDomain: last.isBrowser ? domainTracker.getDomain() : null,
         ts: last.ts
       };
     };
@@ -270,7 +273,13 @@ export function registerSensing(): void {
       setLatestPageSummary,
       setPageSummaryRequester,
       emitProblemChanged: (id) => stuckBus.emit('problem-changed', id),
-      onSignal: (signal) => void signalSink?.accept({ ...signal, timestamp: Date.now() }, 'extension')
+      onSignal: (signal) => void signalSink?.accept({ ...signal, timestamp: Date.now() }, 'extension'),
+      // Focus moved to Wolfie (a question typed in the overlay): keep the page; otherwise forget it
+      scheduleTabNone: (clear) => {
+        setTimeout(() => {
+          if (!m.isSelfFront()) clear();
+        }, TAB_NONE_GRACE_MS);
+      }
     })
       .then((link) => {
         extensionLink = link;
