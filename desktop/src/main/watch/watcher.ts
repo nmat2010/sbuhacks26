@@ -1,6 +1,5 @@
 import { createHash } from 'crypto';
 import type { PageSummary, StruggleSignal } from '@wolfie/shared';
-import type { ForegroundInfo } from '../foreground.js';
 import type { CaptureResult } from '../hints/capture.js';
 import type { LlmCall } from '../llm/client.js';
 import { parseImageDataUrl } from '../llm/data-url.js';
@@ -8,12 +7,19 @@ import { renderPrompt } from '../llm/prompts/index.js';
 import { LLMError } from '../llm/provider.js';
 import type { EventType } from '../events.js';
 import type { SessionMemory } from './memory.js';
+import type { ProbeResult } from './browser-probe.js';
+import type { FrontWindow } from './front-window.js';
 import { ObservationSchema, type Observation } from './types.js';
 
 // The Watch-mode watcher (WATCH_MODE.md §3.1): every few seconds while watching, it looks at the
 // active window (a small JPEG, the page summary, app/title/URL), asks a fast model what the
 // student is doing, records that in session memory, and turns "stuck" / "wrong answer" judgments
 // into struggle signals for the existing escalation engine. Frames are never stored.
+//
+// Which window: the native helper names the frontmost window (by id, so the capture is exactly
+// that window). For browsers, the browser itself says whether the window is incognito and which
+// site it shows; without that (other browsers, or Automation denied) the extension's tab report
+// must match the window title, otherwise nothing is captured.
 
 /** Re-look at an unchanged screen this often, so long pauses are still noticed. */
 export const UNCHANGED_RECHECK_MS = 60_000;
@@ -24,20 +30,60 @@ const SUMMARY_MAX_AGE_MS = 30_000;
 /** Strong "stuck" needs this confidence; weak needs WEAK_STUCK and two looks in a row. */
 export const STRONG_STUCK = 0.75;
 export const WEAK_STUCK = 0.5;
+/** No keyboard/mouse input for this long: the student is away, so nothing is looked at. */
+export const AWAY_SECONDS = 10 * 60;
+/** Activities where "stuck" means something; browsing or "other" never raises a stuck signal. */
+const STUDY_ACTIVITIES = new Set<Observation['activity']>(['reading_paper', 'watching_video', 'homework', 'coding', 'writing']);
 
-export type WatcherState = 'idle' | 'watching' | 'skipping' | 'no_permission' | 'limit_reached' | 'error';
+/** The observation shows a real study task (not browsing, not an unrelated app). */
+export function isStudying(obs: Observation): boolean {
+  return obs.mode !== 'other' && STUDY_ACTIVITIES.has(obs.activity);
+}
+
+export type WatcherState = 'idle' | 'watching' | 'skipping' | 'away' | 'no_permission' | 'limit_reached' | 'error';
+
+/** Why the last look was skipped, for the status note. */
+export type SkipReason =
+  | 'no_window'
+  | 'excluded_app'
+  | 'private_window'
+  | 'excluded_site'
+  | 'unknown_tab'
+  | 'browser_access_denied'
+  | 'unsupported_browser';
+
+/** The window a look is about. */
+export interface WatchTarget {
+  app: string;
+  windowId: number;
+  title: string | null;
+  isBrowser: boolean;
+  domain: string | null;
+  contentUrl: string | null;
+}
 
 export interface WatcherDeps {
   now: () => number;
   /** Watch mode enabled + consented, a session running, not paused. */
   isActive: () => boolean;
   intervalMs: () => number;
-  getForeground: () => ForegroundInfo | null;
+  /** Seconds since the last keyboard/mouse input (powerMonitor.getSystemIdleTime). */
+  idleSeconds: () => number;
+  /** Native helper: the frontmost app's frontmost window. */
+  frontWindow: () => Promise<FrontWindow | null>;
+  /** Wolfie's own process (its windows are never looked at). */
+  selfPid: number;
+  /** Any web browser, scriptable or not (Safari, Firefox included). */
+  isBrowser: (app: string) => boolean;
+  /** The browser's own answer about its front window (incognito? which site?). */
+  probeBrowser: (app: string) => Promise<ProbeResult>;
+  /** Extension fallback: the reported tab, only if it matches this window title; else null. */
+  tabReport: (windowTitle: string | null) => { domain: string; contentUrl: string | null } | null;
   isExcludedApp: (appName: string) => boolean;
   isExcludedDomain: (domain: string) => boolean;
   getPageSummary: () => PageSummary | null;
-  /** A small JPEG of the active window (no confirmation: consent was given for Watch mode). */
-  capture: () => Promise<CaptureResult>;
+  /** A small JPEG of exactly this window (no confirmation: consent was given for Watch mode). */
+  capture: (windowId: number) => Promise<CaptureResult>;
   llm: () => { generate<T>(call: LlmCall<T>): Promise<T> };
   memory: SessionMemory;
   emitSignal: (signal: StruggleSignal) => void;
@@ -62,8 +108,10 @@ export class Watcher {
   private weakStreak = 0;
   private flaggedAnswers = new Set<string>();
   private state: WatcherState = 'idle';
+  private skipReason: SkipReason | null = null;
   /** The newest frame, kept in memory briefly for questions asked right after (never written). */
   private frame: { dataUrl: string; ts: number } | null = null;
+  private frameWindow: number | null = null;
 
   constructor(private readonly deps: WatcherDeps) {}
 
@@ -80,11 +128,17 @@ export class Watcher {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     this.frame = null;
+    this.frameWindow = null;
     this.setState('idle');
   }
 
   getState(): WatcherState {
     return this.state;
+  }
+
+  /** Why the last look was skipped (null unless the state is 'skipping'). */
+  getSkipReason(): SkipReason | null {
+    return this.state === 'skipping' ? this.skipReason : null;
   }
 
   /** The latest frame if it is at most `maxAgeMs` old. */
@@ -100,15 +154,48 @@ export class Watcher {
   async captureNow(maxAgeMs: number): Promise<string | null> {
     const { deps } = this;
     if (!deps.isActive()) return null;
-    const fg = deps.getForeground();
-    if (!fg || !this.allowed(fg)) return null;
     const recent = this.latestFrame(maxAgeMs);
-    if (recent) return recent;
     const generation = this.generation;
-    const shot = await deps.capture();
+    const resolved = await this.resolveTarget();
+    if (!resolved.ok || generation !== this.generation) return null;
+    // A fresh frame is reused only if the same window is still in front
+    if (recent && this.frameWindow === resolved.target.windowId) return recent;
+    const shot = await deps.capture(resolved.target.windowId);
     if (!shot.ok || !deps.isActive() || generation !== this.generation) return null;
     this.frame = { dataUrl: shot.dataUrl, ts: deps.now() };
+    this.frameWindow = resolved.target.windowId;
     return shot.dataUrl;
+  }
+
+  /** Decides what may be looked at right now. Every "no" drops the stored frame. */
+  private async resolveTarget(): Promise<{ ok: true; target: WatchTarget } | { ok: false; state: WatcherState; reason?: SkipReason }> {
+    const { deps } = this;
+    if (deps.idleSeconds() >= AWAY_SECONDS) return { ok: false, state: 'away' };
+    const front = await deps.frontWindow();
+    if (!front || front.windowId === null || front.pid === deps.selfPid) return { ok: false, state: 'skipping', reason: 'no_window' };
+    if (deps.isExcludedApp(front.app)) return { ok: false, state: 'skipping', reason: 'excluded_app' };
+    const base = { app: front.app, windowId: front.windowId, title: front.title };
+    if (!deps.isBrowser(front.app)) {
+      return { ok: true, target: { ...base, isBrowser: false, domain: null, contentUrl: null } };
+    }
+
+    const probe = await deps.probeBrowser(front.app);
+    if (probe.ok) {
+      const { tab } = probe;
+      if (tab.incognito) return { ok: false, state: 'skipping', reason: 'private_window' };
+      if (!tab.host) return { ok: false, state: 'skipping', reason: 'unknown_tab' };
+      if (deps.isExcludedDomain(tab.host)) return { ok: false, state: 'skipping', reason: 'excluded_site' };
+      return { ok: true, target: { ...base, title: tab.title ?? front.title, isBrowser: true, domain: tab.host, contentUrl: tab.contentUrl } };
+    }
+    // The browser couldn't be asked: trust the extension only if its tab matches this window
+    const report = deps.tabReport(front.title);
+    if (!report) {
+      const reason: SkipReason =
+        probe.reason === 'denied' ? 'browser_access_denied' : probe.reason === 'unsupported' ? 'unsupported_browser' : 'unknown_tab';
+      return { ok: false, state: 'skipping', reason };
+    }
+    if (deps.isExcludedDomain(report.domain)) return { ok: false, state: 'skipping', reason: 'excluded_site' };
+    return { ok: true, target: { ...base, isBrowser: true, domain: report.domain, contentUrl: report.contentUrl } };
   }
 
   /** New session (or memory cleared): forget per-session state. */
@@ -146,30 +233,34 @@ export class Watcher {
       this.setState('idle');
       return;
     }
-    const fg = deps.getForeground();
-    if (!fg || !this.allowed(fg)) {
-      // Private or unknown window: no capture, and drop the last frame so it can't be sent later
-      this.frame = null;
-      this.setState('skipping');
-      return;
-    }
-    if (fg.contentUrl) deps.onContentUrl(fg.contentUrl);
-
     this.busy = true;
     const generation = this.generation;
     // Stopped, cleared or reset while we waited: drop whatever this look produced
     const stale = () => generation !== this.generation || !deps.isActive();
     try {
-      const shot = await deps.capture();
+      const resolved = await this.resolveTarget();
+      if (stale()) return;
+      if (!resolved.ok) {
+        // Private, excluded, unknown, or the student is away: no capture, and drop the last frame
+        this.frame = null;
+        this.skipReason = resolved.reason ?? null;
+        this.setState(resolved.state);
+        return;
+      }
+      const fg = resolved.target;
+      if (fg.contentUrl) deps.onContentUrl(fg.contentUrl);
+      const shot = await deps.capture(fg.windowId);
       if (stale()) return;
       if (!shot.ok) {
         this.frame = null;
-        // 'empty': the active window couldn't be matched; the whole screen is never sent instead
+        // 'empty': the window couldn't be captured; the whole screen is never sent instead
+        this.skipReason = 'no_window';
         this.setState(shot.reason === 'permission' ? 'no_permission' : shot.reason === 'empty' ? 'skipping' : 'error');
         return;
       }
       const now = deps.now();
       this.frame = { dataUrl: shot.dataUrl, ts: now };
+      this.frameWindow = fg.windowId;
 
       const key = changeKey(fg, shot.dataUrl);
       if (key === this.lastKey) {
@@ -190,8 +281,8 @@ export class Watcher {
       this.lastRecordAt = now;
       deps.memory.record(obs, {
         ts: now,
-        appName: fg.appName,
-        windowTitle: fg.windowTitle,
+        appName: fg.app,
+        windowTitle: fg.title,
         contentUrl: fg.contentUrl,
         elapsedMs: elapsed
       });
@@ -210,17 +301,7 @@ export class Watcher {
     }
   }
 
-  private allowed(fg: ForegroundInfo): boolean {
-    if (this.deps.isExcludedApp(fg.appName)) return false;
-    if (fg.isBrowser) {
-      // Without a tab report we can't tell an excluded or private page from a normal one
-      if (!fg.domain) return false;
-      if (this.deps.isExcludedDomain(fg.domain)) return false;
-    }
-    return true;
-  }
-
-  private async observe(fg: ForegroundInfo, dataUrl: string, now: number): Promise<Observation> {
+  private async observe(fg: WatchTarget, dataUrl: string, now: number): Promise<Observation> {
     const { deps } = this;
     const summary = deps.getPageSummary();
     const page =
@@ -229,8 +310,8 @@ export class Watcher {
         : null;
     const latest = deps.memory.latest();
     const input = {
-      app: fg.appName,
-      window_title: fg.windowTitle,
+      app: fg.app,
+      window_title: fg.title,
       site: fg.domain,
       content_url: fg.contentUrl,
       page_title: page?.title,
@@ -248,8 +329,8 @@ export class Watcher {
       images: [parseImageDataUrl(dataUrl)],
       schema: ObservationSchema,
       mockKey: {
-        appName: fg.appName,
-        title: page?.title ?? fg.windowTitle,
+        appName: fg.app,
+        title: page?.title ?? fg.title,
         domain: fg.domain,
         contentUrl: fg.contentUrl,
         problemId: page?.problemId ?? null
@@ -274,7 +355,10 @@ export class Watcher {
       }
     }
 
-    const { likely, confidence } = obs.stuck;
+    // Only a real study task can be "stuck": browsing or an unrelated app never raises an offer
+    const studying = isStudying(obs);
+    const { confidence } = obs.stuck;
+    const likely = obs.stuck.likely && studying;
     if (likely && confidence >= STRONG_STUCK) {
       this.weakStreak = 0;
       deps.emitSignal({ type: 'model_stuck', strength: 'strong', timestamp: now, metadata: { source: 'watch' } });
@@ -291,7 +375,7 @@ export class Watcher {
 }
 
 /** Same window, same page and the same pixels: nothing new to look at. */
-function changeKey(fg: ForegroundInfo, dataUrl: string): string {
+function changeKey(fg: WatchTarget, dataUrl: string): string {
   const hash = createHash('sha1').update(dataUrl).digest('hex');
-  return [fg.appName, fg.windowTitle ?? '', fg.domain ?? '', fg.contentUrl ?? '', hash].join('|');
+  return [fg.app, fg.windowId, fg.title ?? '', fg.domain ?? '', fg.contentUrl ?? '', hash].join('|');
 }

@@ -44,7 +44,7 @@ import { isPublicSettingKey, keyPresent, readPublicSettings, writePublicSetting 
 import { startLanLink, type LanLink } from '../sync/lan-link.js';
 import { getPlanSnapshotForSync, getStreakSnapshotForSync, notifySnapshotsChanged, setStreakSnapshotProvider } from '../sync/snapshots.js';
 import type { SyncInfo } from '../../common/ipc-sensing.js';
-import { setForegroundProvider, type ForegroundInfo } from '../foreground.js';
+import { setForegroundProvider, setTabReportProvider, type ForegroundInfo } from '../foreground.js';
 import { setFrontWindowProvider } from '../hints/capture.js';
 
 const execFileAsync = promisify(execFile);
@@ -163,6 +163,11 @@ export function registerSensing(): void {
       };
     };
     setForegroundProvider(lastForeground);
+    setTabReportProvider((windowTitle) => {
+      const domain = domainTracker.getDomain();
+      if (!domain || !domainTracker.matchesWindow(windowTitle, Date.now())) return null;
+      return { domain, contentUrl: domainTracker.getContentUrl() };
+    });
     setFrontWindowProvider(() => {
       const f = lastForeground();
       return f ? { title: f.windowTitle ?? undefined, app: f.appName } : null;
@@ -173,6 +178,7 @@ export function registerSensing(): void {
     return () => {
       off();
       setForegroundProvider(null);
+      setTabReportProvider(null);
       setFrontWindowProvider(null);
       m.stop();
     };

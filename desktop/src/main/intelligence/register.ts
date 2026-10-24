@@ -5,7 +5,10 @@
 
 import { join } from 'path';
 import WebSocket from 'ws';
-import { app, BrowserWindow, desktopCapturer, dialog, globalShortcut, nativeImage, systemPreferences } from 'electron';
+import { execFile } from 'child_process';
+import { existsSync } from 'fs';
+import { promisify } from 'util';
+import { app, BrowserWindow, desktopCapturer, dialog, globalShortcut, nativeImage, powerMonitor, systemPreferences } from 'electron';
 import type { NudgeResponse } from '@wolfie/shared';
 import { stuckBus } from '../stuck/bus.js';
 import { ACTIONS } from '../stuck/actions.js';
@@ -38,12 +41,16 @@ import type { IntentHandler } from '../voice/router.js';
 import type { VoiceIntent } from '../voice/intents.js';
 import { getLLMClient, LLMClient } from '../llm/client.js';
 import { PrefixedUsageStore, SqliteUsageStore } from '../llm/usage.js';
-import { getForeground } from '../foreground.js';
+import { getForeground, getTabReport } from '../foreground.js';
+import { isBrowserApp } from '../monitor/browsers.js';
+import { captureWindowById } from '../hints/capture.js';
+import { createFrontWindowReader } from '../watch/front-window.js';
+import { createBrowserProbe } from '../watch/browser-probe.js';
 import { getLatestPageSummary } from '../sync/context.js';
 import { isExcludedDomain } from '../sync/desk-state.js';
 import type { WatchHooks } from '../hints/flow.js';
 import { SessionMemory } from '../watch/memory.js';
-import { Watcher } from '../watch/watcher.js';
+import { isStudying, Watcher } from '../watch/watcher.js';
 import { WatchController } from '../watch/controller.js';
 import { WatchAnswerService } from '../watch/answer.js';
 
@@ -55,6 +62,8 @@ let watcher: Watcher | null = null;
 let watchController: WatchController | null = null;
 let watchAnswers: WatchAnswerService | null = null;
 let watchHooks: WatchHooks | undefined;
+/** Set by registerWatch(); the escalation engine asks it before offering help. */
+let engagedCheck: (() => boolean) | null = null;
 /** The paper open in the reading view; spoken questions are answered from it. */
 let focusedPaperId: string | null = null;
 
@@ -89,6 +98,7 @@ function registerEscalation(): void {
     getSession: getActiveSession,
     onSessionChange: (fn) => sessionEvents.on('change', fn),
     isPaused,
+    isEngaged: () => engagedCheck?.() ?? powerMonitor.getSystemIdleTime() < 10 * 60,
     isSnoozed: () => queue.isSnoozed(),
     voiceMode: () => getSetting('voice.enabled'),
     thresholds: () => getSetting('stuck.thresholds'),
@@ -198,27 +208,32 @@ function registerWatch(): void {
     dailyCap: () => getSetting('watch.calls_per_day'),
     timeoutMs: 20_000
   });
-  const capture = () =>
-    captureActiveWindow({
-      desktopCapturer,
-      screenAccess: () => systemPreferences.getMediaAccessStatus('screen'),
-      thumbnailSize: { width: 1024, height: 640 },
-      jpegQuality: 60,
-      windowOnly: true
-    });
+  const run = promisify(execFile) as unknown as (file: string, args: string[], opts: { timeout: number }) => Promise<{ stdout: string }>;
+  // Native helper (desktop/native, `npm run build:native`); without it nothing is captured
+  const helper = join(app.getAppPath(), 'native', 'bin', 'front-window');
+  if (!existsSync(helper)) console.warn('[watch] front-window helper missing; run npm run build:native in desktop/');
 
   const w = new Watcher({
     now: Date.now,
     isActive: () => watchController?.isActive() ?? false,
     intervalMs: () => getSetting('watch.interval_seconds') * 1000,
-    getForeground,
+    idleSeconds: () => powerMonitor.getSystemIdleTime(),
+    frontWindow: createFrontWindowReader(run, existsSync(helper) ? helper : null),
+    selfPid: process.pid,
+    isBrowser: (name) => isBrowserApp(name) || /^(safari|firefox|orion|zen|duckduckgo)/i.test(name.trim()),
+    probeBrowser: createBrowserProbe(run),
+    tabReport: getTabReport,
     isExcludedApp: (name) => {
       const n = name.trim().toLowerCase();
       return getSetting('watch.excluded_apps').some((a) => a.trim().toLowerCase() === n);
     },
     isExcludedDomain: (domain) => isExcludedDomain(domain, getSetting('monitored.excluded_domains')),
     getPageSummary: getLatestPageSummary,
-    capture,
+    capture: (windowId) =>
+      captureWindowById(
+        { desktopCapturer, screenAccess: () => systemPreferences.getMediaAccessStatus('screen'), thumbnailSize: { width: 1024, height: 640 }, jpegQuality: 60 },
+        windowId
+      ),
     llm: () => client,
     memory,
     // The escalation engine logs stuck.signal itself
@@ -266,6 +281,16 @@ function registerWatch(): void {
     log: safeLog
   });
   watchAnswers = answers;
+
+  // "Really working" (for automatic offers): at the keyboard in the last 10 minutes and, when Watch
+  // mode has a recent look, on a study task rather than browsing or an unrelated app
+  engagedCheck = () => {
+    if (powerMonitor.getSystemIdleTime() >= 10 * 60) return false;
+    if (!controller.isActive()) return true;
+    const latest = memory.latest();
+    if (!latest || Date.now() - latest.ts > 3 * 60_000) return true;
+    return isStudying(latest.obs);
+  };
 
   watchHooks = {
     active: () => controller.isActive(),

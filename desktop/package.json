@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit -p .",
     "test": "vitest run",
     "lint": "eslint src electron",
-    "smoke": "env -u ELECTRON_RUN_AS_NODE WOLFIE_SMOKE=1 DEMO_MODE=1 vite"
+    "smoke": "env -u ELECTRON_RUN_AS_NODE WOLFIE_SMOKE=1 DEMO_MODE=1 vite",
+    "build:native": "cd native && swiftc -O -target arm64-apple-macos12 front-window.swift -o /tmp/wolfie-fw-arm64 && swiftc -O -target x86_64-apple-macos12 front-window.swift -o /tmp/wolfie-fw-x64 && lipo -create /tmp/wolfie-fw-arm64 /tmp/wolfie-fw-x64 -output bin/front-window"
   },
   "dependencies": {
     "@google/genai": "^2.28.0",

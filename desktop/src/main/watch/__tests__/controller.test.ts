@@ -137,16 +137,22 @@ describe('WatchController: imports vs clearing (re-review)', () => {
 });
 
 describe('WatchController status note', () => {
-  it('tells the student why browser pages are skipped when window titles are off', () => {
-    settings['monitoring.capture_window_titles'] = false;
-    watcher.getState = () => 'skipping';
+  it('explains each reason nothing is being looked at', () => {
+    let reason: string | null = 'private_window';
+    let state: WatcherState = 'skipping';
+    (watcher as unknown as { getSkipReason: () => string | null }).getSkipReason = () => reason;
+    watcher.getState = () => state;
     const c = make();
     c.consent(true);
     c.set({ enabled: true });
-    expect(c.status().note).toContain('window titles');
-    settings['monitoring.capture_window_titles'] = true;
-    expect(c.status().note).toContain('private');
-    watcher.getState = () => 'watching';
+    expect(c.status().note).toContain('private window');
+    reason = 'browser_access_denied';
+    expect(c.status().note).toContain('Automation');
+    reason = 'unsupported_browser';
+    expect(c.status().note).toContain('Chrome, Brave and Edge');
+    state = 'away';
+    expect(c.status().note).toContain('away');
+    state = 'watching';
     expect(c.status().note).toBeNull();
   });
 });

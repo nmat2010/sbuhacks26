@@ -19,6 +19,19 @@ export interface ForegroundInfo {
 }
 
 let provider: (() => ForegroundInfo | null) | null = null;
+let tabReportProvider: ((windowTitle: string | null) => { domain: string; contentUrl: string | null } | null) | null = null;
+
+/**
+ * The extension's tab report, but only if it describes the window with this title (fresh, and the
+ * titles match). Watch mode's fallback when the browser itself can't be asked.
+ */
+export function setTabReportProvider(fn: typeof tabReportProvider): void {
+  tabReportProvider = fn;
+}
+
+export function getTabReport(windowTitle: string | null): { domain: string; contentUrl: string | null } | null {
+  return tabReportProvider?.(windowTitle) ?? null;
+}
 
 export function setForegroundProvider(fn: (() => ForegroundInfo | null) | null): void {
   provider = fn;

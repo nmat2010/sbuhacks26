@@ -373,3 +373,20 @@ describe('EscalationEngine: Watch-mode signals', () => {
     expect(t.pushed.some((n) => n.level === 3)).toBe(true);
   });
 });
+
+describe('EscalationEngine: "really working" gate', () => {
+  it('makes no automatic offers while the student is not engaged, and resumes when they are', () => {
+    const t = setup({ voice: false });
+    let engaged = false;
+    (t.engine as unknown as { deps: { isEngaged: () => boolean } }).deps.isEngaged = () => engaged;
+    t.bus.emit('signal', t.strong());
+    t.advance(45);
+    t.advance(90);
+    expect(t.pushed).toHaveLength(0);
+    engaged = true;
+    t.advance(100);
+    t.advance(145);
+    t.advance(190);
+    expect(t.pushed.some((n) => n.level === 3)).toBe(true);
+  });
+});

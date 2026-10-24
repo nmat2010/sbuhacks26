@@ -217,6 +217,8 @@ export type WatchState =
   | 'watching'
   /** The window in front is excluded or private (nothing is captured). */
   | 'skipping'
+  /** No keyboard or mouse input for 10+ minutes: nothing is looked at until the student is back. */
+  | 'away'
   | 'no_permission'
   | 'limit_reached'
   | 'error';

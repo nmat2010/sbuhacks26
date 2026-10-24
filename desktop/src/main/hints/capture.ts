@@ -95,3 +95,24 @@ export async function captureActiveWindow(deps: CaptureDeps): Promise<CaptureRes
     return { ok: false, reason: 'error' };
   }
 }
+
+/**
+ * Exactly one window, by its macOS window number (desktopCapturer ids are "window:<n>:0"). Watch
+ * mode uses this with the native front-window helper, so it never captures a different window and
+ * never falls back to the whole screen.
+ */
+export async function captureWindowById(
+  deps: Pick<CaptureDeps, 'desktopCapturer' | 'screenAccess' | 'thumbnailSize' | 'jpegQuality'>,
+  windowId: number
+): Promise<CaptureResult> {
+  if (deps.screenAccess() !== 'granted') return { ok: false, reason: 'permission' };
+  try {
+    const size = deps.thumbnailSize ?? { width: 1024, height: 640 };
+    const windows = await deps.desktopCapturer.getSources({ types: ['window'], thumbnailSize: size });
+    const match = windows.find((w) => w.id.startsWith(`window:${windowId}:`));
+    if (!match || match.thumbnail.isEmpty()) return { ok: false, reason: 'empty' };
+    return { ok: true, dataUrl: encode(match.thumbnail, deps.jpegQuality), sourceName: 'window' };
+  } catch {
+    return { ok: false, reason: 'error' };
+  }
+}

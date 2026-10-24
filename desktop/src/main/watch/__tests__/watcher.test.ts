@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PageSummary, StruggleSignal } from '@wolfie/shared';
-import type { ForegroundInfo } from '../../foreground.js';
+import type { BrowserTab, ProbeResult } from '../browser-probe.js';
+import type { FrontWindow } from '../front-window.js';
 import type { CaptureResult } from '../../hints/capture.js';
 import type { LlmCall } from '../../llm/client.js';
 import { LLMError } from '../../llm/provider.js';
 import { SessionMemory } from '../memory.js';
-import { Watcher, UNCHANGED_RECHECK_MS, type WatcherDeps } from '../watcher.js';
+import { AWAY_SECONDS, Watcher, UNCHANGED_RECHECK_MS, type WatcherDeps } from '../watcher.js';
 import type { Observation } from '../types.js';
 import { obs } from './helpers.js';
 
@@ -14,26 +15,39 @@ const FRAME_B = 'data:image/jpeg;base64,QkJC';
 
 let now: number;
 let active: boolean;
-let fg: ForegroundInfo | null;
+let front: FrontWindow | null;
+let probe: ProbeResult;
+let tab: { domain: string; contentUrl: string | null } | null;
+let idle: number;
 let frame: string;
 let reply: Observation | Error;
 let calls: Array<LlmCall<unknown>>;
 let signals: StruggleSignal[];
 let urls: string[];
-let captures: number;
+let captures: number[];
 let memory: SessionMemory;
+
+const chrome = (over: Partial<BrowserTab> = {}): ProbeResult => ({
+  ok: true,
+  tab: { incognito: false, host: 'example.edu', title: 'paper.pdf', contentUrl: 'https://example.edu/paper.pdf', ...over }
+});
 
 function make(over: Partial<WatcherDeps> = {}): Watcher {
   return new Watcher({
     now: () => now,
     isActive: () => active,
     intervalMs: () => 8000,
-    getForeground: () => fg,
+    idleSeconds: () => idle,
+    frontWindow: async () => front,
+    selfPid: 999,
+    isBrowser: (app) => /chrome|safari/i.test(app),
+    probeBrowser: async () => probe,
+    tabReport: () => tab,
     isExcludedApp: (name) => name === 'Messages',
     isExcludedDomain: (d) => d.endsWith('chase.com'),
     getPageSummary: () => null,
-    capture: async (): Promise<CaptureResult> => {
-      captures++;
+    capture: async (windowId): Promise<CaptureResult> => {
+      captures.push(windowId);
       return { ok: true, dataUrl: frame, sourceName: 'window' };
     },
     llm: () => ({
@@ -54,13 +68,16 @@ function make(over: Partial<WatcherDeps> = {}): Watcher {
 beforeEach(() => {
   now = 1_000_000;
   active = true;
-  fg = { appName: 'Google Chrome', windowTitle: 'paper.pdf', isBrowser: true, domain: 'example.edu', contentUrl: 'https://example.edu/paper.pdf', reportedDomain: null, ts: now };
+  front = { app: 'Google Chrome', pid: 100, windowId: 7, title: 'paper.pdf' };
+  probe = chrome();
+  tab = null;
+  idle = 0;
   frame = FRAME_A;
   reply = obs();
   calls = [];
   signals = [];
   urls = [];
-  captures = 0;
+  captures = [];
   memory = new SessionMemory();
 });
 
@@ -87,18 +104,71 @@ describe('Watcher', () => {
     expect(w.getState()).toBe('idle');
   });
 
-  it('never captures excluded apps, excluded domains, or a browser page it cannot identify', async () => {
+  it('never captures excluded apps, excluded sites, incognito windows, or a browser page it cannot identify', async () => {
     const w = make();
-    fg = { appName: 'Messages', windowTitle: 'Mom', isBrowser: false, domain: null, contentUrl: null, reportedDomain: null, ts: now };
+    front = { app: 'Messages', pid: 200, windowId: 9, title: 'Mom' };
     await w.tick();
-    fg = { appName: 'Google Chrome', windowTitle: 'Chase', isBrowser: true, domain: 'secure.chase.com', contentUrl: null, reportedDomain: null, ts: now };
+    expect(w.getSkipReason()).toBe('excluded_app');
+    front = { app: 'Google Chrome', pid: 100, windowId: 7, title: 'Chase' };
+    probe = chrome({ host: 'secure.chase.com', title: 'Chase', contentUrl: null });
     await w.tick();
-    fg = { appName: 'Google Chrome', windowTitle: 'New Tab', isBrowser: true, domain: null, contentUrl: null, reportedDomain: null, ts: now };
+    expect(w.getSkipReason()).toBe('excluded_site');
+    probe = chrome({ incognito: true });
     await w.tick();
-    expect(captures).toBe(0);
+    expect(w.getSkipReason()).toBe('private_window');
+    probe = chrome({ host: null, title: 'New Tab', contentUrl: null });
+    await w.tick();
+    expect(w.getSkipReason()).toBe('unknown_tab');
+    expect(captures).toEqual([]);
     expect(calls).toHaveLength(0);
     expect(w.getState()).toBe('skipping');
     expect(await w.captureNow(60_000)).toBeNull();
+  });
+
+  it('a browser it cannot ask is captured only when the extension tab matches the window', async () => {
+    const w = make();
+    front = { app: 'Safari', pid: 300, windowId: 11, title: 'Banking' };
+    probe = { ok: false, reason: 'unsupported' };
+    await w.tick();
+    expect(w.getSkipReason()).toBe('unsupported_browser');
+    front = { app: 'Google Chrome', pid: 100, windowId: 7, title: 'paper.pdf' };
+    probe = { ok: false, reason: 'denied' };
+    await w.tick();
+    expect(w.getSkipReason()).toBe('browser_access_denied');
+    tab = { domain: 'example.edu', contentUrl: 'https://example.edu/paper.pdf' };
+    await w.tick();
+    expect(captures).toEqual([7]);
+    expect(w.getState()).toBe('watching');
+  });
+
+  it('never looks at its own windows, and pauses while the student is away', async () => {
+    const w = make();
+    front = { app: 'Electron', pid: 999, windowId: 3, title: 'Wolfie Overlay' };
+    await w.tick();
+    expect(captures).toEqual([]);
+    front = { app: 'Code', pid: 400, windowId: 5, title: 'main.ts' };
+    idle = AWAY_SECONDS;
+    await w.tick();
+    expect(w.getState()).toBe('away');
+    expect(captures).toEqual([]);
+    idle = 10;
+    await w.tick();
+    expect(captures).toEqual([5]);
+  });
+
+  it('captures exactly the front window id, apps included', async () => {
+    const w = make();
+    front = { app: 'Preview', pid: 500, windowId: 42, title: 'lecture.pdf' };
+    await w.tick();
+    expect(captures).toEqual([42]);
+    expect(JSON.parse(calls[0].messages[0].content)).toMatchObject({ app: 'Preview', window_title: 'lecture.pdf', site: null });
+  });
+
+  it('browsing or an unrelated app never raises a stuck signal', async () => {
+    const w = make();
+    reply = obs({ activity: 'browsing', mode: 'other', stuck: { likely: true, confidence: 0.95, reason: 'scrolling' } });
+    await w.tick();
+    expect(signals).toHaveLength(0);
   });
 
   it('skips an unchanged screen, but looks again after a minute (long pauses still count)', async () => {
@@ -163,7 +233,7 @@ describe('Watcher', () => {
   });
 
   it('reports missing Screen Recording permission', async () => {
-    const w = make({ capture: async () => ({ ok: false, reason: 'permission' }) });
+    const w = make({ capture: async () => ({ ok: false, reason: 'permission' as const }) });
     await w.tick();
     expect(w.getState()).toBe('no_permission');
     expect(calls).toHaveLength(0);
@@ -196,11 +266,15 @@ describe('Watcher', () => {
     const w = make();
     await w.tick();
     expect(await w.captureNow(20_000)).toBe(FRAME_A);
-    expect(captures).toBe(1);
+    expect(captures).toHaveLength(1);
     now += 30_000;
     frame = FRAME_B;
     expect(await w.captureNow(20_000)).toBe(FRAME_B);
-    expect(captures).toBe(2);
+    expect(captures).toHaveLength(2);
+    // A fresh frame from another window is not reused
+    front = { app: 'Preview', pid: 500, windowId: 42, title: 'x.pdf' };
+    await w.captureNow(20_000);
+    expect(captures).toEqual([7, 7, 42]);
   });
 
   it('reset() forgets flagged answers so a new session can flag them again', async () => {
@@ -296,7 +370,7 @@ describe('Watcher races and capture limits (review fixes)', () => {
   });
 
   it('an unmatched window is skipped, never replaced by a whole-screen capture', async () => {
-    const w = make({ capture: async () => ({ ok: false, reason: 'empty' }) });
+    const w = make({ capture: async () => ({ ok: false, reason: 'empty' as const }) });
     await w.tick();
     expect(w.getState()).toBe('skipping');
     expect(calls).toHaveLength(0);

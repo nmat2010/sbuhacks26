@@ -16,7 +16,7 @@ export interface WatchControllerDeps {
   getSession: () => { id: string } | null;
   isPaused: () => boolean;
   memory: SessionMemory;
-  watcher: Pick<Watcher, 'start' | 'stop' | 'reset' | 'getState'>;
+  watcher: Pick<Watcher, 'start' | 'stop' | 'reset' | 'getState'> & Partial<Pick<Watcher, 'getSkipReason'>>;
   /** Import a PDF/arXiv paper the student opened; resolves to the library paper. */
   importPaper: (url: string) => Promise<{ paperId: string; title: string } | null>;
   log: (type: EventType, payload: Record<string, unknown>) => void;
@@ -71,11 +71,25 @@ export class WatchController {
     const state = deps.watcher.getState();
     if (state === 'no_permission') return 'Allow Screen Recording for Wolfie in System Settings so I can see your screen.';
     if (state === 'limit_reached') return "I've reached today's watching limit; I'll pick up again tomorrow.";
-    if (state === 'skipping' && !deps.getSetting('monitoring.capture_window_titles')) {
-      return 'Turn on window titles in Settings so I can follow browser pages.';
+    if (state === 'away') return "You've been away for a while, so I'm not looking. I'll pick up when you're back.";
+    if (state !== 'skipping') return null;
+    switch (deps.watcher.getSkipReason?.()) {
+      case 'private_window':
+        return "This is a private window, so I'm not looking.";
+      case 'excluded_site':
+      case 'excluded_app':
+        return "This is on your excluded list, so I'm not looking.";
+      case 'browser_access_denied':
+        return 'Allow Wolfie to control your browser (System Settings > Privacy & Security > Automation) so I can tell private windows apart.';
+      case 'unsupported_browser':
+        return "I can only follow Chrome, Brave and Edge pages for now, so I'm not looking at this browser.";
+      case 'unknown_tab':
+        return "I can't tell which page is open here, so I'm not looking.";
+      case 'no_window':
+        return "I can't find the window in front. If this keeps happening, check Screen Recording for Wolfie.";
+      default:
+        return null;
     }
-    if (state === 'skipping') return 'Not looking: this window is private, excluded, or I can\'t tell which tab it is.';
-    return null;
   }
 
   set(patch: WatchPatch): BResult<WatchStatus> {

@@ -30,6 +30,12 @@ export interface EngineDeps {
   getSession: () => { id: string } | null;
   onSessionChange: (fn: () => void) => () => void;
   isPaused: () => boolean;
+  /**
+   * Whether the student is really working right now (at the keyboard recently and, with Watch
+   * mode, doing a study activity). When false, automatic offers stay at level 0. Manual help
+   * (mascot click, hotkey, "I'm stuck") is not affected.
+   */
+  isEngaged?: () => boolean;
   isSnoozed: () => boolean;
   /** Voice mode (settings voice.enabled). */
   voiceMode: () => boolean;
@@ -212,7 +218,8 @@ export class EscalationEngine {
       ...this.state,
       now,
       voiceMode: this.deps.voiceMode(),
-      paused: this.deps.isPaused(),
+      // Not really working (away, or not on a study task): treated like a pause, so no offers
+      paused: this.deps.isPaused() || !(this.deps.isEngaged?.() ?? true),
       snoozed: this.deps.isSnoozed()
     };
     const active = [...this.signals.values()].map((a) => a.signal);
