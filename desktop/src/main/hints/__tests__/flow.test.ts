@@ -685,3 +685,25 @@ describe('hint flow: hints follow the flagged wrong answer (two on screen)', () 
     expect(context.focus).toContain('2x + 5 = 13');
   });
 });
+
+describe('hint flow: thinking pause', () => {
+  it('focuses the hints on the unanswered question', async () => {
+    const t = setup({
+      summary: null,
+      watch: {
+        active: () => true,
+        mode: () => 'homework',
+        contextText: () => 'notes',
+        currentFrame: async () => 'data:image/jpeg;base64,QUFB',
+        explain: vi.fn(),
+        openIssues: () => [],
+        stalledQuestion: () => 'What is overfitting?'
+      }
+    });
+    t.bus.emit('help-requested', 'auto');
+    await t.settle();
+    const [context] = t.requestHintsSpy.mock.calls[0];
+    expect(context.focus).toContain('What is overfitting?');
+    expect(context.focus).toContain('get started');
+  });
+});

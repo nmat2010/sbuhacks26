@@ -27,6 +27,7 @@ export function mockWatchObserve(key: Record<string, unknown> | undefined): unkn
     summary: `The student is looking at ${k.title || k.appName || 'something'}.`,
     key_points: [],
     stuck: { likely: false, confidence: 0, reason: null },
+    unanswered_question: null,
     answer_checks: []
   };
 }

@@ -53,6 +53,7 @@ export const SettingsKeys = {
   WATCH_EXCLUDED_APPS: 'watch.excluded_apps',
   WATCH_AUTO_IMPORT_PAPERS: 'watch.auto_import_papers',
   WATCH_CALLS_PER_DAY: 'watch.calls_per_day',
+  WATCH_STALL_SECONDS: 'watch.stall_seconds',
 
   // API
   API_CALL_LIMIT_PER_DAY: 'api.call_limit_per_day',
@@ -142,6 +143,8 @@ export interface SettingsValues {
   'watch.auto_import_papers': boolean;
   /** Separate cap for watcher calls, so watching never uses up the hint/plan budget. */
   'watch.calls_per_day': number;
+  /** On an unanswered question with no keyboard/mouse input this long: offer a hint to get started. */
+  'watch.stall_seconds': number;
   'api.call_limit_per_day': number;
   'demo.mode': boolean;
 }
@@ -237,6 +240,7 @@ export const SettingsDefaults: SettingsValues = {
   // Opt-in: the Watch-mode consent screen asks "Let Wolfie read papers you open?" (WATCH_MODE.md §3.2)
   'watch.auto_import_papers': false,
   'watch.calls_per_day': 2000,
+  'watch.stall_seconds': 60,
   'api.call_limit_per_day': 200,
   'demo.mode': false
 };

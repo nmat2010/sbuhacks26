@@ -23,6 +23,11 @@ export const ObservationSchema = z.object({
     confidence: z.number().min(0).max(1),
     reason: z.string().max(240).nullable()
   }),
+  /**
+   * The question the student is on right now that has no answer written yet (where the cursor or
+   * the blank answer is), short; null if none. A long pause on it is a "thinking pause".
+   */
+  unanswered_question: z.string().max(200).nullable().default(null),
   /** One entry per question/problem the student answered on screen (several can be wrong at once). */
   answer_checks: z
     .array(

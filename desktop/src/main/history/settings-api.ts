@@ -14,6 +14,7 @@ const rules = z.array(RuleEntry).max(200);
 const EXPLICIT: Partial<Record<SettingsKey, z.ZodTypeAny>> = {
   'watch.interval_seconds': positive(120, 5),
   'watch.calls_per_day': positive(20_000, 0),
+  'watch.stall_seconds': positive(600, 15),
   'watch.excluded_apps': z.array(z.string().trim().min(1).max(100)).max(200),
   'monitored.ai_tools': rules,
   'monitored.distractions': rules,

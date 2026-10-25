@@ -187,3 +187,16 @@
   - `gemini-3.1-flash-lite` returned both checks: "describes overfitting rather than underfitting"; "transcribed as 2x + 5 = 12 instead of 2x + 5 = 13".
   - The focused ladder on `gemini-3.5-flash-lite` addressed the definition: "Does it describe a model that is too detailed, or one that is too simple?"
 - Tests: 640 pass.
+
+## Update: thinking pause on an unanswered question
+- **Reported:** while thinking about "what is overfitting?" (blank answer), no hint was offered.
+  - Every look said `stuck: false`. The student was on it about 40 s.
+  - Stuck without a wrong answer needs strong evidence (a model judgment after a long unchanged screen, 4 min idle, 12 min on one problem), then climbs over 90 s.
+  - The "5 s" the student waited is only the typing guard.
+- **Fix, a thinking pause:**
+  - Prompt `watch-observe.v4` adds `unanswered_question`, the question the student is on with no answer yet.
+  - When the latest look (≤3 min old) showed one and there has been no keyboard/mouse input for `watch.stall_seconds` (default 60, range 15–600), and none since that look, the watcher raises one `model_stuck` (strong, `stall: true`) per question. It uses input idle time, not pixels (a blinking caret changes pixels), and no extra model call.
+  - The engine offers right away: "Taking a moment on "What is overfitting"? Want a hint to get started?"
+  - The hint flow focuses on that question ("help them get started (no answer)"). Flagged wrong answers still come first.
+- **Verified on real `gemini-3.1-flash-lite`:** a Doc with two wrong answers and a blank "what is overfitting?" returned both wrong checks plus `unanswered_question: "what is overfitting?"`.
+- Tests: 645 pass.

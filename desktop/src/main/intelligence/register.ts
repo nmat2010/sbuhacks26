@@ -224,6 +224,7 @@ function registerWatch(): void {
     isActive: () => watchController?.isActive() ?? false,
     intervalMs: () => getSetting('watch.interval_seconds') * 1000,
     idleSeconds: () => powerMonitor.getSystemIdleTime(),
+    stallSeconds: () => getSetting('watch.stall_seconds'),
     frontWindow: createFrontWindowReader(run, existsSync(helper) ? helper : null),
     selfPid: process.pid,
     isBrowser: (name) => isBrowserApp(name) || /^(safari|firefox|orion|zen|duckduckgo)/i.test(name.trim()),
@@ -308,6 +309,7 @@ function registerWatch(): void {
     mode: () => answers.mode(),
     contextText: () => memory.toPromptText(6000),
     openIssues: () => w.openIssues(),
+    stalledQuestion: () => w.stalledQuestion(),
     currentFrame: () => w.captureNow(20_000),
     explain: async (question, previousAnswer) => {
       const res = await answers.ask({ question: question ?? '', inputMode: 'text', proactive: question === null, previousAnswer });

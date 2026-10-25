@@ -487,3 +487,11 @@ describe('EscalationEngine: two wrong answers at once', () => {
     );
   });
 });
+
+describe('EscalationEngine: thinking pause', () => {
+  it('offers right away, naming the question', () => {
+    const t = setup({ voice: false });
+    t.bus.emit('signal', { type: 'model_stuck', strength: 'strong', timestamp: t.clock.t, metadata: { source: 'watch', stall: true, question: 'What is overfitting?' } });
+    expect(t.pushed.at(-1)).toMatchObject({ level: 3, text: 'Taking a moment on "What is overfitting"? Want a hint to get started?' });
+  });
+});

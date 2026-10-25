@@ -8,6 +8,7 @@ export const obs = (over: Partial<Observation> = {}): Observation => ({
   summary: 'Reading section 3.2 about the modified attention block.',
   key_points: ['Attention scores are gated by a learned sparsity mask'],
   stuck: { likely: false, confidence: 0, reason: null },
+  unanswered_question: null,
   answer_checks: [],
   ...over
 });

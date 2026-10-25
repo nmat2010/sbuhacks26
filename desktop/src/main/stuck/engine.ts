@@ -66,6 +66,8 @@ export class EscalationEngine {
   private wrongAnswerPending = false;
   /** Wrong answers flagged since the last offer was answered (one per question), for the offer text. */
   private wrongIssues: Array<{ question: string | null; issue: string }> = [];
+  /** A thinking pause on this unanswered question (Watch mode). */
+  private stallQuestion: string | null = null;
   /** When the last offer was declined ("Not now"); null if not declined since. */
   private declinedAt: number | null = null;
   private ladderOpen = false;
@@ -107,6 +109,7 @@ export class EscalationEngine {
       this.signals.clear();
       this.wrongAnswerPending = false;
       this.wrongIssues = [];
+      this.stallQuestion = null;
       this.offer = null;
       this.setLevelDisplay(0);
     }
@@ -133,6 +136,7 @@ export class EscalationEngine {
     this.signals.clear();
     this.wrongAnswerPending = false;
     this.wrongIssues = [];
+    this.stallQuestion = null;
     this.offer = null;
     this.setLevelDisplay(0);
     this.deps.log('offer.declined', { reason: 'im_good', problem: this.redactedProblem() });
@@ -165,6 +169,11 @@ export class EscalationEngine {
     this.signals.set(signal.type, { signal, expiresAt: now + this.lifetimeMs(signal.type) });
     if (fresh) this.deps.log('stuck.signal', { type: signal.type, strength: signal.strength });
     // Watch mode read a (new) wrong answer: offer help without climbing glance -> "?" (see tick)
+    // A thinking pause on an unanswered question is offered right away too (the pause was the wait)
+    if (signal.type === 'model_stuck' && signal.metadata?.stall === true) {
+      this.wrongAnswerPending = true;
+      this.stallQuestion = typeof signal.metadata.question === 'string' ? signal.metadata.question : null;
+    }
     if (signal.type === 'answer_seen_wrong') {
       this.wrongAnswerPending = true;
       const issue = typeof signal.metadata?.issue === 'string' ? signal.metadata.issue : null;
@@ -189,6 +198,7 @@ export class EscalationEngine {
     this.signals.clear();
     this.wrongAnswerPending = false;
     this.wrongIssues = [];
+    this.stallQuestion = null;
     this.offer = null;
     this.setLevelDisplay(0);
     if (trigger === 'auto' || hadOffer) this.deps.log('offer.accepted', { trigger });
@@ -203,6 +213,7 @@ export class EscalationEngine {
     this.signals.clear();
     this.wrongAnswerPending = false;
     this.wrongIssues = [];
+    this.stallQuestion = null;
     this.offer = null;
     this.setLevelDisplay(0);
   }
@@ -224,6 +235,7 @@ export class EscalationEngine {
         this.signals.clear();
         this.wrongAnswerPending = false;
         this.wrongIssues = [];
+        this.stallQuestion = null;
         this.declinedAt = now;
         this.offer = null;
         this.setLevelDisplay(0);
@@ -310,6 +322,10 @@ export class EscalationEngine {
       const list = issues.map((t, i) => `(${i + 1}) ${t}`).join('; ');
       return `Hmm, ${issues.length} things look off: ${list}. Want a hint? We'll start with the first.`;
     }
+    if (this.stallQuestion) {
+      const q = this.stallQuestion.trim().replace(/[?.!]+$/, '');
+      return `Taking a moment on "${q}"? Want a hint to get started?`;
+    }
     return OFFER_TEXT;
   }
 
@@ -355,6 +371,7 @@ export class EscalationEngine {
     this.signals.clear();
     this.wrongAnswerPending = false;
     this.wrongIssues = [];
+    this.stallQuestion = null;
     this.declinedAt = null;
     this.offer = null;
     this.ladderOpen = false;

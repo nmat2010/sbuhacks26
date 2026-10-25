@@ -544,3 +544,42 @@ describe('Watcher: several answers on one screen', () => {
     expect(w.openIssues().map((i) => i.question)).toEqual(['2x + 5 = 13']);
   });
 });
+
+describe('Watcher: thinking pause on an unanswered question', () => {
+  const onQuestion = obs({ activity: 'homework', mode: 'homework', unanswered_question: 'What is overfitting?' });
+
+  it('raises one stall signal after 60 s without input, and names the question', async () => {
+    const w = make({ stallSeconds: () => 60 });
+    reply = onQuestion;
+    idle = 5;
+    await w.tick();
+    expect(signals).toHaveLength(0);
+    idle = 61;
+    now += 8000;
+    await w.tick();
+    const stall = signals.filter((s) => s.metadata?.stall);
+    expect(stall).toEqual([expect.objectContaining({ type: 'model_stuck', strength: 'strong', metadata: { source: 'watch', stall: true, question: 'What is overfitting?' } })]);
+    expect(w.stalledQuestion()).toBe('What is overfitting?');
+    now += 8000;
+    await w.tick();
+    expect(signals.filter((s) => s.metadata?.stall)).toHaveLength(1); // once per question
+  });
+
+  it('does not fire while typing, or once the question is answered', async () => {
+    const w = make({ stallSeconds: () => 60 });
+    reply = onQuestion;
+    idle = 2;
+    await w.tick();
+    // The student types an answer: the next look sees it answered
+    reply = obs({ activity: 'homework', mode: 'homework', unanswered_question: null });
+    idle = 1;
+    frame = FRAME_B;
+    now += 8000;
+    await w.tick();
+    // ...and then pauses for a long time: not a stall, the question is answered
+    idle = 120;
+    now += 8000;
+    await w.tick();
+    expect(signals.filter((s) => s.metadata?.stall)).toHaveLength(0);
+  });
+});

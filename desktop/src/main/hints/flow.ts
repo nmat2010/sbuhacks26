@@ -69,6 +69,8 @@ export interface WatchHooks {
   ) => Promise<{ ok: true; text: string; label: string } | { ok: false; message: string }>;
   /** Wrong answers Watch mode saw and that aren't corrected yet, in screen order. */
   openIssues?: () => Array<{ question: string | null; issue: string }>;
+  /** The unanswered question of an active thinking pause, if any. */
+  stalledQuestion?: () => string | null;
 }
 
 export interface HintFlowDeps {
@@ -337,6 +339,18 @@ export class HintFlow {
       if (this.handledIssues.has(key)) continue;
       const focus = i.question ? `Problem: ${i.question}\nWhat looks off: ${i.issue}` : `What looks off: ${i.issue}`;
       return { key, focus, issue: i.issue };
+    }
+    // No wrong answer: a thinking pause on an unanswered question gets "help me get started"
+    const stalled = this.deps.watch?.stalledQuestion?.();
+    if (stalled) {
+      const key = `stall|${stalled}`.toLowerCase();
+      if (!this.handledIssues.has(key)) {
+        return {
+          key,
+          focus: `Problem: ${stalled}\nThe student hasn't written an answer yet and has paused; help them get started (no answer).`,
+          issue: `getting started on "${stalled}"`
+        };
+      }
     }
     return null;
   }

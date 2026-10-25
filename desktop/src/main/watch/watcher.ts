@@ -77,6 +77,8 @@ export interface WatcherDeps {
   intervalMs: () => number;
   /** Seconds since the last keyboard/mouse input (powerMonitor.getSystemIdleTime). */
   idleSeconds: () => number;
+  /** watch.stall_seconds: no input this long on an unanswered question is a thinking pause. */
+  stallSeconds?: () => number;
   /** Native helper: the frontmost app's frontmost window. */
   frontWindow: () => Promise<FrontWindow | null>;
   /** Wolfie's own process (its windows are never looked at). */
@@ -117,6 +119,10 @@ export class Watcher {
   private lastRecordAt: number | null = null;
   private weakStreak = 0;
   private flaggedAnswers = new Set<string>();
+  /** The unanswered question the latest look found the student on, and when that look was. */
+  private unanswered: { question: string; at: number } | null = null;
+  /** Questions a thinking-pause offer was already raised for (once per question). */
+  private stalledFlagged = new Set<string>();
   /** Wrong answers on screen that haven't been seen corrected yet (one per question), oldest first. */
   private issues: Array<{ question: string | null; issue: string; answer: string; lastSeen: number }> = [];
   private state: WatcherState = 'idle';
@@ -184,6 +190,34 @@ export class Watcher {
     const now = this.deps.now();
     this.issues = this.issues.filter((i) => now - i.lastSeen <= ISSUE_TTL_MS);
     return this.issues.map(({ question, issue }) => ({ question, issue }));
+  }
+
+  /** The question of an active thinking pause (flagged and still the one on screen), for hint focus. */
+  stalledQuestion(): string | null {
+    const u = this.unanswered;
+    return u && this.stalledFlagged.has(questionKey(u.question)) ? u.question : null;
+  }
+
+  /**
+   * Thinking pause: the latest look showed the student on an unanswered question, and there has
+   * been no keyboard/mouse input for watch.stall_seconds since. Uses input idle time, not pixels
+   * (a blinking caret changes pixels), and costs no model call. Raised once per question.
+   */
+  private checkStall(now: number): void {
+    const u = this.unanswered;
+    const stallSeconds = this.deps.stallSeconds?.() ?? 60;
+    if (!u || now - u.at > STALL_LOOK_MAX_AGE_MS) return;
+    const key = questionKey(u.question);
+    const idleMs = this.deps.idleSeconds() * 1000;
+    // No input for the stall time, and none since the look that saw the question unanswered
+    if (this.stalledFlagged.has(key) || idleMs < stallSeconds * 1000 || idleMs < now - u.at) return;
+    this.stalledFlagged.add(key);
+    this.deps.emitSignal({
+      type: 'model_stuck',
+      strength: 'strong',
+      timestamp: now,
+      metadata: { source: 'watch', stall: true, question: u.question }
+    });
   }
 
   /** True when watching stopped on Gemini's daily quota rather than Wolfie's own cap. */
@@ -301,6 +335,8 @@ export class Watcher {
     this.weakStreak = 0;
     this.flaggedAnswers.clear();
     this.issues = [];
+    this.unanswered = null;
+    this.stalledFlagged.clear();
     this.frame = null;
   }
 
@@ -332,6 +368,7 @@ export class Watcher {
       this.setState('idle');
       return;
     }
+    this.checkStall(deps.now());
     this.busy = true;
     const generation = this.generation;
     // Stopped, cleared or reset while we waited: drop whatever this look produced
@@ -401,7 +438,11 @@ export class Watcher {
         contentUrl: fg.contentUrl,
         elapsedMs: elapsed
       });
+      // Which unanswered question the student is on (for the thinking pause)
+      const q = STUDY_ACTIVITIES.has(obs.activity) ? obs.unanswered_question?.trim() : null;
+      this.unanswered = q ? { question: q, at: now } : null;
       this.emitSignals(obs, now);
+      this.checkStall(deps.now());
       deps.log('watch.observed', { activity: obs.activity, mode: obs.mode, stuck: obs.stuck.likely });
       this.setState('watching');
       deps.onLook?.();
@@ -447,7 +488,7 @@ export class Watcher {
     };
     return deps.llm().generate({
       task: 'watch_observe',
-      system: renderPrompt('watch-observe.v3'),
+      system: renderPrompt('watch-observe.v4'),
       messages: [{ role: 'user', content: JSON.stringify(input) }],
       images: [parseImageDataUrl(dataUrl)],
       schema: ObservationSchema,
@@ -513,6 +554,9 @@ export class Watcher {
     }
   }
 }
+
+/** A thinking pause needs a look this recent showing the unanswered question. */
+const STALL_LOOK_MAX_AGE_MS = 3 * 60_000;
 
 /** Open issues not seen again for this long are dropped (the student moved on). */
 const ISSUE_TTL_MS = 10 * 60_000;
