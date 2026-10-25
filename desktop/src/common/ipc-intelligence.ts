@@ -314,10 +314,24 @@ export interface SessionReportView {
   prose: {
     headline: string;
     summary: string;
-    topics: Array<{ name: string; verdict: 'strength' | 'weakness' | 'practiced'; evidence: string }>;
+    topics: Array<{ name: string; verdict: 'strength' | 'weakness' | 'practiced'; evidence: string; plan?: string[] }>;
     next_steps: string[];
   } | null;
   error?: string;
+}
+
+/** A skill in the strengths & weaknesses record (main: skills/record.ts). */
+export interface SkillView {
+  id: string;
+  name: string;
+  /** improving: was a weakness, the latest evidence shows it as a strength. */
+  status: 'strength' | 'weakness' | 'improving' | 'touched';
+  firstSeen: number;
+  lastSeen: number;
+  /** What each session showed, newest first. */
+  history: Array<{ sessionId: string; ts: number; verdict: 'strength' | 'weakness' | 'practiced'; evidence: string }>;
+  /** Steps to improve it (weaknesses). */
+  plan: string[];
 }
 
 /** One message in Wolfie's chat history (overlay chat panel). */
@@ -393,6 +407,8 @@ export interface IntelligenceInvoke {
   'report-get': { args: [sessionId: string]; result: SessionReportView | null };
   /** Write a session's report again from its saved facts (e.g. after the AI limit reset). */
   'report-regenerate': { args: [sessionId: string]; result: { success: boolean } };
+  /** The strengths & weaknesses record, newest first. */
+  'skills-get': { args: []; result: SkillView[] };
   /** Push-to-talk: may the mic be used? Asks macOS the first time; false if denied (opens settings). */
   'voice-mic-ready': { args: []; result: { granted: boolean; error?: string } };
   /** Push-to-talk: the recorded clip, transcribed (then sent with chat-send like typed text). */
@@ -475,6 +491,8 @@ export interface IntelligenceEvents {
   'chat-history-changed': ChatMessageView[];
   /** Wolfie is working on a reply the student asked for (true) or is done (false): thinking sprite. */
   'wolfie-thinking': boolean;
+  /** The strengths & weaknesses record changed. */
+  'skills-updated': Record<string, never>;
   /** A session report was saved or changed (pending, ready, failed). */
   'report-updated': { sessionId: string };
 }

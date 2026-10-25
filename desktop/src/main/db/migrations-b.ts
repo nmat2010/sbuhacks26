@@ -134,6 +134,20 @@ export function migrations(db: Database.Database): Migration[] {
           );
         `);
       }
+    },
+    {
+      // Strengths and weaknesses across sessions: one row per skill with its history
+      name: '207_b_skills',
+      up: () => {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS skills (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            updated_at INTEGER NOT NULL,
+            record_json TEXT NOT NULL
+          );
+        `);
+      }
     }
   ];
 }
@@ -150,5 +164,6 @@ export const tables: readonly string[] = [
   'paper_chunks',
   'paper_answer_meta',
   'chat_messages',
-  'session_reports'
+  'session_reports',
+  'skills'
 ];

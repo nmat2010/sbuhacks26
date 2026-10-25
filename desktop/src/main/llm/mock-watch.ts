@@ -71,7 +71,12 @@ export function mockSessionReport(key: Record<string, unknown> | undefined): unk
     summary: 'A focused session. Keep practicing the problems that needed help.',
     topics: [
       ...strong.map((p) => ({ name: p.question.slice(0, 80), verdict: 'strength', evidence: 'Solved without hints.' })),
-      ...weak.map((p) => ({ name: p.question.slice(0, 80), verdict: 'weakness', evidence: 'Needed the answer or is still open.' }))
+      ...weak.map((p) => ({
+        name: p.question.slice(0, 80),
+        verdict: 'weakness',
+        evidence: 'Needed the answer or is still open.',
+        plan: [`Review the idea behind "${p.question.slice(0, 50)}".`, 'Try a similar problem without hints.']
+      }))
     ].slice(0, 8),
     next_steps: weak.length ? weak.map((p) => `Try "${p.question.slice(0, 60)}" again without hints.`).slice(0, 5) : ['Keep going at this pace.']
   };

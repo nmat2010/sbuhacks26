@@ -163,6 +163,8 @@ export class MockLLMProvider implements LLMProvider {
         return mockWatchAnswer(req.mockKey);
       case 'session_report':
         return mockSessionReport(req.mockKey);
+      case 'skills_merge':
+        return { groups: [] };
       default:
         return {};
     }

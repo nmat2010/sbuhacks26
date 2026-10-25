@@ -59,7 +59,9 @@ export const ReportProseSchema = z.object({
       z.object({
         name: z.string().min(1).max(80),
         verdict: z.enum(['strength', 'weakness', 'practiced']),
-        evidence: z.string().max(240)
+        evidence: z.string().max(240),
+        /** Steps to improve it (weaknesses only). */
+        plan: z.array(z.string().min(1).max(200)).max(3).default([])
       })
     )
     .max(8)

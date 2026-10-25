@@ -41,7 +41,9 @@ import { isUnaskedOffer, spokenReply } from '../voice/read-aloud.js';
 import { createClipStt } from '../voice/clip-stt.js';
 import { SessionTracker } from '../report/tracker.js';
 import { ReportService, type SessionSnapshot } from '../report/service.js';
-import { ReportStore } from '../report/store.js';
+import { ReportStore, type StoredReport } from '../report/store.js';
+import { SkillRecordStore, skillStatus } from '../skills/record.js';
+import { tidySkills } from '../skills/tidy.js';
 import { getHistory } from '../history/queries.js';
 import { createVoiceService, type VoiceService } from '../voice/service.js';
 import type { IntentHandler } from '../voice/router.js';
@@ -480,6 +482,37 @@ function registerChat(): void {
 // Session reports (report/): written when a session ends, shown on the dashboard
 function registerReports(): void {
   const store = new ReportStore(getDatabase);
+  // Strengths & weaknesses across sessions (skills/record.ts), fed by each written report
+  const skills = new SkillRecordStore(getDatabase);
+  const addReport = (report: StoredReport): number =>
+    report.prose ? skills.addSession(report.sessionId, report.facts.endedAt ?? report.facts.startedAt, report.prose.topics) : 0;
+  // Merges skills that are one concept under different names (one small model call)
+  const tidy = () =>
+    void tidySkills(skills, () => getLLMClient())
+      .then((merged) => {
+        if (merged) broadcast('skills-updated', {});
+      })
+      .catch((error) => console.error('[skills] tidy-up failed:', (error as Error).message));
+  // First run with the record: build it from the reports written so far, oldest first. Then (and
+  // at every start) it is tidied once: older reports named topics without seeing the record
+  try {
+    if (skills.isEmpty()) store.list(500).reverse().forEach(addReport);
+    if (skills.names(2).length > 1) tidy();
+  } catch (error) {
+    console.error('[skills] could not build the record from past reports:', error);
+  }
+  handle('skills-get', async () =>
+    skills.list().map((s) => ({
+      id: s.id,
+      name: s.name,
+      status: skillStatus(s.history),
+      firstSeen: s.firstSeen,
+      lastSeen: s.lastSeen,
+      history: [...s.history].reverse(),
+      plan: s.plan
+    }))
+  );
+
   reports = new ReportService({
     now: Date.now,
     store,
@@ -493,6 +526,13 @@ function registerReports(): void {
       return s ? { startedAt: s.startedAt, endedAt: s.endedAt, seconds: s.seconds, hintCount: s.hintCount, deepestHintLevel: s.deepestHintLevel } : null;
     },
     onUpdated: (sessionId) => broadcast('report-updated', { sessionId }),
+    // The report reuses the record's names, and its topics go into the record
+    knownSkills: () => skills.names(),
+    onWritten: (report) => {
+      // A report that added a skill may have named an old concept anew: tidy the record
+      if (addReport(report) > 0) tidy();
+      broadcast('skills-updated', {});
+    },
     log: (line) => console.log(line)
   });
   handle('report-get', async (sessionId) => store.get(String(sessionId ?? '')));

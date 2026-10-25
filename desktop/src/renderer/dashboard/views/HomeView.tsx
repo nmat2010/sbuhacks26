@@ -3,7 +3,8 @@ import type { HistoryData, HistorySession, SessionInfo } from '../../../common/i
 import type { StreakSnapshotType } from '@wolfie/shared';
 import type { ViewType } from '../App';
 import { StreakCalendar } from '../components/StreakCalendar';
-import { ExampleBadge, Planned } from '../components/Planned';
+import { Planned } from '../components/Planned';
+import { useSkills } from './SkillsView';
 import { FocusBars } from '../components/FocusBars';
 import { SessionReport } from '../components/SessionReport';
 import { duration, minutes, sessionDate, totalSeconds } from '../format';
@@ -66,6 +67,9 @@ export function HomeView({ onNavigate }: { onNavigate: (view: ViewType) => void 
   };
 
   const latest: HistorySession | undefined = week?.sessions.find((s) => s.endedAt !== null);
+  const skills = useSkills() ?? [];
+  const strong = skills.filter((s) => s.status === 'strength');
+  const weak = skills.filter((s) => s.status === 'weakness' || s.status === 'improving');
 
   return (
     <div className="view-container">
@@ -130,38 +134,43 @@ export function HomeView({ onNavigate }: { onNavigate: (view: ViewType) => void 
       {/* 3. Strengths and weaknesses now */}
       <div className="card">
         <div className="card-header card-header-row">
-          <h2 className="card-title">
-            Strengths & Weaknesses
-            <ExampleBadge />
-          </h2>
+          <h2 className="card-title">Strengths & Weaknesses</h2>
           <button className="link-btn" onClick={() => onNavigate('skills')}>
             How to improve →
           </button>
         </div>
         <div className="card-content">
-          <div className="two-col">
-            <div>
-              <h3 className="list-item-title">💪 Strong</h3>
-              <div className="chips">
-                {['Graphs', 'MST (Prim, Kruskal)', 'Shortest paths (Dijkstra, Bellman-Ford)', 'C++ implementation'].map((s) => (
-                  <span key={s} className="chip chip-strong">
-                    {s}
-                  </span>
-                ))}
+          {strong.length || weak.length ? (
+            <div className="two-col">
+              <div>
+                <h3 className="list-item-title">💪 Strong</h3>
+                <div className="chips">
+                  {strong.slice(0, 6).map((s) => (
+                    <span key={s.id} className="chip chip-strong" title={s.history[0]?.evidence}>
+                      {s.name}
+                    </span>
+                  ))}
+                  {!strong.length && <p className="list-item-subtitle">Nothing shown as strong yet.</p>}
+                </div>
+              </div>
+              <div>
+                <h3 className="list-item-title">🎯 To work on</h3>
+                <div className="chips">
+                  {weak.slice(0, 6).map((s) => (
+                    <span key={s.id} className={`chip ${s.status === 'improving' ? 'chip-help' : 'chip-weak'}`} title={s.history[0]?.evidence}>
+                      {s.name}
+                      {s.status === 'improving' ? ' · improving' : ''}
+                    </span>
+                  ))}
+                  {!weak.length && <p className="list-item-subtitle">No weak spots found yet.</p>}
+                </div>
               </div>
             </div>
-            <div>
-              <h3 className="list-item-title">🎯 To work on</h3>
-              <div className="chips">
-                {['Dynamic programming', 'ML concepts: SVM'].map((s) => (
-                  <span key={s} className="chip chip-weak">
-                    {s}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-          <p className="planned-source">Real topics come from your sessions once the skills record is built (Tuan, next).</p>
+          ) : (
+            <p className="list-item-subtitle">
+              Study with Watch mode on and stop the session: your strengths and weak spots show up here.
+            </p>
+          )}
         </div>
       </div>
 

@@ -246,6 +246,7 @@ describe('data controls', () => {
       INSERT INTO paper_answer_meta (question_id, mode, grounded) VALUES (1, 'explain', 1);
       INSERT INTO chat_messages (id, ts, role, text) VALUES ('c1', 1, 'user', 'hi');
       INSERT INTO session_reports (session_id, created_at, status, report_json) VALUES ('s1', 1, 'ready', '{}');
+      INSERT INTO skills (id, name, updated_at, record_json) VALUES ('k1', 'x', 1, '{}');
     `);
     db.prepare("UPDATE streak_state SET current = 5, longest = 9, freezes_available = 2, last_freeze_grant = '2026-10-01' WHERE id = 1").run();
     setSetting('voice.enabled', true);

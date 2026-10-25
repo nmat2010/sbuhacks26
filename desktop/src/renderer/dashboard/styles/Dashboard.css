@@ -549,3 +549,37 @@ input:checked + .slider:before {
   background: #fff3cd;
   color: #8a6d00;
 }
+
+/* Strengths & weaknesses record */
+.skill-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.skill-dots {
+  display: inline-flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.skill-dots i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.dot-strong { background: #2e9e57; }
+.dot-weak { background: #CC0000; }
+.dot-touched { background: #c7c7cc; }
+
+.skill-plan-title {
+  margin: 10px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6e6e73;
+}

@@ -32,6 +32,10 @@ export interface ReportServiceDeps {
   } | null;
   /** A report changed (pending, ready): tell the dashboard. */
   onUpdated?: (sessionId: string) => void;
+  /** Skills already in the student's record, so the report reuses their names (no duplicates). */
+  knownSkills?: () => string[];
+  /** A report was written (its topics go into the strengths & weaknesses record). */
+  onWritten?: (report: StoredReport) => void;
   log?: (line: string) => void;
 }
 
@@ -85,8 +89,8 @@ export class ReportService {
     try {
       const prose = await deps.llm().generate({
         task: 'session_report',
-        system: renderPrompt('session-report.v1'),
-        messages: [{ role: 'user', content: JSON.stringify(promptFacts(facts)) }],
+        system: renderPrompt('session-report.v2'),
+        messages: [{ role: 'user', content: JSON.stringify({ ...promptFacts(facts), known_skills: deps.knownSkills?.() ?? [] }) }],
         schema: ReportProseSchema,
         mockKey: { problems: facts.problems.map((p) => ({ question: p.question, outcome: p.outcome })), sources: facts.sources.map((s) => s.title) },
         temperature: 0.3
@@ -98,6 +102,7 @@ export class ReportService {
     }
     deps.store.save(report);
     deps.onUpdated?.(facts.sessionId);
+    if (report.prose) deps.onWritten?.(report);
     return report;
   }
 }

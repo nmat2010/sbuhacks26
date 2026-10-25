@@ -120,6 +120,13 @@ export function SessionReport({ sessionId, short = false }: { sessionId: string;
                   <div>
                     <strong>{t.name}</strong>
                     <p className="list-item-subtitle">{t.evidence}</p>
+                    {!!t.plan?.length && (
+                      <ul className="planned-list">
+                        {t.plan.map((step) => (
+                          <li key={step}>{step}</li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </div>
               ))}

@@ -61,6 +61,7 @@ describe('ReportService', () => {
   let calls: Array<LlmCall<unknown>>;
   let reply: ReportProse | Error;
   let updates: string[];
+  let written: string[];
 
   const numbers = { startedAt: 1000, endedAt: 61_000, seconds: { work: 2400, ai_tool: 120, distraction: 60, idle: 30 }, hintCount: 3, deepestHintLevel: 5 };
   const make = () =>
@@ -75,7 +76,9 @@ describe('ReportService', () => {
         }
       }),
       sessionNumbers: (id) => (id === 's1' ? numbers : null),
-      onUpdated: (id) => void updates.push(id)
+      onUpdated: (id) => void updates.push(id),
+      knownSkills: () => ['Machine learning: overfitting'],
+      onWritten: (r) => void written.push(r.sessionId)
     });
   const snapshot: SessionSnapshot = {
     sources: [{ kind: 'paper', title: 'User-Factor Adaptation', url: null, minutes: 20, locators: ['p. 2'], points: ['Factor analysis of user language'] }],
@@ -90,10 +93,11 @@ describe('ReportService', () => {
     store = new ReportStore(() => db);
     calls = [];
     updates = [];
+    written = [];
     reply = {
       headline: 'Factor analysis reading; overfitting still shaky',
       summary: 'You read about user-factor adaptation.',
-      topics: [{ name: 'Overfitting', verdict: 'weakness', evidence: 'Needed the answer.' }],
+      topics: [{ name: 'Overfitting', verdict: 'weakness', evidence: 'Needed the answer.', plan: [] }],
       next_steps: ['Explain overfitting in your own words.']
     };
   });
@@ -110,6 +114,10 @@ describe('ReportService', () => {
     expect(sent.problems[0].question).toBe('What is overfitting?');
     expect(calls[0].system).toContain('A topic is a strength only with evidence');
     expect(updates).toEqual(['s1', 's1']); // pending, then ready
+    // The record's skill names go to the writer, and the written report goes to the record
+    expect(sent.known_skills).toEqual(['Machine learning: overfitting']);
+    expect(calls[0].system).toContain('use that exact name');
+    expect(written).toEqual(['s1']);
   });
 
   it('nothing Wolfie could see: the numbers are the report, no model call', async () => {
