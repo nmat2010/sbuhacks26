@@ -340,3 +340,11 @@
     - wheel scrolling works.
   - Tests: 671 pass (new: flow thinking, overlapping waits). Typecheck and lint are clean.
 - **Process note:** auto mode's permission check stopped responding mid-task; the work resumed after switching permission modes.
+
+## Update: bubbles and chat above Wolfie's head
+- **Reported:** short bubbles ("Let me take a look...", offers) and the chat still covered the sprite.
+- **Fix:**
+  - **Bubbles:** `SpeechBubble` now sits 210 px above the bottom of the mascot's box (was 140). Thu's sprite cap is about 175 px up; a full 300 px bubble still fits in the 520 px window.
+  - **Chat:** the panel's bottom is 220 px above the bottom of the window (was 190).
+- **Verified:** real app on a scratch profile. Screenshots show the bubble above the whole talking sprite and a gap between the chat and Wolfie's cap. Wheel scroll, the thinking events and the button size are unchanged.
+- Tests: 671 pass. Lint is clean.

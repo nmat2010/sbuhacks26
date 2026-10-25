@@ -278,6 +278,7 @@ app.whenReady().then(() => {
             overlayWindow.webContents.sendInputEvent({ type: 'mouseMove', x: 2, y: 2 });
             await ui("document.querySelector('.stuck-button').click()");
             await new Promise((r) => setTimeout(r, 6000));
+            writeFileSync(process.env.WOLFIE_SMOKE_SHOT.replace(/\.png$/, '-bubble.png'), (await overlayWindow.webContents.capturePage()).toPNG());
             console.log(`[smoke] stuck: chat-open=${await ui("!!document.querySelector('.hint-messages')")}`);
           }
           await ui("document.querySelector('.mascot').click()");

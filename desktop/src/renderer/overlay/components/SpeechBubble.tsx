@@ -45,7 +45,8 @@ export function SpeechBubble({ nudge, onButtonClick, onDismiss }: SpeechBubblePr
   return (
     <div style={{
       position: 'absolute',
-      bottom: '140px',
+      // Above Wolfie's head (the 220px sprite's cap is ~175px up), so the sprite stays in view
+      bottom: '210px',
       left: '50%',
       transform: 'translateX(-50%)',
       minWidth: '200px',
