@@ -285,6 +285,41 @@ export interface WatchAnswer {
   resources: WatchResource[];
 }
 
+/** A study session's report (main: report/store.ts StoredReport). */
+export interface SessionReportView {
+  sessionId: string;
+  createdAt: number;
+  status: 'pending' | 'ready' | 'failed';
+  facts: {
+    sessionId: string;
+    startedAt: number;
+    endedAt: number | null;
+    watched: boolean;
+    seconds: { work: number; ai_tool: number; distraction: number; idle: number };
+    hintCount: number;
+    deepestHintLevel: number;
+    sources: Array<{ kind: string; title: string; url: string | null; minutes: number; locators: string[]; points: string[] }>;
+    timeline: Array<{ from: number; to: number; activity: string; summary: string }>;
+    problems: Array<{
+      question: string;
+      outcome: 'solved_alone' | 'solved_with_help' | 'answer_shown' | 'unresolved';
+      wrongAttempts: number;
+      issues: string[];
+      hintLevel: number;
+      stalled: boolean;
+    }>;
+    questionsAsked: string[];
+    generalHelp: number;
+  };
+  prose: {
+    headline: string;
+    summary: string;
+    topics: Array<{ name: string; verdict: 'strength' | 'weakness' | 'practiced'; evidence: string }>;
+    next_steps: string[];
+  } | null;
+  error?: string;
+}
+
 /** One message in Wolfie's chat history (overlay chat panel). */
 export interface ChatMessageView {
   id: string;
@@ -354,6 +389,10 @@ export interface IntelligenceInvoke {
   /** A question about what the student is studying, answered from the whole session. */
   'watch-ask': { args: [input: { question: string; inputMode: 'text' | 'voice' }]; result: BResult<WatchAnswer> };
   'voice-status': { args: []; result: VoiceStatus };
+  /** The report for a study session (null until the session ended; status pending while written). */
+  'report-get': { args: [sessionId: string]; result: SessionReportView | null };
+  /** Write a session's report again from its saved facts (e.g. after the AI limit reset). */
+  'report-regenerate': { args: [sessionId: string]; result: { success: boolean } };
   /** Push-to-talk: may the mic be used? Asks macOS the first time; false if denied (opens settings). */
   'voice-mic-ready': { args: []; result: { granted: boolean; error?: string } };
   /** Push-to-talk: the recorded clip, transcribed (then sent with chat-send like typed text). */
@@ -436,4 +475,6 @@ export interface IntelligenceEvents {
   'chat-history-changed': ChatMessageView[];
   /** Wolfie is working on a reply the student asked for (true) or is done (false): thinking sprite. */
   'wolfie-thinking': boolean;
+  /** A session report was saved or changed (pending, ready, failed). */
+  'report-updated': { sessionId: string };
 }

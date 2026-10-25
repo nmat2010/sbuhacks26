@@ -15,6 +15,7 @@ import watchObserveV3 from './watch-observe.v3.md?raw';
 import watchObserveV4 from './watch-observe.v4.md?raw';
 import watchAnswerV1 from './watch-answer.v1.md?raw';
 import watchAnswerV2 from './watch-answer.v2.md?raw';
+import sessionReportV1 from './session-report.v1.md?raw';
 
 // Versioned prompt files (SPEC 6: prompts are files, not inline strings). To change a prompt,
 // add a new version file and point the caller at it; the old one stays for comparison.
@@ -36,7 +37,8 @@ export const PROMPTS = {
   'watch-observe.v3': watchObserveV3,
   'watch-observe.v4': watchObserveV4,
   'watch-answer.v1': watchAnswerV1,
-  'watch-answer.v2': watchAnswerV2
+  'watch-answer.v2': watchAnswerV2,
+  'session-report.v1': sessionReportV1
 } as const;
 
 export type PromptName = keyof typeof PROMPTS;

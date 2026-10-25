@@ -317,6 +317,30 @@ app.whenReady().then(() => {
           await new Promise((r) => setTimeout(r, 400));
           console.log(`[smoke] click-after-drag: chat-open=${await ui("!!document.querySelector('.hint-messages')")}`);
         }
+        // WOLFIE_SMOKE_REPORT=<png path>: a session with one question in the chat, stopped; wait for
+        // its report, then a picture of the Reports page
+        if (process.env.WOLFIE_SMOKE_REPORT && dashboardWindow && overlayWindow) {
+          const dash = dashboardWindow;
+          const d = (js: string) => dash.webContents.executeJavaScript(js);
+          const o = (js: string) => overlayWindow!.webContents.executeJavaScript(js);
+          await d("localStorage.setItem('wolfie_onboarded', 'true'); window.electronAPI.invoke('settings-set', 'voice.read_replies', false).then(() => 0)");
+          const id = await d("window.electronAPI.invoke('session-start').then((s) => s.active.id)");
+          const reply = await o(`window.electronAPI.invoke('chat-send', "What's the difference between Prim's and Kruskal's algorithms?").then((r) => r.kind)`);
+          await new Promise((r) => setTimeout(r, 1000));
+          await d("window.electronAPI.invoke('session-stop').then(() => 0)");
+          let report: { status?: string; prose?: unknown; error?: string } | null = null;
+          for (let i = 0; i < 40 && (!report || report.status === 'pending'); i++) {
+            await new Promise((r) => setTimeout(r, 750));
+            report = await d(`window.electronAPI.invoke('report-get', ${JSON.stringify(id)})`);
+          }
+          console.log(`[smoke] report: chat=${reply} status=${report?.status} error=${report?.error ?? 'none'}`);
+          console.log(`[smoke] report: prose=${JSON.stringify(report?.prose)}`);
+          dash.webContents.reload();
+          await new Promise<void>((r) => dash.webContents.once('did-finish-load', () => r()));
+          await d("document.querySelectorAll('.nav-item')[1].click(); 0");
+          await new Promise((r) => setTimeout(r, 1200));
+          writeFileSync(process.env.WOLFIE_SMOKE_REPORT, (await dash.webContents.capturePage()).toPNG());
+        }
         // WOLFIE_SMOKE_DASH=<png prefix>: a picture of every dashboard page (after one short session)
         if (process.env.WOLFIE_SMOKE_DASH && dashboardWindow) {
           const dash = dashboardWindow;

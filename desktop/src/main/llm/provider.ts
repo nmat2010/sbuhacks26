@@ -11,6 +11,7 @@ export type LlmTask =
   | 'paper_answer'
   | 'watch_observe'
   | 'watch_answer'
+  | 'session_report'
   | 'generic';
 
 export interface ChatMessage {

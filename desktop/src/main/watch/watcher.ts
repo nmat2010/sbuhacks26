@@ -102,6 +102,8 @@ export interface WatcherDeps {
   onState?: (state: WatcherState) => void;
   /** Something new to show: the window being looked at changed, or a look was recorded. */
   onLook?: () => void;
+  /** Every recorded look (the session report follows the problems in it). */
+  onObservation?: (obs: Observation, now: number) => void;
   log: (type: EventType, payload: Record<string, unknown>) => void;
 }
 
@@ -462,6 +464,7 @@ export class Watcher {
       const q = STUDY_ACTIVITIES.has(obs.activity) ? obs.unanswered_question?.trim() : null;
       this.unanswered = q ? { question: q, at: now } : null;
       this.emitSignals(obs, now);
+      deps.onObservation?.(obs, now);
       this.checkStall(deps.now());
       deps.log('watch.observed', { activity: obs.activity, mode: obs.mode, stuck: obs.stuck.likely });
       this.skipLogged = null;

@@ -181,15 +181,16 @@ export class SessionMemory {
   }
 
   /** The timeline with back-to-back looks at the same source merged, oldest first. */
-  private segments(): Array<{ sourceKey: string; from: number; to: number; summary: string }> {
-    const out: Array<{ sourceKey: string; from: number; to: number; summary: string }> = [];
+  segments(): Array<{ sourceKey: string; from: number; to: number; activity: string; summary: string }> {
+    const out: Array<{ sourceKey: string; from: number; to: number; activity: string; summary: string }> = [];
     for (const t of this.timeline) {
       const last = out.at(-1);
       if (last && last.sourceKey === t.sourceKey) {
         last.to = t.ts;
         last.summary = t.summary;
+        last.activity = t.activity;
       } else {
-        out.push({ sourceKey: t.sourceKey, from: t.ts, to: t.ts, summary: t.summary });
+        out.push({ sourceKey: t.sourceKey, from: t.ts, to: t.ts, activity: t.activity, summary: t.summary });
       }
     }
     return out;

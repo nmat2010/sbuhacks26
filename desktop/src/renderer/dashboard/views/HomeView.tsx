@@ -5,6 +5,7 @@ import type { ViewType } from '../App';
 import { StreakCalendar } from '../components/StreakCalendar';
 import { ExampleBadge, Planned } from '../components/Planned';
 import { FocusBars } from '../components/FocusBars';
+import { SessionReport } from '../components/SessionReport';
 import { duration, minutes, sessionDate, totalSeconds } from '../format';
 
 // Main page: start a session, the latest session report, strengths and weaknesses, the streak with
@@ -122,15 +123,7 @@ export function HomeView({ onNavigate }: { onNavigate: (view: ViewType) => void 
               No finished session this week yet.
             </p>
           )}
-          <Planned
-            owner="Tuan"
-            shows={[
-              'What you studied in the session (papers, videos, problems)',
-              'The problems you worked on and how each went',
-              'Strengths and weaknesses that showed up, and what to do next'
-            ]}
-            source="Watch mode's session memory (saved per session), answer checks, hints"
-          />
+          {latest && <SessionReport sessionId={latest.id} short />}
         </div>
       </div>
 

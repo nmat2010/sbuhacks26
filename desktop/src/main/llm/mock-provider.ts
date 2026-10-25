@@ -4,7 +4,7 @@ import type { LLMProvider, LlmRequest } from './provider.js';
 import { mockPlan } from './mock-plan.js';
 import { mockIdeas } from './mock-ideas.js';
 import { mockReading } from './mock-reading.js';
-import { mockWatchAnswer, mockWatchObserve } from './mock-watch.js';
+import { mockSessionReport, mockWatchAnswer, mockWatchObserve } from './mock-watch.js';
 
 // Deterministic provider for DEMO_MODE=1, dev without a key, and tests. Hints are keyed by the
 // demo problem ids (data-problem-id on the demo pages; SPEC 4f). It never touches the network.
@@ -161,6 +161,8 @@ export class MockLLMProvider implements LLMProvider {
         return mockWatchObserve(req.mockKey);
       case 'watch_answer':
         return mockWatchAnswer(req.mockKey);
+      case 'session_report':
+        return mockSessionReport(req.mockKey);
       default:
         return {};
     }
