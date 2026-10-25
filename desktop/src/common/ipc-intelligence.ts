@@ -259,6 +259,19 @@ export interface WatchCitation {
   url: string | null;
 }
 
+/** Study material from outside the session that Wolfie suggests; the link was found or checked by the app. */
+export interface WatchResource {
+  kind: 'video' | 'article' | 'course' | 'book' | 'paper' | 'other';
+  title: string;
+  url: string;
+  /** Why it helps, in a few words. */
+  why: string;
+  /** "Channel · 12:34" for a video, the site for a link, or "Search on Google" for a search link. */
+  detail: string | null;
+  /** False for a search link (the suggestion itself could not be checked). */
+  checked: boolean;
+}
+
 export interface WatchAnswer {
   question: string;
   mode: 'learning' | 'homework' | 'other';
@@ -268,6 +281,8 @@ export interface WatchAnswer {
   /** Always shown with the answer, e.g. "From your session" or "Hint (homework mode...)". */
   label: string;
   citations: WatchCitation[];
+  /** New material to learn from (only when asked for). */
+  resources: WatchResource[];
 }
 
 /** One message in Wolfie's chat history (overlay chat panel). */
@@ -278,6 +293,7 @@ export interface ChatMessageView {
   text: string;
   label?: string;
   citations?: WatchCitation[];
+  resources?: WatchResource[];
   /** For help-flow bubbles: answer their buttons with nudge-response. */
   nudgeId?: string;
   buttons?: Array<{ label: string; action: string; variant?: 'primary' | 'secondary' | 'danger' }>;
@@ -329,6 +345,8 @@ export interface IntelligenceInvoke {
   /** The chat history (kept across closing the chat and restarts). */
   'chat-history': { args: []; result: ChatMessageView[] };
   'chat-clear': { args: []; result: { success: boolean } };
+  /** Opens a suggested resource (http/https only) in the default browser. */
+  'open-link': { args: [url: string]; result: { success: boolean } };
   /** "Help me with this" from the chat: recorded, then the help flow starts. */
   'chat-help': { args: []; result: { success: boolean } };
   /** A question about what the student is studying, answered from the whole session. */

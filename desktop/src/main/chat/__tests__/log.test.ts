@@ -28,6 +28,15 @@ describe('ChatLog', () => {
     expect(list[1]).toMatchObject({ label: 'From your session', citations: [{ title: 'P' }] });
   });
 
+  it('keeps suggested links and tells the model about them in the recent turns', () => {
+    const resources = [{ kind: 'video' as const, title: 'Factor Analysis Explained', url: 'https://www.youtube.com/watch?v=lJ0cXPoEozg', why: 'x', detail: null, checked: true }];
+    log.add({ role: 'wolfie', text: 'Learn factor analysis first.', resources });
+    expect(log.list()[0].resources).toEqual(resources);
+    expect(log.recentTurns()[0].content).toBe(
+      'Learn factor analysis first.\n(Suggested: 1. Factor Analysis Explained <https://www.youtube.com/watch?v=lJ0cXPoEozg>)'
+    );
+  });
+
   it('survives a new ChatLog on the same database (closing the chat, restarting)', () => {
     log.add({ role: 'user', text: 'hello' });
     expect(new ChatLog(() => db).list().map((m) => m.text)).toEqual(['hello']);

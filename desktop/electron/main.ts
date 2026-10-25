@@ -270,41 +270,46 @@ app.whenReady().then(() => {
           await ui(`(() => {
             const input = document.querySelector('.hint-input');
             const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-            set.call(input, 'What is attention in a transformer?');
+            set.call(input, ${JSON.stringify(process.env.WOLFIE_SMOKE_QUESTION ?? 'What is attention in a transformer?')});
             input.dispatchEvent(new Event('input', { bubbles: true }));
             document.querySelector('.send-btn').click();
           })()`);
-          await new Promise((r) => setTimeout(r, 2500));
+          await new Promise((r) => setTimeout(r, process.env.WOLFIE_SMOKE_QUESTION ? 8000 : 2500));
           const texts = await ui("[...document.querySelectorAll('.message-text')].map((e) => e.textContent).join(' | ')");
           console.log(`[smoke] chat: ${texts}`);
-          // Overflow the list, then scroll with real wheel input and see whether it moves
-          for (let i = 0; i < 4; i++) {
-            await ui(`(() => {
-              const input = document.querySelector('.hint-input');
-              const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-              set.call(input, 'Question ${i + 1}');
-              input.dispatchEvent(new Event('input', { bubbles: true }));
-              document.querySelector('.send-btn').click();
-            })()`);
-            await new Promise((r) => setTimeout(r, 900));
+          // WOLFIE_SMOKE_QUESTION: just that question (e.g. suggested resources), then the picture
+          const resources = await ui("[...document.querySelectorAll('.resource-link')].map((e) => e.title + ' :: ' + e.textContent).join(' | ')");
+          if (resources) console.log(`[smoke] resources: ${resources}`);
+          if (!process.env.WOLFIE_SMOKE_QUESTION) {
+            // Overflow the list, then scroll with real wheel input and see whether it moves
+            for (let i = 0; i < 4; i++) {
+              await ui(`(() => {
+                const input = document.querySelector('.hint-input');
+                const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+                set.call(input, 'Question ${i + 1}');
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                document.querySelector('.send-btn').click();
+              })()`);
+              await new Promise((r) => setTimeout(r, 900));
+            }
+            const box = await ui("(() => { const r = document.querySelector('.hint-messages').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()");
+            if (process.env.WOLFIE_SMOKE_OS_SCROLL) {
+              // Real macOS scroll test: print the screen point, give an outside tool time to scroll there
+              const wb = overlayWindow.getBounds();
+              const osBefore = await ui("document.querySelector('.hint-messages').scrollTop");
+              console.log(`[smoke] os-point ${Math.round(wb.x + box.x)},${Math.round(wb.y + box.y)} before=${osBefore}`);
+              await new Promise((r) => setTimeout(r, 6000));
+              console.log(`[smoke] os-after=${await ui("document.querySelector('.hint-messages').scrollTop")}`);
+            }
+            const before = await ui("document.querySelector('.hint-messages').scrollTop");
+            for (let i = 0; i < 5; i++) {
+              overlayWindow.webContents.sendInputEvent({ type: 'mouseWheel', x: Math.round(box.x), y: Math.round(box.y), deltaX: 0, deltaY: 120, canScroll: true } as Electron.MouseWheelInputEvent);
+            }
+            await new Promise((r) => setTimeout(r, 600));
+            const after = await ui("document.querySelector('.hint-messages').scrollTop");
+            const sizes = await ui("(() => { const m = document.querySelector('.hint-messages'); return m.scrollHeight + '/' + m.clientHeight; })()");
+            console.log(`[smoke] scroll: before=${before} after=${after} scrollHeight/clientHeight=${sizes}`);
           }
-          const box = await ui("(() => { const r = document.querySelector('.hint-messages').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()");
-          if (process.env.WOLFIE_SMOKE_OS_SCROLL) {
-            // Real macOS scroll test: print the screen point, give an outside tool time to scroll there
-            const wb = overlayWindow.getBounds();
-            const osBefore = await ui("document.querySelector('.hint-messages').scrollTop");
-            console.log(`[smoke] os-point ${Math.round(wb.x + box.x)},${Math.round(wb.y + box.y)} before=${osBefore}`);
-            await new Promise((r) => setTimeout(r, 6000));
-            console.log(`[smoke] os-after=${await ui("document.querySelector('.hint-messages').scrollTop")}`);
-          }
-          const before = await ui("document.querySelector('.hint-messages').scrollTop");
-          for (let i = 0; i < 5; i++) {
-            overlayWindow.webContents.sendInputEvent({ type: 'mouseWheel', x: Math.round(box.x), y: Math.round(box.y), deltaX: 0, deltaY: 120, canScroll: true } as Electron.MouseWheelInputEvent);
-          }
-          await new Promise((r) => setTimeout(r, 600));
-          const after = await ui("document.querySelector('.hint-messages').scrollTop");
-          const sizes = await ui("(() => { const m = document.querySelector('.hint-messages'); return m.scrollHeight + '/' + m.clientHeight; })()");
-          console.log(`[smoke] scroll: before=${before} after=${after} scrollHeight/clientHeight=${sizes}`);
           const image = await overlayWindow.webContents.capturePage();
           writeFileSync(process.env.WOLFIE_SMOKE_SHOT, image.toPNG());
         }

@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import type Database from 'better-sqlite3';
 import type { ChatTurnType, NudgeButtonType } from '@wolfie/shared';
-import type { ChatMessageView, WatchCitation } from '../../common/ipc-intelligence.js';
+import type { ChatMessageView, WatchCitation, WatchResource } from '../../common/ipc-intelligence.js';
 
 // Wolfie's chat history (the overlay chat panel). Kept in SQLite so it survives closing the chat
 // and restarting the app, like an ongoing conversation; the recent turns are also sent with each
@@ -12,6 +12,7 @@ export const MAX_MESSAGES = 200;
 interface Meta {
   label?: string;
   citations?: WatchCitation[];
+  resources?: WatchResource[];
   nudgeId?: string;
   buttons?: NudgeButtonType[];
   answered?: boolean;
@@ -78,12 +79,18 @@ export class ChatLog {
     return (this.db().prepare('SELECT id, ts, role, text, meta_json FROM chat_messages ORDER BY seq').all() as Row[]).map(toView);
   }
 
-  /** The last turns as conversation history for the model (oldest first). */
+  /** The last turns as conversation history for the model (oldest first), with the links Wolfie suggested. */
   recentTurns(n = 6): ChatTurnType[] {
     const rows = this.db()
-      .prepare('SELECT role, text FROM chat_messages ORDER BY seq DESC LIMIT ?')
-      .all(n) as Array<{ role: 'user' | 'wolfie'; text: string }>;
-    return rows.reverse().map((r) => ({ role: r.role === 'user' ? 'user' : 'assistant', content: r.text.slice(0, 1500) }));
+      .prepare('SELECT role, text, meta_json FROM chat_messages ORDER BY seq DESC LIMIT ?')
+      .all(n) as Array<Pick<Row, 'role' | 'text' | 'meta_json'>>;
+    return rows.reverse().map((r) => {
+      const resources = r.meta_json ? (JSON.parse(r.meta_json) as Meta).resources ?? [] : [];
+      const suggested = resources.length
+        ? `\n(Suggested: ${resources.map((x, i) => `${i + 1}. ${x.title} <${x.url}>`).join('; ')})`
+        : '';
+      return { role: r.role === 'user' ? 'user' : 'assistant', content: r.text.slice(0, 1500) + suggested };
+    });
   }
 
   clear(): void {

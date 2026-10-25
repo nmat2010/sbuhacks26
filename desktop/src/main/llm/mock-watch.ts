@@ -42,6 +42,16 @@ export function mockWatchAnswer(key: Record<string, unknown> | undefined): unkno
       citations: []
     };
   }
+  if (/\b(recommend|suggest|resources?|materials?|learn more|should i (learn|watch|read))\b/i.test(k.question ?? '')) {
+    return {
+      answer: 'Start with the basics of the method, then come back to the paper.',
+      grounded: false,
+      citations: [],
+      resources: [
+        { kind: 'video', title: 'An intro video', search_query: `${k.question} explained`, url: null, why: 'A short overview' }
+      ]
+    };
+  }
   return {
     answer: first
       ? `Here is what ${first.title} says about that: it is explained in the part you were just reading.`

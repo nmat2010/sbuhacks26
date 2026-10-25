@@ -22,6 +22,8 @@ const GREETING: ConversationMessage = {
   text: 'Hi! Ask me anything about what you are working on, or tap "Help me with this".'
 };
 
+const RESOURCE_ICONS: Record<string, string> = { video: '🎬', article: '📰', course: '🎓', book: '📚', paper: '📄' };
+
 function describeWatch(status: WatchStatus | null): { icon: string; text: string } | null {
   if (!status) return null;
   if (status.state === 'watching') {
@@ -176,6 +178,24 @@ export function HintConversation({ onClose, voiceMode = false }: HintConversatio
                       .map((c) => `${c.kind === 'video' ? '🎬' : '📄'} ${c.title}${c.locator ? ` (${c.locator})` : ''}`)
                       .join(' · ')}
                   </p>
+                )}
+                {!!message.resources?.length && (
+                  <div className="resource-list">
+                    {message.resources.map((r) => (
+                      <button
+                        key={r.url}
+                        className="resource-link"
+                        title={r.url}
+                        onClick={() => void window.electronAPI.invoke('open-link', r.url)}
+                      >
+                        <span className="resource-title">
+                          {RESOURCE_ICONS[r.kind] ?? '🔗'} {r.title}
+                        </span>
+                        {r.why && <span className="resource-why">{r.why}</span>}
+                        {r.detail && <span className="resource-detail">{r.checked ? r.detail : `🔎 ${r.detail}`}</span>}
+                      </button>
+                    ))}
+                  </div>
                 )}
                 {!!message.buttons?.length && !message.answered && (
                   <div className="hint-actions" style={{ padding: '8px 0 0', borderTop: 'none' }}>

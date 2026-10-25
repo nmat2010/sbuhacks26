@@ -214,3 +214,35 @@
   - **Memory:** the last 6 turns go with each question (`conversation` in the watch-answer payload, plus a prompt rule on continuity), so Wolfie remembers what was said.
   - **Privacy:** local only, and included in "Clear all data" (`DATA_TABLES`).
 - **Verified:** two real app runs on the same data folder. Run 1 opened with the greeting and asked 5 questions; run 2 opened the chat with all 10 messages. 651 tests pass.
+
+## Update: suggesting new study material
+- **Reported:** asked "what other sources should I learn to understand his work?" and "give me a source on YouTube that can teach me that", Wolfie only repeated the session's own video and paper.
+- **Search grounding is not an option on this key.**
+  - Gemini's Google Search tool returns 429 on every Gemini 3 model on the free tier, with or without a JSON schema. Plain calls work.
+  - The 2.5 models are retired for new keys.
+  - The YouTube Data API rejects AI Studio keys (it needs OAuth).
+- **Fix: the model suggests, the app checks.**
+  - **Prompt `watch-answer.v2`:**
+    - adds `resources`: 2–4 items, only when the student asks for new material;
+    - a video is a YouTube search phrase, never a URL; a link is given only when the model is sure of it;
+    - suggestions are matched to the session (for a paper: the background it builds on) and never repeat the session's sources;
+    - "that", "it" and "the second one" refer to the conversation first.
+  - **`watch/resources.ts`:**
+    - **Videos:** the top real result from YouTube's public search page (`ytInitialData`). Live streams are skipped, as are videos already in the session or already suggested.
+    - **Links:** fetched to check that they load; a site's bare home page doesn't count.
+    - **Fallback:** anything unchecked becomes a YouTube or Google search link, so no link is made up. Only http(s) links are allowed; there's a 6 s timeout per lookup.
+  - **`answer.ts`:**
+    - recognizes material requests (`asksForMaterial`);
+    - for those, doesn't attach the watched video (it pulled answers back to that video) and sets `asks_for_new_material`;
+    - resolves the resources; if the lookup fails, the answer still arrives without them.
+  - **Chat:** resources show as clickable cards (title, why it helps, channel and length or site) and open in the browser (`open-link`, http(s) only). They're kept in the chat history and included in the recent turns, so "tell me more about the second one" works. Voice answers list the titles in the bubble.
+- **Verified on real `gemini-3.5-flash-lite` with Tuan's questions:**
+  - **"What should I learn to understand his work?"** Three steps (domain adaptation, then factor analysis/PCA, then CRFs), with a StatQuest PCA video and Google searches for a domain-adaptation survey and a CRF tutorial.
+  - **"Teach me that"** (after an answer listing logistic regression, SVMs, CRFs and factor analysis):
+    - before the fix: drifted to NLP basics;
+    - after: StatQuest Logistic Regression, StatQuest SVM, and Ben Lambert's Factor Analysis (2.5 s).
+  - **"Tell me more about the second one":** explained the suggested PCA video.
+  - **Real app (demo model):** the card showed a real Edureka video.
+- **Note:** the smoke run used the real profile and added 2 test messages to Tuan's chat; they were deleted. Smoke runs should set `WOLFIE_USER_DATA`.
+- **Optional later:** with billing on, Gemini's Google Search tool could replace the YouTube page lookup.
+- Tests: 662 pass (48 + 538 + 76). Typecheck and lint are clean (only existing warnings).

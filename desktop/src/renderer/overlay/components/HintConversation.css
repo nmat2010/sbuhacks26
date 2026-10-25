@@ -392,3 +392,40 @@
 .hint-conversation-container .context-preview .context-header { margin: 0; flex-shrink: 0; }
 .hint-conversation-container .context-description { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .hint-conversation-container .hint-messages { position: relative; overscroll-behavior: contain; }
+
+/* Suggested study material (clickable, opens in the browser) */
+.resource-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.resource-link {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid #e5e5ea;
+  border-radius: 10px;
+  background: white;
+  cursor: pointer;
+  font: inherit;
+}
+
+.resource-link:hover {
+  border-color: #CC0000;
+}
+
+.resource-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.resource-why,
+.resource-detail {
+  font-size: 11px;
+  color: #6e6e73;
+}

@@ -1,11 +1,11 @@
-import type { BResult, WatchAnswer, WatchCitation } from '../../common/ipc-intelligence.js';
+import type { BResult, WatchAnswer, WatchCitation, WatchResource } from '../../common/ipc-intelligence.js';
 import type { EventType } from '../events.js';
 import type { LlmCall } from '../llm/client.js';
 import { parseImageDataUrl } from '../llm/data-url.js';
 import { renderPrompt } from '../llm/prompts/index.js';
 import { LLMError } from '../llm/provider.js';
 import type { SessionMemory, SourceEntry } from './memory.js';
-import { WatchAnswerSchema, type WatchModeKind } from './types.js';
+import { WatchAnswerSchema, type ResourceSuggestion, type WatchModeKind } from './types.js';
 
 // Watch-mode questions (WATCH_MODE.md §3.3): answers grounded in the whole study session, so the
 // student never restates context. Learning mode answers directly; homework mode (or a graded
@@ -36,6 +36,8 @@ export interface WatchAnswerDeps {
   currentFrame: (maxAgeMs: number) => Promise<string | null>;
   /** The running session is marked as graded work. */
   assessment: () => boolean;
+  /** Real, checked links for suggested study material (resources.ts); none if not given. */
+  findResources?: (suggestions: ResourceSuggestion[], exclude: string[]) => Promise<WatchResource[]>;
   log: (type: EventType, payload: Record<string, unknown>) => void;
 }
 
@@ -78,7 +80,10 @@ export class WatchAnswerService {
     const latest = deps.memory.latest();
     const query = [question, latest?.obs.subject ?? ''].join(' ').trim();
 
-    const sources = this.collectSources(query, question, latest?.source ?? null);
+    // Asking for new material: the session's video would only pull the answer back to it (the
+    // session notes describe it), so it is not attached
+    const wantsMaterial = asksForMaterial(question);
+    const sources = this.collectSources(query, question, latest?.source ?? null, !wantsMaterial);
     const videos = sources.filter((s) => s.kind === 'video' && s.url).map((s) => s.url!);
     const frame = await deps.currentFrame(FRAME_MAX_AGE_MS).catch(() => null);
 
@@ -87,6 +92,7 @@ export class WatchAnswerService {
       previous_answer: input.previousAnswer?.slice(0, 2500),
       conversation: input.history?.length ? input.history.slice(-6) : undefined,
       proactive: !!input.proactive,
+      asks_for_new_material: wantsMaterial || undefined,
       mode,
       assessment: deps.assessment(),
       now: latest
@@ -101,7 +107,7 @@ export class WatchAnswerService {
     const call = (withVideos: string[]) =>
       deps.llm().generate({
         task: 'watch_answer',
-        system: renderPrompt('watch-answer.v1', {
+        system: renderPrompt('watch-answer.v2', {
           mode_rules: homework ? HOMEWORK_RULES : LEARNING_RULES,
           proactive_rule: input.proactive
             ? 'The student asked for help without typing a question. Work out from the screen and the session what they are most likely stuck on, and address that.'
@@ -144,13 +150,18 @@ export class WatchAnswerService {
       citations.push({ n: s.n, kind: s.kind, title: s.title, locator: c.locator ?? s.locator, url: s.url });
     }
     const grounded = !homework && out.grounded && citations.length > 0;
+    // Suggested material: the videos already in this session are not suggested again
+    const watched = deps.memory.videos().map((v) => v.url).filter((u): u is string => !!u);
+    const resources =
+      out.resources.length && deps.findResources ? await deps.findResources(out.resources, watched).catch(() => []) : [];
     const answer: WatchAnswer = {
       question,
       mode,
       answer: out.answer.trim(),
       grounded,
       label: homework ? LABEL_HINT : grounded ? LABEL_SESSION : LABEL_GENERAL,
-      citations: homework ? [] : citations
+      citations: homework ? [] : citations,
+      resources
     };
     deps.log('watch.asked', {
       mode,
@@ -160,13 +171,15 @@ export class WatchAnswerService {
       sources: sources.length,
       videos: videoDropped ? 0 : videos.length,
       videoDropped,
-      screenshot: !!frame
+      screenshot: !!frame,
+      resources: resources.length,
+      resourcesChecked: resources.filter((r) => r.checked).length
     });
     return { success: true, data: answer };
   }
 
   /** Paper passages for the question, plus the video(s) worth watching for it. */
-  private collectSources(query: string, question: string, current: SourceEntry | null): NumberedSource[] {
+  private collectSources(query: string, question: string, current: SourceEntry | null, withVideo: boolean): NumberedSource[] {
     const { deps } = this;
     const out: NumberedSource[] = [];
     let n = 0;
@@ -191,11 +204,19 @@ export class WatchAnswerService {
     const wantsVideo =
       current?.kind === 'video' || /\b(video|youtube|lecture|clip|he said|she said|they said)\b/i.test(question);
     const video = current?.kind === 'video' && current.url ? current : wantsVideo ? recentVideos[0] : undefined;
-    if (video?.url) {
+    if (withVideo && video?.url) {
       out.push({ n: ++n, kind: 'video', title: video.title, locator: video.locators.at(-1) ?? null, url: video.url });
     }
     return out;
   }
+}
+
+/** "What should I learn to understand this?", "give me a video that teaches that". */
+const MATERIAL_REQUEST =
+  /\b(recommend|suggest|resources?|materials?|tutorials?|courses?|textbooks?|reading list|learn more|(other|more|new|good) (sources?|videos?|links?|articles?)|i (should|could|need to) (learn|study|read|watch)|(should|could|can) i (learn|study|read|watch)|(give|send|show|find) me (a |an |some |the |any )?(\w+ ){0,2}(sources?|videos?|links?|articles?|papers?|books?)|teach(es)? me|that teach(es)?)\b/i;
+
+export function asksForMaterial(question: string): boolean {
+  return MATERIAL_REQUEST.test(question);
 }
 
 const LEARNING_RULES =

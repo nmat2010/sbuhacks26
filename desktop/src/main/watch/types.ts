@@ -3,6 +3,7 @@ import { z } from 'zod';
 // Watch mode (WATCH_MODE.md): what the watcher model reports about each frame.
 
 export const ACTIVITIES = ['reading_paper', 'watching_video', 'homework', 'coding', 'writing', 'browsing', 'other'] as const;
+export const RESOURCE_KINDS = ['video', 'article', 'course', 'book', 'paper', 'other'] as const;
 export const SOURCE_KINDS = ['paper', 'video', 'webpage', 'document', 'code', 'other'] as const;
 
 export const ObservationSchema = z.object({
@@ -54,7 +55,25 @@ export const WatchAnswerSchema = z.object({
   citations: z
     .array(z.object({ n: z.coerce.number().int(), locator: z.string().max(120).nullable() }))
     .max(8)
+    .default([]),
+  /**
+   * New material from outside the session, only when the student asks for it ("what should I watch
+   * to understand this?"). Videos are a YouTube search phrase; the app finds and checks the links.
+   */
+  resources: z
+    .array(
+      z.object({
+        kind: z.enum(RESOURCE_KINDS),
+        title: z.string().max(200),
+        search_query: z.string().max(160).nullable().default(null),
+        url: z.string().max(500).nullable().default(null),
+        why: z.string().max(240)
+      })
+    )
+    .max(6)
     .default([])
 });
+
+export type ResourceSuggestion = ModelWatchAnswer['resources'][number];
 
 export type ModelWatchAnswer = z.infer<typeof WatchAnswerSchema>;

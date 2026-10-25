@@ -1,15 +1,16 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import type { z } from 'zod';
 import type { LlmCall } from '../../llm/client.js';
 import { LLMError } from '../../llm/provider.js';
 import { SessionMemory } from '../memory.js';
-import { LABEL_GENERAL, LABEL_HINT, LABEL_SESSION, WatchAnswerService, type WatchAnswerDeps } from '../answer.js';
-import type { ModelWatchAnswer } from '../types.js';
+import { asksForMaterial, LABEL_GENERAL, LABEL_HINT, LABEL_SESSION, WatchAnswerService, type WatchAnswerDeps } from '../answer.js';
+import type { WatchAnswerSchema } from '../types.js';
 import { obs } from './helpers.js';
 
 const NOW = 5_000_000;
 let memory: SessionMemory;
 let calls: Array<LlmCall<unknown>>;
-let reply: ModelWatchAnswer | Error;
+let reply: z.input<typeof WatchAnswerSchema> | Error;
 let frame: string | null;
 let assessment: boolean;
 
@@ -181,5 +182,57 @@ describe('WatchAnswerService: chat history', () => {
     ];
     await make().ask({ question: 'and how is that different from overfitting?', inputMode: 'text', history });
     expect(JSON.parse(calls[0].messages[0].content).conversation).toEqual(history);
+  });
+});
+
+describe('WatchAnswerService: new study material', () => {
+  const suggestion = { kind: 'video' as const, title: 'Factor analysis', search_query: 'factor analysis explained', url: null, why: 'The model the paper uses' };
+
+  it('asks for resources in the prompt and returns the checked links, without the videos already watched', async () => {
+    memory.record(obs({ activity: 'watching_video', source: { kind: 'video', title: 'NLP intro', locator: null } }), videoCtx);
+    reply = { answer: 'Learn factor analysis first.', grounded: false, citations: [], resources: [suggestion] };
+    let excluded: string[] = [];
+    const found = { kind: 'video' as const, title: 'Factor Analysis Explained', url: 'https://www.youtube.com/watch?v=lJ0cXPoEozg', why: 'x', detail: null, checked: true };
+    const res = await make({
+      findResources: async (s, exclude) => {
+        excluded = exclude;
+        expect(s).toEqual([suggestion]);
+        return [found];
+      }
+    }).ask({ question: 'what else should I learn to understand this paper?', inputMode: 'text' });
+    expect(calls[0].system).toContain('never write a YouTube URL');
+    expect(res.data!.resources).toEqual([found]);
+    expect(excluded).toEqual(['https://www.youtube.com/watch?v=abcdef123']);
+  });
+
+  it('no suggestions: no lookup; a failed lookup still answers', async () => {
+    let looked = false;
+    const res = await make({ findResources: async () => ((looked = true), []) }).ask({ question: 'what is the loss?', inputMode: 'text' });
+    expect(looked).toBe(false);
+    expect(res.data!.resources).toEqual([]);
+    reply = { answer: 'Learn this.', grounded: false, citations: [], resources: [suggestion] };
+    const failed = await make({ findResources: async () => Promise.reject(new Error('offline')) }).ask({ question: 'recommend videos', inputMode: 'text' });
+    expect(failed).toMatchObject({ success: true, data: { answer: 'Learn this.', resources: [] } });
+  });
+});
+
+describe('WatchAnswerService: asking for new material', () => {
+  it('recognizes requests for material, not questions about the session', () => {
+    for (const q of [
+      'base on the paper, what other sources you think i should learn in order to understand his work',
+      'can you give me the source on youtube or other source that can teach me that',
+      'recommend a video on factor analysis',
+      'where can I learn more about CRFs?',
+      'find me some good youtube videos on CRFs'
+    ]) expect(asksForMaterial(q), q).toBe(true);
+    for (const q of ['did they use any kind of techniques listed in the youtube video?', 'can you show me the timestamp over there?', 'what is overfitting?'])
+      expect(asksForMaterial(q), q).toBe(false);
+  });
+
+  it('does not attach the watched video to a request for material, and flags the request', async () => {
+    memory.record(obs({ activity: 'watching_video', source: { kind: 'video', title: 'NLP intro', locator: null } }), videoCtx);
+    await make().ask({ question: 'give me a youtube video that teaches that', inputMode: 'text' });
+    expect(calls[0].videos).toBeUndefined();
+    expect(JSON.parse(calls[0].messages[0].content).asks_for_new_material).toBe(true);
   });
 });

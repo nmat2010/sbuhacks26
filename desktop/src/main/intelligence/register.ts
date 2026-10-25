@@ -8,7 +8,7 @@ import WebSocket from 'ws';
 import { execFile } from 'child_process';
 import { existsSync } from 'fs';
 import { promisify } from 'util';
-import { app, BrowserWindow, desktopCapturer, dialog, globalShortcut, nativeImage, powerMonitor, systemPreferences } from 'electron';
+import { app, BrowserWindow, desktopCapturer, dialog, globalShortcut, nativeImage, powerMonitor, shell, systemPreferences } from 'electron';
 import type { Nudge, NudgeResponse } from '@wolfie/shared';
 import { stuckBus } from '../stuck/bus.js';
 import { ACTIONS } from '../stuck/actions.js';
@@ -53,6 +53,7 @@ import { SessionMemory } from '../watch/memory.js';
 import { isStudying, Watcher } from '../watch/watcher.js';
 import { WatchController } from '../watch/controller.js';
 import { WatchAnswerService } from '../watch/answer.js';
+import { createResourceFinder, safeUrl } from '../watch/resources.js';
 import { ChatLog, isTransient } from '../chat/log.js';
 
 const cleanups: Array<() => void> = [];
@@ -294,6 +295,7 @@ function registerWatch(): void {
     assessment: () =>
       (getActiveSession()?.assessmentMode ?? false) ||
       domainListed(getForeground()?.reportedDomain ?? null, getSetting('assessment.domains')),
+    findResources: createResourceFinder({ fetch: globalThis.fetch }),
     log: safeLog
   });
   watchAnswers = answers;
@@ -355,7 +357,7 @@ function registerWatch(): void {
     }
     const res = await answers.ask({ question: message, inputMode: 'text', history });
     if (res.success && res.data) {
-      chatLog?.add({ role: 'wolfie', text: res.data.answer, label: res.data.label, citations: res.data.citations });
+      chatLog?.add({ role: 'wolfie', text: res.data.answer, label: res.data.label, citations: res.data.citations, resources: res.data.resources });
       notifyChat();
       return { kind: 'answer' as const, answer: res.data };
     }
@@ -399,6 +401,12 @@ function registerChat(): void {
   });
 
   handle('chat-history', async () => log.list());
+  handle('open-link', async (url) => {
+    const target = safeUrl(typeof url === 'string' ? url : null);
+    if (!target) return { success: false };
+    await shell.openExternal(target);
+    return { success: true };
+  });
   handle('chat-clear', async () => {
     log.clear();
     notifyChat();
@@ -498,7 +506,7 @@ function registerVoice(): void {
         chatLog?.add({ role: 'user', text: utterance });
         const res = await watchAnswers.ask({ question: utterance, inputMode: 'voice', history });
         if (res.success && res.data) {
-          chatLog?.add({ role: 'wolfie', text: res.data.answer, label: res.data.label, citations: res.data.citations });
+          chatLog?.add({ role: 'wolfie', text: res.data.answer, label: res.data.label, citations: res.data.citations, resources: res.data.resources });
           notifyChat();
           broadcast('watch-answer', res.data);
           // Also as a bubble until the overlay chat panel (Thu, U2) shows watch-answer itself
@@ -506,7 +514,7 @@ function registerVoice(): void {
             {
               kind: 'other',
               level: 1,
-              text: `${res.data.answer}\n\n${res.data.label}`,
+              text: `${res.data.answer}${res.data.resources.length ? `\n\n${res.data.resources.map((r) => `• ${r.title}`).join('\n')}\n(Links are in the chat.)` : ''}\n\n${res.data.label}`,
               spokenText: firstSentences(res.data.answer),
               buttons: [{ label: 'Got it', action: ACTIONS.GOT_IT, variant: 'primary' }],
               priority: 8
