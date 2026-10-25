@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChatMessageView, WatchStatus } from '../../../common/ipc-intelligence';
+import { usePushToTalk } from '../hooks/usePushToTalk';
 import './HintConversation.css';
 
 // Wolfie's chat panel (opened by clicking Wolfie). Thu's design, wired to the backend by Tuan:
@@ -108,10 +109,15 @@ export function HintConversation({ onClose, voiceMode = false }: HintConversatio
     void window.electronAPI.invoke('nudge-response', { id: message.nudgeId, action, via: 'button' });
   };
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = () => {
     const text = userInput.trim();
     if (!text || busy) return;
     setUserInput('');
+    void sendText(text);
+  };
+
+  /** Typed or spoken (push-to-talk): the same path into the conversation. */
+  const sendText = async (text: string) => {
     setWaitingFrom(wolfieCount(messages) + 0);
     try {
       const res = await window.electronAPI.invoke('chat-send', text);
@@ -120,6 +126,18 @@ export function HintConversation({ onClose, voiceMode = false }: HintConversatio
       setWaitingFrom(null);
     }
   };
+
+  // Push-to-talk: hold the mic, talk, let go; the words are sent like a typed message
+  const [pttNote, setPttNote] = useState<string | null>(null);
+  useEffect(() => {
+    if (!pttNote) return;
+    const t = setTimeout(() => setPttNote(null), 4000);
+    return () => clearTimeout(t);
+  }, [pttNote]);
+  const ptt = usePushToTalk(
+    (text) => void sendText(text),
+    (message) => setPttNote(message)
+  );
 
   const handleClear = () => {
     setWaitingFrom(null);
@@ -261,13 +279,37 @@ export function HintConversation({ onClose, voiceMode = false }: HintConversatio
           </div>
         )}
 
-        {/* Input (questions and follow-ups) */}
+        {/* Input (questions and follow-ups): hold the mic to talk, or type */}
+        {pttNote && <p className="ptt-note">{pttNote}</p>}
         <div className="hint-input-container">
+          <button
+            className={`ptt-btn ${ptt.state}`}
+            title="Hold to talk, let go to send"
+            disabled={busy || ptt.state === 'transcribing'}
+            onPointerDown={(e) => {
+              e.currentTarget.setPointerCapture(e.pointerId);
+              void ptt.start();
+            }}
+            onPointerUp={() => ptt.stop()}
+            onPointerCancel={() => ptt.stop()}
+          >
+            {ptt.state === 'transcribing' ? '…' : '🎤'}
+          </button>
           <input
             type="text"
             className="hint-input"
             autoFocus
-            placeholder={helpOpen ? 'Ask about this hint...' : voiceMode ? 'Speak or type your question...' : 'Ask me anything...'}
+            placeholder={
+              ptt.state === 'recording'
+                ? 'Listening... let go to send'
+                : ptt.state === 'transcribing'
+                  ? 'Getting your words...'
+                  : helpOpen
+                    ? 'Ask about this hint...'
+                    : voiceMode
+                      ? 'Speak or type your question...'
+                      : 'Ask me anything...'
+            }
             value={userInput}
             onChange={(e) => setUserInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && void handleSendMessage()}

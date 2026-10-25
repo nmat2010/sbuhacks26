@@ -317,6 +317,41 @@ app.whenReady().then(() => {
           await new Promise((r) => setTimeout(r, 400));
           console.log(`[smoke] click-after-drag: chat-open=${await ui("!!document.querySelector('.hint-messages')")}`);
         }
+        // WOLFIE_SMOKE_PTT=<audio file>: push-to-talk with that recording standing in for the mic
+        // (hold the mic button for its length, let go), then see what the chat got
+        if (process.env.WOLFIE_SMOKE_PTT && overlayWindow) {
+          const win = overlayWindow;
+          const ui = (js: string) => win.webContents.executeJavaScript(js);
+          await new Promise((r) => setTimeout(r, 1000));
+          await ui("document.querySelector('.mascot').click()");
+          await new Promise((r) => setTimeout(r, 500));
+          const dataUrl = `data:audio/mpeg;base64,${readFileSync(process.env.WOLFIE_SMOKE_PTT).toString('base64')}`;
+          const seconds = await ui(`(async () => {
+            const audio = new Audio(${JSON.stringify(dataUrl)});
+            await new Promise((r) => (audio.onloadedmetadata = r));
+            window.__clip = audio;
+            navigator.mediaDevices.getUserMedia = async () => { audio.currentTime = 0; await audio.play(); return audio.captureStream(); };
+            return audio.duration;
+          })()`);
+          const b = await ui("(() => { const r = document.querySelector('.ptt-btn').getBoundingClientRect(); return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) }; })()");
+          win.webContents.sendInputEvent({ type: 'mouseDown', x: b.x, y: b.y, button: 'left', clickCount: 1 });
+          await new Promise((r) => setTimeout(r, 300));
+          console.log(`[smoke] ptt: holding, state=${await ui("document.querySelector('.ptt-btn').className")}`);
+          await new Promise((r) => setTimeout(r, seconds * 1000 + 400));
+          win.webContents.sendInputEvent({ type: 'mouseUp', x: b.x, y: b.y, button: 'left', clickCount: 1 });
+          await new Promise((r) => setTimeout(r, 300));
+          console.log(`[smoke] ptt: after mouseUp state=${await ui("document.querySelector('.ptt-btn').className")}`);
+          const states: string[] = [];
+          const started = Date.now();
+          while (Date.now() - started < 15_000) {
+            const s = await ui("[document.querySelector('.mascot')?.dataset.state, document.querySelector('.ptt-btn')?.className.replace('ptt-btn ', ''), document.querySelector('.ptt-note')?.textContent ?? ''].join('/')");
+            if (states.at(-1)?.split('@')[0] !== s) states.push(`${s}@${((Date.now() - started) / 1000).toFixed(1)}s`);
+            await new Promise((r) => setTimeout(r, 200));
+          }
+          console.log(`[smoke] ptt: chat=${await ui("[...document.querySelectorAll('.message-text')].map((e) => e.textContent.slice(0, 90)).join(' | ')")}`);
+          console.log(`[smoke] ptt: sprite=${states.join(' > ')} note=${await ui("document.querySelector('.ptt-note')?.textContent ?? 'none'")}`);
+          writeFileSync(process.env.WOLFIE_SMOKE_PTT + '-chat.png', (await win.webContents.capturePage()).toPNG());
+        }
         // WOLFIE_SMOKE_SPEAK=<question>: ask in the chat, then follow Wolfie's sprite and the voice
         // audio while the reply is worked on and read aloud (needs a real model and ElevenLabs)
         if (process.env.WOLFIE_SMOKE_SPEAK && overlayWindow) {
