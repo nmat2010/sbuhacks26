@@ -32,6 +32,8 @@ export const STRONG_STUCK = 0.75;
 export const WEAK_STUCK = 0.5;
 /** No keyboard/mouse input for this long: the student is away, so nothing is looked at. */
 export const AWAY_SECONDS = 10 * 60;
+/** A look gets this long (lite models sometimes take 20 s+); it is not retried. */
+export const OBSERVE_TIMEOUT_MS = 30_000;
 /** Minimum time between looks triggered by window/tab switches. */
 export const POKE_GAP_MS = 3000;
 /** Activities where "stuck" means something; browsing or "other" never raises a stuck signal. */
@@ -425,14 +427,20 @@ export class Watcher {
       problem: page?.problemRegion,
       errors: page?.errorMessages.slice(0, 5),
       seconds_unchanged: this.unchangedSince === null ? 0 : Math.round((now - this.unchangedSince) / 1000),
-      previous: latest ? { subject: latest.obs.subject, summary: latest.obs.summary, mode: latest.obs.mode } : null
+      previous: latest ? { subject: latest.obs.subject, summary: latest.obs.summary, mode: latest.obs.mode } : null,
+      // Earlier sources and their key points (e.g. the original problem), so a mis-copied problem
+      // or a mixed-up concept can be noticed in another window
+      session_notes: deps.memory.toPromptText(1500, now) || undefined
     };
     return deps.llm().generate({
       task: 'watch_observe',
-      system: renderPrompt('watch-observe.v1'),
+      system: renderPrompt('watch-observe.v2'),
       messages: [{ role: 'user', content: JSON.stringify(input) }],
       images: [parseImageDataUrl(dataUrl)],
       schema: ObservationSchema,
+      // One try with room for slow moments: a retry costs quota, and the next look comes soon anyway
+      timeoutMs: OBSERVE_TIMEOUT_MS,
+      noRetry: true,
       mockKey: {
         appName: fg.app,
         title: page?.title ?? fg.title,
@@ -447,7 +455,9 @@ export class Watcher {
   private emitSignals(obs: Observation, now: number): void {
     const { deps } = this;
     const check = obs.answer_check;
-    if (obs.mode === 'homework' && check?.looks_correct === false && check.visible_answer) {
+    // A wrong answer counts in any study activity (a Doc with written answers, notes, code),
+    // not only on a problem-set page
+    if (STUDY_ACTIVITIES.has(obs.activity) && check?.looks_correct === false && check.visible_answer) {
       const answerKey = check.visible_answer.trim().toLowerCase();
       if (!this.flaggedAnswers.has(answerKey)) {
         this.flaggedAnswers.add(answerKey);
@@ -455,7 +465,8 @@ export class Watcher {
           type: 'answer_seen_wrong',
           strength: 'strong',
           timestamp: now,
-          metadata: { source: 'watch' }
+          // The short "what is off" goes into the offer text; it never contains the answer
+          metadata: { source: 'watch', issue: check.issue ?? undefined }
         });
       }
     }

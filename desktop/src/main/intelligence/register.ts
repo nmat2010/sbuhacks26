@@ -209,7 +209,7 @@ function registerWatch(): void {
     provider: watchModel ? selectProvider({ ...process.env, GEMINI_MODEL: watchModel }) : getLLMClient().provider,
     usage: new PrefixedUsageStore(new SqliteUsageStore(), 'watch:'),
     dailyCap: () => getSetting('watch.calls_per_day'),
-    timeoutMs: 20_000
+    timeoutMs: 30_000
   });
   const run = promisify(execFile) as unknown as (file: string, args: string[], opts: { timeout: number }) => Promise<{ stdout: string }>;
   // Native helper (desktop/native, `npm run build:native`); without it nothing is captured

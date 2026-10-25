@@ -220,11 +220,35 @@ describe('Watcher', () => {
     expect(signals[0].strength).toBe('strong');
   });
 
-  it('does not flag answers in learning mode', async () => {
+  it('flags a wrong answer in any study activity (e.g. written answers in a Doc), never while browsing', async () => {
     const w = make();
-    reply = obs({ answer_check: { visible_answer: '42', looks_correct: false, issue: 'x' } });
+    reply = obs({
+      activity: 'writing',
+      mode: 'learning',
+      answer_check: { visible_answer: 'learns the training data too well', looks_correct: false, issue: 'This describes overfitting rather than underfitting.' }
+    });
+    await w.tick();
+    expect(signals).toEqual([
+      expect.objectContaining({ type: 'answer_seen_wrong', metadata: { source: 'watch', issue: 'This describes overfitting rather than underfitting.' } })
+    ]);
+    signals = [];
+    reply = obs({ activity: 'browsing', mode: 'other', answer_check: { visible_answer: '42', looks_correct: false, issue: 'x' } });
+    frame = FRAME_B;
+    now += 8000;
     await w.tick();
     expect(signals).toHaveLength(0);
+  });
+
+  it('sends the session notes (e.g. the original problem) with each look, as one 30 s try', async () => {
+    const w = make();
+    await w.tick();
+    frame = FRAME_B;
+    now += 8000;
+    await w.tick();
+    const input = JSON.parse(calls[1].messages[0].content);
+    expect(input.session_notes).toContain('Niranjan et al. 2026');
+    expect(calls[1]).toMatchObject({ noRetry: true, timeoutMs: 30_000 });
+    expect(calls[1].system).toContain('copied a problem');
   });
 
   it('reports the daily limit as a state, not a crash', async () => {

@@ -143,3 +143,20 @@
 - **Homework: Wolfie didn't step in.** The signals did fire (`answer_seen_wrong` + `model_stuck` at 19:44:44), but escalation climbs glance → "?" → offer at 45 s per step, and it holds whenever the latest look isn't study work (the student checked VS Code). It reached level 1 only at 19:46:04.
   - Fix: `answer_seen_wrong` fast-tracks to the offer. It still waits 5 s after typing and respects decline, "I'm good", snooze and pause.
 - Tests: 630 pass. Real-app smoke: chat round trip plus real OS scrolling.
+
+## Update: wrong answers in other apps (copied problems, mixed-up concepts)
+- **Reported:** a problem copied into Google Docs with a changed equation wasn't flagged, and the same gap would apply to a conceptual answer like "underfitting" described as overfitting.
+- **Cause:**
+  - Each look saw only the current screen and a one-line previous summary, never the original problem from the other tab.
+  - Answers were checked only in "homework mode", and a Doc was usually classified as "writing".
+- **Fix:**
+  - **Prompt `watch-observe.v2`** (v1 kept): check any answer, step or explanation the student wrote, in any app, including conceptual answers (wrong concept = wrong) and whether a copied problem matches the original in the session notes. The issue sentence says what is off, never the answer.
+  - Each look now gets `session_notes` (sources and key points, 1,500 characters).
+  - `answer_seen_wrong` fires in any study activity (never while browsing) and carries the issue.
+  - The offer reads "Hmm, something looks off: <issue>. Want a hint?"
+  - A look is a single try with a 30 s timeout; it was 20 s with a retry, and lite models sometimes take 20 s+.
+- **Verified on real `gemini-3.1-flash-lite` with synthetic Docs screenshots:**
+  - "This definition describes overfitting rather than underfitting."
+  - "The problem statement in the scratch work (2x + 5 = 31) does not match the original problem (2x + 5 = 13)."
+  - One call took 22 s, which is why the timeout was raised.
+- Tests: 632 pass.

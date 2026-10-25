@@ -246,7 +246,7 @@ export class EscalationEngine {
         }
         this.offer = { id };
       } else if (level === 4) {
-        if (this.deps.voiceMode()) this.deps.speak(OFFER_TEXT);
+        if (this.deps.voiceMode()) this.deps.speak(this.offerText());
       }
     } else if (level < 3) {
       this.offer = null;
@@ -259,12 +259,24 @@ export class EscalationEngine {
 
   // ---- Helpers -----------------------------------------------------------------------------
 
+  /** When Watch mode saw a wrong answer, the offer says what looks off (never the answer). */
+  private offerText(): string {
+    const issue = this.signals.get('answer_seen_wrong')?.signal.metadata?.issue;
+    if (typeof issue === 'string' && issue.trim()) {
+      let text = issue.trim().replace(/[.!]+$/, '');
+      // "The equation ..." -> "the equation ..." (keeps acronyms like "ML" as they are)
+      if (/^[A-Z][a-z]/.test(text)) text = text[0].toLowerCase() + text.slice(1);
+      return `Hmm, something looks off: ${text}. Want a hint?`;
+    }
+    return OFFER_TEXT;
+  }
+
   private buildOffer(): NudgeInput {
     return {
       kind: 'stuck',
       level: 3,
-      // No spokenText: level 3 is visual only. Level 4 speaks OFFER_TEXT itself.
-      text: OFFER_TEXT,
+      // No spokenText: level 3 is visual only. Level 4 speaks the offer itself.
+      text: this.offerText(),
       priority: 7,
       buttons: [
         { label: 'Yes, give me a hint', action: ACTIONS.ACCEPT_HINT, variant: 'primary' },

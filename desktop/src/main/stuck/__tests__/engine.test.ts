@@ -407,3 +407,21 @@ describe('EscalationEngine: Watch mode sees a wrong answer', () => {
     expect(t.pushed.some((n) => n.level === 3)).toBe(true);
   });
 });
+
+describe('EscalationEngine: the offer says what looks off', () => {
+  it('uses the issue Watch mode saw, and the generic text otherwise', () => {
+    const t = setup({ voice: false });
+    t.bus.emit('signal', {
+      type: 'answer_seen_wrong',
+      strength: 'strong',
+      timestamp: t.clock.t,
+      metadata: { source: 'watch', issue: "The equation here doesn't match the one in the problem set." }
+    });
+    expect(t.pushed.at(-1)?.text).toBe("Hmm, something looks off: the equation here doesn't match the one in the problem set. Want a hint?");
+    const u = setup({ voice: false, session: true });
+    u.bus.emit('signal', u.strong());
+    u.advance(45);
+    u.advance(90);
+    expect(u.pushed.at(-1)?.text).toBe(OFFER_TEXT);
+  });
+});
