@@ -97,3 +97,10 @@ For Tuan to decide later what to keep.
   - The launch waited for the sound setting (a round trip to the main process) before hiding Wolfie and drawing the first frame, and the sprite sheets only started loading on the first launch.
   - Now the swap happens on the click, the setting is read in the background, and the six sheets are loaded and decoded when the overlay starts.
   - **Verified:** sampled every 50 ms after the click, the usual Wolfie is already hidden and the launch Wolfie drawn at 50 ms.
+- **Fix 2 (Tuan still saw the usual Wolfie about 0.5 s behind the launch):**
+  - **Root cause:** Thu's `Mascot` element has `transition: all 0.3s ease` (for its bounce). The visibility and opacity change from hiding was animated too, so Wolfie faded out over 0.3 s instead of hiding.
+  - My earlier check read the wrapper's visibility, which hid instantly, not the mascot element's.
+  - **Now:**
+    - the launch hides the mascot element directly in the click handler, with its transition off for the whole launch (visibility hidden, opacity 0);
+    - it restores him instantly at the end, and his transition comes back two frames later.
+  - **Verified on the mascot element itself:** hidden at the very moment of the click (0 ms), hidden throughout, visible right when the launch ends.

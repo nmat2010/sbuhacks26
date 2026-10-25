@@ -67,13 +67,26 @@ export function LaunchProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const launch = useCallback(async (underground: () => unknown) => {
-    const spot = document.querySelector('.mascot')?.getBoundingClientRect();
+    const mascot = document.querySelector<HTMLElement>('.mascot');
+    const spot = mascot?.getBoundingClientRect();
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     if (!spot || reduced || busy.current) {
       await underground();
       return;
     }
     busy.current = true;
+    // Hide the usual Wolfie right now, in the same frame as the click. His element animates every
+    // style change (transition: all 0.3s, for his bounce), which would fade him out and back in
+    // over the launch, so the transition is off for the whole launch: hiding and showing are instant
+    const hide = (hidden: boolean) => {
+      if (!mascot) return;
+      if (hidden) mascot.style.transition = 'none';
+      mascot.style.visibility = hidden ? 'hidden' : '';
+      mascot.style.opacity = hidden ? '0' : '';
+      // His bounce animates again once he is back (after this frame is drawn)
+      if (!hidden) requestAnimationFrame(() => requestAnimationFrame(() => (mascot.style.transition = '')));
+    };
+    hide(true);
     // Sound follows the dashboard's Appearance setting (on unless turned off). Looked up in the
     // background: the swap to the launch Wolfie happens on the click, not after a round trip
     let sound = true;
@@ -110,6 +123,7 @@ export function LaunchProvider({ children }: { children: ReactNode }) {
       for (const f of [0, 1, 2, 3] as const) await step('wave', 'wave', f, -1, f === 3 ? 280 : 140);
     } finally {
       busy.current = false;
+      hide(false);
       setScene(null);
     }
   }, []);

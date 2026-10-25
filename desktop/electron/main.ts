@@ -359,11 +359,13 @@ app.whenReady().then(() => {
             document.querySelector('.send-btn').click();
           })()`);
           for (let i = 0; i < 40 && !(await ui("!!document.querySelector('.resource-link')")); i++) await new Promise((r) => setTimeout(r, 250));
-          const mascotVisible = () => ui("getComputedStyle(document.querySelector('.mascot').parentElement).visibility");
+          // The mascot element itself (its own transition could keep it showing after its wrapper hides)
+          const mascotVisible = () => ui("(() => { const m = getComputedStyle(document.querySelector('.mascot')); return m.visibility === 'hidden' || m.opacity === '0' ? 'hidden' : 'visible'; })()");
           console.log(`[smoke] launch: card=${await ui("document.querySelector('.resource-link')?.title")} mascot=${await mascotVisible()}`);
-          await ui("document.querySelector('.resource-link').click(); 0");
-          // Right after the click: the usual Wolfie must hide at once, with the launch Wolfie drawn
-          const early: string[] = [];
+          // The same moment as the click: the usual Wolfie is already hidden
+          const atClick = await ui("(() => { document.querySelector('.resource-link').click(); const m = getComputedStyle(document.querySelector('.mascot')); return m.visibility + '/' + m.opacity; })()");
+          // Right after the click: the usual Wolfie must stay hidden, with the launch Wolfie drawn
+          const early: string[] = [`0ms:${atClick}`];
           for (let t = 50; t <= 250; t += 50) {
             await new Promise((r) => setTimeout(r, 50));
             early.push(`${t}ms:${await mascotVisible()}/${(await ui("!!document.querySelector('.launch-layer .mascot-wolfie')")) ? 'launch' : '-'}`);

@@ -292,7 +292,7 @@ function App() {
           />
 
           {/* Hidden (keeping its place) while the launch plays on the same spot */}
-          <div style={{ visibility: launching ? 'hidden' : 'visible' }}>
+          <div style={{ visibility: launching ? 'hidden' : 'visible', transition: 'none' }}>
             <Mascot
               state={mascotState}
               voiceActive={voiceActive}
