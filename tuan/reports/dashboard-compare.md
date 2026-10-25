@@ -53,3 +53,13 @@ For Tuan to decide later what to keep.
   - Settings still saves (add, switch off, remove);
   - screenshots look right.
   - Tests: 703 pass. Typecheck and lint are clean (also fixed 2 lint errors in her extension code: a `let` → `const`, an unused import).
+
+## Decisions (Tuan, 2026-10-25)
+- **Kept ours:** problems and scores, streak, settings.
+- **Focus:** Thu's productivity curve is real data. From the last 14 days of `app_events`, it slices time into work / AI / distraction / idle (same rules as history), spreads it over hour-of-day buckets (6 AM to 11 PM), and scores each hour as the work share, 0–100, with peak and low windows. It doesn't overlap ours; Tuan was asked whether to add it to our Focus card.
+- **Extras, the parts that don't overlap:**
+  - **Level and XP:** kept in her sidebar. They count studied minutes; her "solved unaided" part uses her manual log, so it's 0 for now.
+  - **"Sensei says":** the card is now on our Dashboard, fed by **our** skills record (latest weak spot, then improving, then strengths, then a start message).
+  - **Course chips:** semester, course count, Brightspace synced, extension connected, now in our Dashboard header (her `useBrightspace` / `useAppStatus`).
+  - **Sample data:** dropped.
+- **Chat avatar:** Thu's pixel Wolfie (`WolfieSprite`) replaces the 🐺 emoji in the chat header, beside each Wolfie message, and in "Thinking...".

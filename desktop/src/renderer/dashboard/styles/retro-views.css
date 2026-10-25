@@ -296,3 +296,11 @@
   color: var(--ws-text);
   border: 0;
 }
+
+/* Sensei says (Thu's card on Tuan's Dashboard) */
+.app-shell .sensei-says {
+  font-size: 19px;
+  line-height: 1.5;
+  color: var(--ws-text);
+  margin: 0 0 18px;
+}

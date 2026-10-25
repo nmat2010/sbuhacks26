@@ -5,6 +5,9 @@ import type { ViewType } from '../App';
 import { StreakCalendar } from '../components/StreakCalendar';
 import { Planned } from '../components/Planned';
 import { useSkills } from './SkillsView';
+import type { SkillView } from '../../../common/ipc-intelligence';
+import { Chip } from '../pixel-components/Chip';
+import { useAppStatus, useBrightspace } from '../hooks';
 import { FocusBars } from '../components/FocusBars';
 import { SessionReport } from '../components/SessionReport';
 import { duration, minutes, sessionDate, totalSeconds } from '../format';
@@ -68,6 +71,8 @@ export function HomeView({ onNavigate }: { onNavigate: (view: ViewType) => void 
 
   const latest: HistorySession | undefined = week?.sessions.find((s) => s.endedAt !== null);
   const skills = useSkills() ?? [];
+  const { semester, courses, isSynced } = useBrightspace();
+  const { status } = useAppStatus();
   const strong = skills.filter((s) => s.status === 'strength');
   const weak = skills.filter((s) => s.status === 'weakness' || s.status === 'improving');
 
@@ -78,6 +83,17 @@ export function HomeView({ onNavigate }: { onNavigate: (view: ViewType) => void 
         <p className="view-subtitle">
           {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
+        {/* Thu's header chips: semester, courses, Brightspace and extension status */}
+        <div className="chips" style={{ marginTop: 14 }}>
+          <Chip>{semester || 'No semester yet'}</Chip>
+          <Chip>
+            {courses.length} {courses.length === 1 ? 'course' : 'courses'}
+          </Chip>
+          <Chip style={{ color: isSynced ? 'var(--ws-green)' : 'var(--ws-text-muted)' }}>
+            {isSynced ? 'Brightspace synced' : 'Brightspace not synced'}
+          </Chip>
+          {status.extensionConnected && <Chip style={{ color: 'var(--ws-green)' }}>Extension connected</Chip>}
+        </div>
       </div>
 
       {/* 1. Start session */}
@@ -174,6 +190,21 @@ export function HomeView({ onNavigate }: { onNavigate: (view: ViewType) => void 
         </div>
       </div>
 
+      {/* Sensei says (Thu's card): the top weak spot from the skills record, or encouragement */}
+      <div className="card">
+        <div className="card-header">
+          <h2 className="card-title">Sensei says</h2>
+        </div>
+        <div className="card-content">
+          <p className="sensei-says">{senseiSays(skills)}</p>
+          {weak.length > 0 && (
+            <button className="btn btn-secondary" onClick={() => onNavigate('skills')}>
+              See weak spots
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* 4. Streak and self-reliance */}
       {streak && <StreakCalendar streak={streak} onUseFreeze={handleUseFreeze} />}
       <div className="card">
@@ -223,6 +254,16 @@ export function HomeView({ onNavigate }: { onNavigate: (view: ViewType) => void 
       </div>
     </div>
   );
+}
+
+/** What Sensei says on the Dashboard: the latest weak spot first, then progress, then a start. */
+function senseiSays(skills: SkillView[]): string {
+  const weak = skills.find((s) => s.status === 'weakness');
+  if (weak) return `${weak.name} keeps tripping you up. Try the next problem on your own before you open any AI. I'll be right here with a hint.`;
+  const improving = skills.find((s) => s.status === 'improving');
+  if (improving) return `You're getting better at ${improving.name}. Show it once more without help and it becomes a strength.`;
+  if (skills.some((s) => s.status === 'strength')) return 'Nice work so far. Keep trying each problem yourself first and the streak grows itself.';
+  return 'Start a session with Watch mode on. I will learn where you shine and where you stall.';
 }
 
 function Stat({ label, value, unit }: { label: string; value: string; unit?: string }) {
