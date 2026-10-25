@@ -213,4 +213,4 @@
   - **Panel:** loads `chat-history` and follows `chat-history-changed`; opens scrolled to the end; has a "Clear" button (`chat-clear`). "Help me with this" goes through `chat-help`, so it's recorded.
   - **Memory:** the last 6 turns go with each question (`conversation` in the watch-answer payload, plus a prompt rule on continuity), so Wolfie remembers what was said.
   - **Privacy:** local only, and included in "Clear all data" (`DATA_TABLES`).
-- **Verified:** two real app runs on the same data folder. Run 1 opened with the greeting and asked 5 questions; run 2 opened the chat with all 10 messages. 657 tests pass.
+- **Verified:** two real app runs on the same data folder. Run 1 opened with the greeting and asked 5 questions; run 2 opened the chat with all 10 messages. 651 tests pass.
