@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type Database from 'better-sqlite3';
 import { openDatabase } from '../../db/index.js';
-import { ChatLog, isTransient, MAX_MESSAGES } from '../log.js';
+import { NudgeQueue } from '../../nudge/queue.js';
+import { attachChatLog, ChatLog, isTransient, MAX_MESSAGES } from '../log.js';
 
 let db: Database.Database;
 let log: ChatLog;
@@ -74,5 +75,18 @@ describe('ChatLog', () => {
   it('skips the transient "Let me take a look..." message', () => {
     expect(isTransient('Let me take a look...')).toBe(true);
     expect(isTransient('Here is a hint')).toBe(false);
+  });
+});
+
+describe('attachChatLog', () => {
+  it('records a button press before the step the help flow shows in response (synchronously)', () => {
+    const queue = new NudgeQueue();
+    const buttons = [{ label: 'Another hint', action: 'another_hint' }];
+    // The help flow subscribed first and shows the next step right away (the ladder is pre-built)
+    queue.on('response', () => queue.emit('show', { id: 'n2', kind: 'stuck', level: 3, text: 'Hint 2', buttons }));
+    attachChatLog(queue, log, () => {});
+    queue.emit('show', { id: 'n1', kind: 'stuck', level: 3, text: 'Hint 1', buttons });
+    queue.respond({ id: 'n1', action: 'another_hint', via: 'button' } as never);
+    expect(log.list().map((m) => m.text)).toEqual(['Hint 1', 'Another hint', 'Hint 2']);
   });
 });

@@ -9,7 +9,7 @@ import { execFile } from 'child_process';
 import { existsSync } from 'fs';
 import { promisify } from 'util';
 import { app, BrowserWindow, desktopCapturer, dialog, globalShortcut, nativeImage, powerMonitor, shell, systemPreferences } from 'electron';
-import type { Nudge, NudgeResponse } from '@wolfie/shared';
+import type { NudgeResponse } from '@wolfie/shared';
 import { stuckBus } from '../stuck/bus.js';
 import { ACTIONS } from '../stuck/actions.js';
 import { EscalationEngine } from '../stuck/engine.js';
@@ -54,7 +54,7 @@ import { isStudying, Watcher } from '../watch/watcher.js';
 import { WatchController } from '../watch/controller.js';
 import { WatchAnswerService } from '../watch/answer.js';
 import { createResourceFinder, safeUrl } from '../watch/resources.js';
-import { ChatLog, isTransient } from '../chat/log.js';
+import { attachChatLog, ChatLog } from '../chat/log.js';
 
 const cleanups: Array<() => void> = [];
 let voice: VoiceService | null = null;
@@ -381,24 +381,7 @@ const FALLBACK_WATCH_ERROR = "Sorry, I couldn't put that together. Please try ag
 function registerChat(): void {
   const log = new ChatLog(getDatabase);
   chatLog = log;
-  const queue = getNudgeQueue();
-  const onShow = (nudge: Nudge) => {
-    if (nudge.kind !== 'stuck' || isTransient(nudge.text)) return;
-    log.add({ role: 'wolfie', text: nudge.text, nudgeId: nudge.id, buttons: nudge.buttons });
-    notifyChat();
-  };
-  const onResponse = (response: NudgeResponse) => {
-    const label = log.buttonLabel(response.id, response.action);
-    if (!log.markAnswered(response.id) && !label) return;
-    if (label) log.add({ role: 'user', text: label });
-    notifyChat();
-  };
-  queue.on('show', onShow);
-  queue.on('response', onResponse);
-  cleanups.push(() => {
-    queue.off('show', onShow);
-    queue.off('response', onResponse);
-  });
+  cleanups.push(attachChatLog(getNudgeQueue(), log, notifyChat));
 
   handle('chat-history', async () => log.list());
   handle('open-link', async (url) => {

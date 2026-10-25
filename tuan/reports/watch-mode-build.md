@@ -269,3 +269,12 @@
     - `watch.failed {code}` for each failed look (e.g. RATE_LIMITED for a Gemini 503/429).
     - The next gap can be read from the `events` table.
 - Tests: 666 pass (48 + 542 + 76). Typecheck and lint are clean (existing warnings only).
+
+## Update: button presses recorded in the right order
+- **Reported:** in the chat, "Another hint" and "I got it" appeared *after* Wolfie's reply to them. "Yes, give me a hint" and typed messages were in order.
+- **Cause:** the nudge queue is an EventEmitter, so 'response' listeners run in the order they were registered.
+  - The help flow subscribed before the chat log, and it shows the next ladder step synchronously (the ladder is generated up front), so that step was recorded before the press.
+  - The first hint needs a Gemini call, so its press was recorded first; typed messages are saved before anything else happens.
+- **Fix:** the chat wiring moved to `attachChatLog()` (chat/log.ts) and records presses with `prependListener`, so it runs first.
+  - A test with a synchronous "flow" listener fails with the old order and passes now.
+- Tests: 667 pass. Typecheck and lint are clean.

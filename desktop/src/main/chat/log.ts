@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
+import type { EventEmitter } from 'events';
 import type Database from 'better-sqlite3';
-import type { ChatTurnType, NudgeButtonType } from '@wolfie/shared';
+import type { ChatTurnType, Nudge, NudgeButtonType, NudgeResponse } from '@wolfie/shared';
 import type { ChatMessageView, WatchCitation, WatchResource } from '../../common/ipc-intelligence.js';
 
 // Wolfie's chat history (the overlay chat panel). Kept in SQLite so it survives closing the chat
@@ -108,3 +109,29 @@ export function isTransient(text: string): boolean {
   return /^let me take a look/i.test(text.trim());
 }
 
+
+/**
+ * Records help-flow steps and offers as they are shown, and the student's button presses, from the
+ * nudge queue. Returns the unsubscribe.
+ */
+export function attachChatLog(queue: EventEmitter, log: ChatLog, notify: () => void): () => void {
+  const onShow = (nudge: Nudge) => {
+    if (nudge.kind !== 'stuck' || isTransient(nudge.text)) return;
+    log.add({ role: 'wolfie', text: nudge.text, nudgeId: nudge.id, buttons: nudge.buttons });
+    notify();
+  };
+  const onResponse = (response: NudgeResponse) => {
+    const label = log.buttonLabel(response.id, response.action);
+    if (!log.markAnswered(response.id) && !label) return;
+    if (label) log.add({ role: 'user', text: label });
+    notify();
+  };
+  queue.on('show', onShow);
+  // First in line: the press is recorded before the help flow reacts to it (the next hint step is
+  // often shown synchronously, and would otherwise land above the press)
+  queue.prependListener('response', onResponse);
+  return () => {
+    queue.off('show', onShow);
+    queue.off('response', onResponse);
+  };
+}
