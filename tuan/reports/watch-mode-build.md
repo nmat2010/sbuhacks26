@@ -169,3 +169,5 @@
   - Vague signals keep the 3 min quiet plus the 10 min weaker period.
   - "I'm good" still silences offers for the session.
 - Tests: 635 pass.
+
+- Follow-up: the bubble queue spaced help offers 3 min apart (default `nudge.cooldown_minutes.stuck`), which would have delayed the re-offer to ~3 min after the first offer. The default is now 1 min; the engine paces offers itself.

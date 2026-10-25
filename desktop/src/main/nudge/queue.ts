@@ -39,7 +39,7 @@ export class NudgeQueue extends EventEmitter {
       cooldownMinutes: config?.cooldownMinutes ?? {
         distraction: 10,
         ai_tool: 10,
-        stuck: 3,
+        stuck: 1,
         streak: 60,
         other: 5
       },

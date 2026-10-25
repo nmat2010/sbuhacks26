@@ -182,7 +182,9 @@ export const SettingsDefaults: SettingsValues = {
   'monitoring.capture_page_text': true,
   'monitored.rule_cooldown_minutes': 10,
   'nudge.max_per_hour': 12,
-  'nudge.cooldown_minutes': { distraction: 10, ai_tool: 10, stuck: 3, streak: 60, other: 5 },
+  // stuck: 1 min. The escalation engine paces offers itself (steps, decline quiet, "I'm good");
+  // this is only a safety net, and must not exceed the 1 min re-offer for a new wrong answer
+  'nudge.cooldown_minutes': { distraction: 10, ai_tool: 10, stuck: 1, streak: 60, other: 5 },
   'stuck.idle_minutes': 4,
   'stuck.long_problem_minutes': 12,
   'stuck.thresholds': {
