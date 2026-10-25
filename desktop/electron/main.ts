@@ -343,6 +343,32 @@ app.whenReady().then(() => {
           await new Promise((r) => setTimeout(r, 1200));
           writeFileSync(process.env.WOLFIE_SMOKE_REPORT, (await dash.webContents.capturePage()).toPNG());
         }
+        // WOLFIE_SMOKE_LAUNCH=<png prefix>: a suggested link in the chat is clicked; pictures of
+        // Wolfie's launch where he stands, and whether the usual Wolfie hides and comes back
+        if (process.env.WOLFIE_SMOKE_LAUNCH && overlayWindow) {
+          const win = overlayWindow;
+          const ui = (js: string) => win.webContents.executeJavaScript(js);
+          await new Promise((r) => setTimeout(r, 1500));
+          await ui("document.querySelector('.mascot').click(); 0");
+          await new Promise((r) => setTimeout(r, 500));
+          await ui(`(() => {
+            const input = document.querySelector('.hint-input');
+            const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+            set.call(input, 'recommend videos to learn factor analysis');
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            document.querySelector('.send-btn').click();
+          })()`);
+          for (let i = 0; i < 40 && !(await ui("!!document.querySelector('.resource-link')")); i++) await new Promise((r) => setTimeout(r, 250));
+          const mascotVisible = () => ui("getComputedStyle(document.querySelector('.mascot').parentElement).visibility");
+          console.log(`[smoke] launch: card=${await ui("document.querySelector('.resource-link')?.title")} mascot=${await mascotVisible()}`);
+          await ui("document.querySelector('.resource-link').click(); 0");
+          for (let i = 0; i < 18; i++) {
+            await new Promise((r) => setTimeout(r, 300));
+            const stage = await ui("document.querySelector('.launch-layer .mascot-wolfie')?.className.replace('mascot-wolfie ', '') ?? (document.querySelector('.launch-layer') ? 'underground' : 'done')");
+            console.log(`[smoke] launch: t=${(i + 1) * 300}ms ${stage} mascot=${await mascotVisible()}`);
+            writeFileSync(`${process.env.WOLFIE_SMOKE_LAUNCH}-${String(i).padStart(2, '0')}.png`, (await win.webContents.capturePage()).toPNG());
+          }
+        }
         // WOLFIE_SMOKE_DASH=<png prefix>: a picture of every dashboard page (after one short session)
         if (process.env.WOLFIE_SMOKE_DASH && dashboardWindow) {
           const dash = dashboardWindow;

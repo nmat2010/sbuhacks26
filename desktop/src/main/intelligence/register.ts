@@ -455,6 +455,11 @@ function registerChat(): void {
   handle('open-link', async (url) => {
     const target = safeUrl(typeof url === 'string' ? url : null);
     if (!target) return { success: false };
+    // Smoke runs never open the student's browser
+    if (process.env.WOLFIE_SMOKE === '1') {
+      console.log(`[smoke] open-link ${target}`);
+      return { success: true };
+    }
     await shell.openExternal(target);
     return { success: true };
   });

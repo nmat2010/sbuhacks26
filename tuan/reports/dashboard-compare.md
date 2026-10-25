@@ -71,3 +71,25 @@ For Tuan to decide later what to keep.
   - **`CountUp`** and small edits to her own (unused) pages.
 - **Conflict:** only `App.tsx` imports. Kept our pages and added `MascotTransitionProvider` and `motion.css`.
 - **Verified:** all five pages render in the real app, and a screenshot caught a page mid-rise. 707 tests pass. Typecheck and lint have no errors.
+
+## Wolfie's launch for chat links (Tuan's idea, Thu's animation)
+- **What happens:** clicking a suggested resource (a YouTube video or article card) in the overlay chat plays Thu's mascot launch **where Wolfie stands**:
+  1. the usual Wolfie hides (`visibility: hidden`, so he keeps his place);
+  2. the launch Wolfie crouches, digs a hole, bursts up and dives in;
+  3. the link opens while he's underground;
+  4. he emerges from the same hole, lands and waves, then the usual Wolfie is back in the same spot.
+  - It takes about 3.2 s.
+- **Implementation:** `overlay/components/LaunchTransition.tsx` (`LaunchProvider` / `useLaunch`).
+  - Reuses Thu's sprite sheets, her phase timings, her spark and dirt bursts and her CSS classes.
+  - Has no iris, dimming or sign, because the overlay is transparent over the student's screen.
+  - It's sized and placed from Wolfie's own box (`.mascot`).
+  - Sound follows her Appearance setting (`dash-prefs-get`), and reduced motion skips the animation.
+  - Brightspace (future work) keeps her dashboard version.
+- **Smoke runs** never open the browser: `open-link` only logs during `WOLFIE_SMOKE`.
+- **Verified** (`WOLFIE_SMOKE_LAUNCH`, scratch profile): the demo Wolfie suggested a real YouTube video and the card was clicked. The timeline was:
+  - 0.3–1.2 s: start, dig, release, dive (usual Wolfie hidden);
+  - about 1.4 s: link opened;
+  - 1.8–3.0 s: emerge, land, wave;
+  - 3.3 s: the usual Wolfie visible again.
+  - Frames show it all at Wolfie's spot.
+- Tests: 707 pass. Typecheck and lint have no errors.
