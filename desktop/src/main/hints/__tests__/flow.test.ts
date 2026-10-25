@@ -646,3 +646,42 @@ describe('captureActiveWindow windowOnly', () => {
     expect(getSources.mock.calls.some(([o]) => o.types.includes('screen'))).toBe(false);
   });
 });
+
+describe('hint flow: hints follow the flagged wrong answer (two on screen)', () => {
+  const issues = [
+    { question: 'What is underfitting?', issue: 'This describes overfitting rather than underfitting.' },
+    { question: '2x + 5 = 13', issue: "The equation here doesn't match the original." }
+  ];
+  const watch = (mode: 'learning' | 'homework') => ({
+    active: () => true,
+    mode: () => mode,
+    contextText: () => 'notes',
+    currentFrame: async () => 'data:image/jpeg;base64,QUFB',
+    explain: vi.fn(async () => ({ ok: true as const, text: 'direct answer', label: 'x' })),
+    openIssues: () => issues
+  });
+
+  it('the ladder is about the first flagged problem, even in learning mode (hints, never the answer)', async () => {
+    const w = watch('learning');
+    const t = setup({ watch: w, summary: null });
+    t.bus.emit('help-requested', 'auto');
+    await t.settle();
+    expect(w.explain).not.toHaveBeenCalled();
+    const [context] = t.requestHintsSpy.mock.calls[0];
+    expect(context.focus).toContain('What is underfitting?');
+    expect(context.focus).toContain('overfitting rather than underfitting');
+  });
+
+  it('after "I got it", offers hints for the next one, and they focus on it', async () => {
+    const t = setup({ watch: watch('homework'), summary: null });
+    t.bus.emit('help-requested', 'auto');
+    await t.settle();
+    t.press(ACTIONS.GOT_IT);
+    expect(t.last().text).toContain("one more thing that looks off: the equation here doesn't match the original");
+    expect(labels(t.last())).toEqual(['next_issue', ACTIONS.IM_GOOD]);
+    t.press('next_issue');
+    await t.settle();
+    const [context] = t.requestHintsSpy.mock.calls[1];
+    expect(context.focus).toContain('2x + 5 = 13');
+  });
+});

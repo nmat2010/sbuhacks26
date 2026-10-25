@@ -171,3 +171,19 @@
 - Tests: 635 pass.
 
 - Follow-up: the bubble queue spaced help offers 3 min apart (default `nudge.cooldown_minutes.stuck`), which would have delayed the re-offer to ~3 min after the first offer. The default is now 1 min; the engine paces offers itself.
+
+## Update: two wrong answers, the hint went to the other one
+- **Reported:** a Doc with two wrong answers (an underfitting definition that describes overfitting, and an equation copied as `= 12` instead of `= 13`). The offer named the underfitting issue, but "give me a hint" helped with the equation.
+- **Cause:** each look recorded one `answer_check`, and the hint ladder didn't know which problem the offer was about, so the model chose on its own.
+- **Fix:**
+  - **Prompt `watch-observe.v3`:** `answer_checks` has one entry per answered question (up to 4), each with its `question`.
+  - **Watcher:** flags each new wrong answer and keeps `openIssues()` in screen order; an issue is dropped when a later look sees it corrected, or after 10 min unseen.
+  - **Offer** lists all issues: "Hmm, 2 things look off: (1) …; (2) …. Want a hint? We'll start with the first."
+  - **Hint flow:**
+    - the ladder gets `HintContext.focus` (question plus what looks off) for the first open issue, and the hint prompt is told to help only with it;
+    - a flagged wrong answer always gets hints, even in learning mode;
+    - after "I got it", Wolfie offers hints for the next issue (`next_issue`).
+- **Verified on real models with Tuan's exact Doc text:**
+  - `gemini-3.1-flash-lite` returned both checks: "describes overfitting rather than underfitting"; "transcribed as 2x + 5 = 12 instead of 2x + 5 = 13".
+  - The focused ladder on `gemini-3.5-flash-lite` addressed the definition: "Does it describe a model that is too detailed, or one that is too simple?"
+- Tests: 640 pass.

@@ -11,6 +11,7 @@ import ideasV1 from './ideas.v1.md?raw';
 import readingV1 from './reading.v1.md?raw';
 import watchObserveV1 from './watch-observe.v1.md?raw';
 import watchObserveV2 from './watch-observe.v2.md?raw';
+import watchObserveV3 from './watch-observe.v3.md?raw';
 import watchAnswerV1 from './watch-answer.v1.md?raw';
 
 // Versioned prompt files (SPEC 6: prompts are files, not inline strings). To change a prompt,
@@ -30,6 +31,7 @@ export const PROMPTS = {
   'reading.v1': readingV1,
   'watch-observe.v1': watchObserveV1,
   'watch-observe.v2': watchObserveV2,
+  'watch-observe.v3': watchObserveV3,
   'watch-answer.v1': watchAnswerV1
 } as const;
 

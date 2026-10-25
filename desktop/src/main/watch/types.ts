@@ -23,14 +23,19 @@ export const ObservationSchema = z.object({
     confidence: z.number().min(0).max(1),
     reason: z.string().max(240).nullable()
   }),
-  answer_check: z
-    .object({
-      visible_answer: z.string().max(240).nullable(),
-      looks_correct: z.boolean().nullable(),
-      issue: z.string().max(240).nullable()
-    })
-    .nullable()
-    .default(null)
+  /** One entry per question/problem the student answered on screen (several can be wrong at once). */
+  answer_checks: z
+    .array(
+      z.object({
+        /** The question or problem this answer belongs to, short ("What is underfitting?", "2x + 5 = 13"). */
+        question: z.string().max(200).nullable(),
+        visible_answer: z.string().max(240).nullable(),
+        looks_correct: z.boolean().nullable(),
+        issue: z.string().max(240).nullable()
+      })
+    )
+    .max(4)
+    .default([])
 });
 
 export type Observation = z.infer<typeof ObservationSchema>;

@@ -210,7 +210,7 @@ describe('Watcher', () => {
     reply = obs({
       mode: 'homework',
       activity: 'homework',
-      answer_check: { visible_answer: 'x = 9', looks_correct: false, issue: 'sign error when moving 5' }
+      answer_checks: [{ question: null, visible_answer: 'x = 9', looks_correct: false, issue: 'sign error when moving 5' }]
     });
     await w.tick();
     frame = FRAME_B;
@@ -225,14 +225,14 @@ describe('Watcher', () => {
     reply = obs({
       activity: 'writing',
       mode: 'learning',
-      answer_check: { visible_answer: 'learns the training data too well', looks_correct: false, issue: 'This describes overfitting rather than underfitting.' }
+      answer_checks: [{ question: null, visible_answer: 'learns the training data too well', looks_correct: false, issue: 'This describes overfitting rather than underfitting.' }]
     });
     await w.tick();
     expect(signals).toEqual([
       expect.objectContaining({ type: 'answer_seen_wrong', metadata: { source: 'watch', issue: 'This describes overfitting rather than underfitting.' } })
     ]);
     signals = [];
-    reply = obs({ activity: 'browsing', mode: 'other', answer_check: { visible_answer: '42', looks_correct: false, issue: 'x' } });
+    reply = obs({ activity: 'browsing', mode: 'other', answer_checks: [{ question: null, visible_answer: '42', looks_correct: false, issue: 'x' }] });
     frame = FRAME_B;
     now += 8000;
     await w.tick();
@@ -305,7 +305,7 @@ describe('Watcher', () => {
 
   it('reset() forgets flagged answers so a new session can flag them again', async () => {
     const w = make();
-    reply = obs({ mode: 'homework', answer_check: { visible_answer: 'x = 9', looks_correct: false, issue: 'sign' } });
+    reply = obs({ mode: 'homework', answer_checks: [{ question: null, visible_answer: 'x = 9', looks_correct: false, issue: 'sign' }] });
     await w.tick();
     w.reset();
     now += 8000;
@@ -344,7 +344,7 @@ describe('Watcher races and capture limits (review fixes)', () => {
         }
       })
     });
-    reply = obs({ mode: 'homework', answer_check: { visible_answer: 'x = 9', looks_correct: false, issue: 'sign' } });
+    reply = obs({ mode: 'homework', answer_checks: [{ question: null, visible_answer: 'x = 9', looks_correct: false, issue: 'sign' }] });
     const pending = slow.tick();
     await new Promise((r) => setTimeout(r, 0));
     slow.reset(); // e.g. the session ended or memory was cleared
@@ -508,5 +508,39 @@ describe('Watcher: quick reaction to a window switch', () => {
     front = { app: 'Messages', pid: 200, windowId: 9, title: 'Mom' };
     await w.tick();
     expect(w.lookingAt()).toBeNull();
+  });
+});
+
+describe('Watcher: several answers on one screen', () => {
+  const twoWrong = obs({
+    activity: 'homework',
+    mode: 'homework',
+    answer_checks: [
+      { question: 'What is underfitting?', visible_answer: 'learns the training data too closely', looks_correct: false, issue: 'This describes overfitting rather than underfitting.' },
+      { question: '2x + 5 = 13', visible_answer: '2x + 5 = 12 ... x = 3.5', looks_correct: false, issue: "The equation here doesn't match the original (13 vs 12)." }
+    ]
+  });
+
+  it('flags every wrong answer and keeps them as open issues in screen order', async () => {
+    const w = make();
+    reply = twoWrong;
+    await w.tick();
+    expect(signals.filter((s) => s.type === 'answer_seen_wrong')).toHaveLength(2);
+    expect(w.openIssues().map((i) => i.question)).toEqual(['What is underfitting?', '2x + 5 = 13']);
+  });
+
+  it('drops an issue once that answer is seen corrected', async () => {
+    const w = make();
+    reply = twoWrong;
+    await w.tick();
+    reply = obs({
+      activity: 'homework',
+      mode: 'homework',
+      answer_checks: [{ question: 'What is underfitting?', visible_answer: 'too simple to capture the pattern', looks_correct: true, issue: null }]
+    });
+    frame = FRAME_B;
+    now += 8000;
+    await w.tick();
+    expect(w.openIssues().map((i) => i.question)).toEqual(['2x + 5 = 13']);
   });
 });

@@ -117,6 +117,8 @@ export class Watcher {
   private lastRecordAt: number | null = null;
   private weakStreak = 0;
   private flaggedAnswers = new Set<string>();
+  /** Wrong answers on screen that haven't been seen corrected yet (one per question), oldest first. */
+  private issues: Array<{ question: string | null; issue: string; answer: string; lastSeen: number }> = [];
   private state: WatcherState = 'idle';
   private skipReason: SkipReason | null = null;
   /** The last limit hit was Gemini's own daily quota (not Wolfie's watch.calls_per_day). */
@@ -172,6 +174,16 @@ export class Watcher {
     // At most one look every POKE_GAP_MS, so flicking through apps doesn't spend a call per window
     const since = this.lastTickAt === null ? Infinity : this.deps.now() - this.lastTickAt;
     this.schedule(Math.max(0, POKE_GAP_MS - since), this.loopToken);
+  }
+
+  /**
+   * Wrong answers seen recently and not yet corrected, in screen order. The help flow works on the
+   * first one, and the offer lists them, so the hint always matches what was flagged.
+   */
+  openIssues(): Array<{ question: string | null; issue: string }> {
+    const now = this.deps.now();
+    this.issues = this.issues.filter((i) => now - i.lastSeen <= ISSUE_TTL_MS);
+    return this.issues.map(({ question, issue }) => ({ question, issue }));
   }
 
   /** True when watching stopped on Gemini's daily quota rather than Wolfie's own cap. */
@@ -288,6 +300,7 @@ export class Watcher {
     this.lastRecordAt = null;
     this.weakStreak = 0;
     this.flaggedAnswers.clear();
+    this.issues = [];
     this.frame = null;
   }
 
@@ -434,7 +447,7 @@ export class Watcher {
     };
     return deps.llm().generate({
       task: 'watch_observe',
-      system: renderPrompt('watch-observe.v2'),
+      system: renderPrompt('watch-observe.v3'),
       messages: [{ role: 'user', content: JSON.stringify(input) }],
       images: [parseImageDataUrl(dataUrl)],
       schema: ObservationSchema,
@@ -454,19 +467,30 @@ export class Watcher {
 
   private emitSignals(obs: Observation, now: number): void {
     const { deps } = this;
-    const check = obs.answer_check;
-    // A wrong answer counts in any study activity (a Doc with written answers, notes, code),
-    // not only on a problem-set page
-    if (STUDY_ACTIVITIES.has(obs.activity) && check?.looks_correct === false && check.visible_answer) {
-      const answerKey = check.visible_answer.trim().toLowerCase();
-      if (!this.flaggedAnswers.has(answerKey)) {
+    // Every answer on screen is checked separately: one wrong answer never hides another
+    if (STUDY_ACTIVITIES.has(obs.activity)) {
+      for (const check of obs.answer_checks) {
+        const key = questionKey(check.question);
+        const open = this.issues.find((i) => questionKey(i.question) === key);
+        if (check.looks_correct === true) {
+          // Seen corrected: no longer an open issue
+          if (open) this.issues = this.issues.filter((i) => i !== open);
+          continue;
+        }
+        if (check.looks_correct !== false || !check.visible_answer) continue;
+        const issue = check.issue?.trim() || 'this answer looks off';
+        if (open) Object.assign(open, { issue, answer: check.visible_answer, lastSeen: now });
+        else this.issues.push({ question: check.question, issue, answer: check.visible_answer, lastSeen: now });
+        // A new answer (not the same text seen before) is flagged once
+        const answerKey = `${key}|${check.visible_answer.trim().toLowerCase()}`;
+        if (this.flaggedAnswers.has(answerKey)) continue;
         this.flaggedAnswers.add(answerKey);
         deps.emitSignal({
           type: 'answer_seen_wrong',
           strength: 'strong',
           timestamp: now,
           // The short "what is off" goes into the offer text; it never contains the answer
-          metadata: { source: 'watch', issue: check.issue ?? undefined }
+          metadata: { source: 'watch', issue, question: check.question ?? undefined }
         });
       }
     }
@@ -488,6 +512,13 @@ export class Watcher {
       this.weakStreak = 0;
     }
   }
+}
+
+/** Open issues not seen again for this long are dropped (the student moved on). */
+const ISSUE_TTL_MS = 10 * 60_000;
+
+function questionKey(question: string | null): string {
+  return (question ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
 /** Same window, same page and the same pixels: nothing new to look at. */

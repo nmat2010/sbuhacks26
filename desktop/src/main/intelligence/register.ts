@@ -307,6 +307,7 @@ function registerWatch(): void {
     active: () => controller.isActive(),
     mode: () => answers.mode(),
     contextText: () => memory.toPromptText(6000),
+    openIssues: () => w.openIssues(),
     currentFrame: () => w.captureNow(20_000),
     explain: async (question, previousAnswer) => {
       const res = await answers.ask({ question: question ?? '', inputMode: 'text', proactive: question === null, previousAnswer });

@@ -64,6 +64,8 @@ export class EscalationEngine {
   private offer: { id: string } | null = null;
   /** Watch mode saw a new wrong answer that hasn't been offered help for yet. */
   private wrongAnswerPending = false;
+  /** Wrong answers flagged since the last offer was answered (one per question), for the offer text. */
+  private wrongIssues: Array<{ question: string | null; issue: string }> = [];
   /** When the last offer was declined ("Not now"); null if not declined since. */
   private declinedAt: number | null = null;
   private ladderOpen = false;
@@ -104,6 +106,7 @@ export class EscalationEngine {
     if (open) {
       this.signals.clear();
       this.wrongAnswerPending = false;
+      this.wrongIssues = [];
       this.offer = null;
       this.setLevelDisplay(0);
     }
@@ -129,6 +132,7 @@ export class EscalationEngine {
     this.state = applyEscalationEvent(this.state, { type: 'im_good', at: now, problemId: this.state.currentProblemId });
     this.signals.clear();
     this.wrongAnswerPending = false;
+    this.wrongIssues = [];
     this.offer = null;
     this.setLevelDisplay(0);
     this.deps.log('offer.declined', { reason: 'im_good', problem: this.redactedProblem() });
@@ -161,7 +165,16 @@ export class EscalationEngine {
     this.signals.set(signal.type, { signal, expiresAt: now + this.lifetimeMs(signal.type) });
     if (fresh) this.deps.log('stuck.signal', { type: signal.type, strength: signal.strength });
     // Watch mode read a (new) wrong answer: offer help without climbing glance -> "?" (see tick)
-    if (signal.type === 'answer_seen_wrong') this.wrongAnswerPending = true;
+    if (signal.type === 'answer_seen_wrong') {
+      this.wrongAnswerPending = true;
+      const issue = typeof signal.metadata?.issue === 'string' ? signal.metadata.issue : null;
+      const question = typeof signal.metadata?.question === 'string' ? signal.metadata.question : null;
+      if (issue) {
+        const same = this.wrongIssues.findIndex((w) => (w.question ?? '') === (question ?? ''));
+        if (same >= 0) this.wrongIssues[same] = { question, issue };
+        else this.wrongIssues.push({ question, issue });
+      }
+    }
     this.tick();
   }
 
@@ -175,6 +188,7 @@ export class EscalationEngine {
     this.state = applyEscalationEvent(this.state, { type: 'accepted', at: now });
     this.signals.clear();
     this.wrongAnswerPending = false;
+    this.wrongIssues = [];
     this.offer = null;
     this.setLevelDisplay(0);
     if (trigger === 'auto' || hadOffer) this.deps.log('offer.accepted', { trigger });
@@ -188,6 +202,7 @@ export class EscalationEngine {
     this.state = applyEscalationEvent(this.state, { type: 'problem_changed', at: this.deps.now(), problemId: key });
     this.signals.clear();
     this.wrongAnswerPending = false;
+    this.wrongIssues = [];
     this.offer = null;
     this.setLevelDisplay(0);
   }
@@ -208,6 +223,7 @@ export class EscalationEngine {
         this.state = applyEscalationEvent(this.state, { type: 'declined', at: now });
         this.signals.clear();
         this.wrongAnswerPending = false;
+        this.wrongIssues = [];
         this.declinedAt = now;
         this.offer = null;
         this.setLevelDisplay(0);
@@ -288,12 +304,11 @@ export class EscalationEngine {
 
   /** When Watch mode saw a wrong answer, the offer says what looks off (never the answer). */
   private offerText(): string {
-    const issue = this.signals.get('answer_seen_wrong')?.signal.metadata?.issue;
-    if (typeof issue === 'string' && issue.trim()) {
-      let text = issue.trim().replace(/[.!]+$/, '');
-      // "The equation ..." -> "the equation ..." (keeps acronyms like "ML" as they are)
-      if (/^[A-Z][a-z]/.test(text)) text = text[0].toLowerCase() + text.slice(1);
-      return `Hmm, something looks off: ${text}. Want a hint?`;
+    const issues = this.wrongIssues.map((w) => tidyIssue(w.issue)).filter(Boolean);
+    if (issues.length === 1) return `Hmm, something looks off: ${issues[0]}. Want a hint?`;
+    if (issues.length > 1) {
+      const list = issues.map((t, i) => `(${i + 1}) ${t}`).join('; ');
+      return `Hmm, ${issues.length} things look off: ${list}. Want a hint? We'll start with the first.`;
     }
     return OFFER_TEXT;
   }
@@ -339,6 +354,7 @@ export class EscalationEngine {
   private reset(): void {
     this.signals.clear();
     this.wrongAnswerPending = false;
+    this.wrongIssues = [];
     this.declinedAt = null;
     this.offer = null;
     this.ladderOpen = false;
@@ -365,4 +381,11 @@ export class EscalationEngine {
   private redactedProblem(): string {
     return this.isFallbackProblem() ? 'session' : 'problem';
   }
+}
+
+/** "The equation ..." -> "the equation ..." without a trailing period (keeps acronyms like "ML"). */
+function tidyIssue(issue: string): string {
+  let text = issue.trim().replace(/[.!]+$/, '');
+  if (/^[A-Z][a-z]/.test(text)) text = text[0].toLowerCase() + text.slice(1);
+  return text;
 }

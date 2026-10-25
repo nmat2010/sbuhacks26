@@ -470,3 +470,20 @@ describe('EscalationEngine: a new wrong answer after "Not now"', () => {
     expect(t.pushed).toHaveLength(shown);
   });
 });
+
+describe('EscalationEngine: two wrong answers at once', () => {
+  it('lists both in the offer', () => {
+    const t = setup({ voice: false });
+    for (const [question, issue] of [
+      ['What is underfitting?', 'This describes overfitting rather than underfitting.'],
+      ['2x + 5 = 13', "The equation here doesn't match the original."]
+    ]) {
+      t.bus.emit('input', t.clock.t); // same look: both arrive before the 5 s typing guard ends
+      t.bus.emit('signal', { type: 'answer_seen_wrong', strength: 'strong', timestamp: t.clock.t, metadata: { source: 'watch', issue, question } });
+    }
+    t.advance(6);
+    expect(t.pushed.at(-1)?.text).toBe(
+      "Hmm, 2 things look off: (1) this describes overfitting rather than underfitting; (2) the equation here doesn't match the original. Want a hint? We'll start with the first."
+    );
+  });
+});

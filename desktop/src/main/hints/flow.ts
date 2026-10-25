@@ -44,6 +44,8 @@ export const FLOW_TEXT = {
 
 /** Bubble action for "Explain more simply" on a Watch-mode explanation. */
 export const EXPLAIN_SIMPLER = 'explain_simpler';
+/** Bubble action: start hints for the next wrong answer Watch mode flagged. */
+export const NEXT_ISSUE = 'next_issue';
 
 /**
  * Watch mode (WATCH_MODE.md). When it is on, help requests use what Wolfie has followed this
@@ -65,6 +67,8 @@ export interface WatchHooks {
     question: string | null,
     previousAnswer?: string
   ) => Promise<{ ok: true; text: string; label: string } | { ok: false; message: string }>;
+  /** Wrong answers Watch mode saw and that aren't corrected yet, in screen order. */
+  openIssues?: () => Array<{ question: string | null; issue: string }>;
 }
 
 export interface HintFlowDeps {
@@ -102,6 +106,8 @@ export interface HintFlowDeps {
 }
 
 interface Ladder {
+  /** The flagged wrong answer this ladder is about (Watch mode), if any. */
+  focusKey: string | null;
   context: HintContext;
   source: HintSourceType;
   assessment: boolean;
@@ -118,6 +124,10 @@ export class HintFlow {
   private ladder: Ladder | null = null;
   /** A Watch-mode explanation on screen (learning mode); it holds offers back like a ladder does. */
   private explanation: { nudgeId: string | null; lastTouch: number; text: string } | null = null;
+  /** Flagged wrong answers already worked through this session ("I got it"). */
+  private handledIssues = new Set<string>();
+  /** The bubble offering hints for the next flagged wrong answer. */
+  private nextIssueNudgeId: string | null = null;
   private busy = false;
   private confirmedSessions = new Set<string>();
   private unsubs: Array<() => void> = [];
@@ -137,6 +147,8 @@ export class HintFlow {
       deps.onNudgeResponse((r) => this.onResponse(r)),
       deps.onSessionChange(() => {
         this.confirmedSessions.clear();
+        this.handledIssues.clear();
+        this.nextIssueNudgeId = null;
         this.close('session_changed');
         this.closeExplanation('session_changed');
       })
@@ -205,7 +217,9 @@ export class HintFlow {
       // Asking again while an explanation is up: start over with a fresh look
       this.closeExplanation('replaced');
     }
-    if (deps.watch?.active() && deps.watch.mode() === 'learning') {
+    // A flagged wrong answer always gets hints (never the answer), whatever the mode
+    const issue = this.nextIssue();
+    if (deps.watch?.active() && deps.watch.mode() === 'learning' && !issue) {
       await this.explainFromSession(trigger, null);
       return;
     }
@@ -220,7 +234,7 @@ export class HintFlow {
       );
       const session = deps.getSession();
       const sessionId = session?.id ?? 'no-session';
-      const assembled = await this.assembleContext(trigger, sessionId);
+      const assembled = await this.assembleContext(trigger, sessionId, issue);
       if (!assembled.ok) {
         clearTimeout(thinkingTimer);
         deps.setLadderOpen(false);
@@ -233,6 +247,7 @@ export class HintFlow {
       clearTimeout(thinkingTimer);
 
       this.ladder = {
+        focusKey: issue?.key ?? null,
         context,
         source,
         assessment,
@@ -259,10 +274,11 @@ export class HintFlow {
 
   private async assembleContext(
     trigger: HintTriggerType,
-    sessionId: string
+    sessionId: string,
+    issue: { focus: string } | null = null
   ): Promise<{ ok: true; context: HintContext; source: HintSourceType } | { ok: false; message: string }> {
     const { deps } = this;
-    const base = { sessionId, device: 'desktop' as const, trigger };
+    const base = { sessionId, device: 'desktop' as const, trigger, ...(issue ? { focus: issue.focus } : {}) };
 
     let summary: PageSummary | null = null;
     try {
@@ -314,7 +330,42 @@ export class HintFlow {
 
   // ---- Responses ----------------------------------------------------------------------------
 
+  /** The first flagged wrong answer not worked through yet, as hint focus. */
+  private nextIssue(): { key: string; focus: string; issue: string } | null {
+    for (const i of this.deps.watch?.openIssues?.() ?? []) {
+      const key = `${i.question ?? ''}|${i.issue}`.toLowerCase();
+      if (this.handledIssues.has(key)) continue;
+      const focus = i.question ? `Problem: ${i.question}\nWhat looks off: ${i.issue}` : `What looks off: ${i.issue}`;
+      return { key, focus, issue: i.issue };
+    }
+    return null;
+  }
+
+  /** After one flagged answer is done, offer hints for the next one (if any). */
+  private offerNextIssue(): boolean {
+    const next = this.nextIssue();
+    if (!next) return false;
+    const issue = next.issue.trim().replace(/[.!]+$/, '');
+    this.nextIssueNudgeId = this.deps.push({
+      kind: 'stuck',
+      level: 3,
+      text: `Nice! There's one more thing that looks off: ${issue[0].toLowerCase()}${issue.slice(1)}. Want a hint for it too?`,
+      buttons: [
+        { label: 'Yes, help with that', action: NEXT_ISSUE, variant: 'primary' },
+        { label: "I'm good", action: ACTIONS.IM_GOOD, variant: 'secondary' }
+      ],
+      priority: 8
+    });
+    return true;
+  }
+
   private onResponse(response: NudgeResponse): void {
+    if (this.nextIssueNudgeId && response.id === this.nextIssueNudgeId) {
+      this.nextIssueNudgeId = null;
+      if (response.action === NEXT_ISSUE) void this.onHelpRequested('manual');
+      else if (response.action === ACTIONS.IM_GOOD) this.deps.markImGood();
+      return;
+    }
     if (this.explanation && response.id === this.explanation.nudgeId) {
       this.applyExplanation(response.action);
       return;
@@ -422,8 +473,9 @@ export class HintFlow {
         else this.showLevel(ladder.level + 1);
         return;
       case ACTIONS.GOT_IT:
+        if (ladder.focusKey) this.handledIssues.add(ladder.focusKey);
         this.close('got_it');
-        this.say(FLOW_TEXT.gotIt);
+        if (!this.offerNextIssue()) this.say(FLOW_TEXT.gotIt);
         return;
       case ACTIONS.IM_GOOD:
         this.deps.markImGood();
