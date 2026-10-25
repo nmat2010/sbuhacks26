@@ -315,7 +315,7 @@ function registerWatch(): void {
   watchHooks = {
     active: () => controller.isActive(),
     mode: () => answers.mode(),
-    contextText: () => memory.toPromptText(6000),
+    contextText: () => memory.toPromptText(8000),
     openIssues: () => w.openIssues(),
     stalledQuestion: () => w.stalledQuestion(),
     currentFrame: () => w.captureNow(20_000),

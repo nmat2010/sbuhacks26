@@ -166,7 +166,7 @@ export class WatchController {
         locators: [...s.locators],
         points: [...s.points]
       })),
-      recent: memory.recentTimeline(20).map((t) => ({ ts: t.ts, activity: t.activity, mode: t.mode, summary: t.summary }))
+      recent: memory.recentTimeline(60).map((t) => ({ ts: t.ts, activity: t.activity, mode: t.mode, summary: t.summary }))
     };
   }
 

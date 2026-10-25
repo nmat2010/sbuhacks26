@@ -246,3 +246,26 @@
 - **Note:** the smoke run used the real profile and added 2 test messages to Tuan's chat; they were deleted. Smoke runs should set `WOLFIE_USER_DATA`.
 - **Optional later:** with billing on, Gemini's Google Search tool could replace the YouTube page lookup.
 - Tests: 662 pass (48 + 538 + 76). Typecheck and lint are clean (only existing warnings).
+
+## Update: longer memory, page-bound issues, logging for gaps in looks
+- **Reported:**
+  1. While watching the suggested PCA video, Wolfie didn't recognize it.
+  2. `watch-memory-get` stopped at 10 sources and 20 recent looks.
+  3. "Help me with this" gave a hint for an equation Tuan had already deleted.
+- **(2) Memory limits.** The view showed 20 of the 60 stored looks, and 60 looks at ~10 s is only about 10 minutes. The bigger limit was what reaches the model: 8 sources and the last 10 looks.
+  - **Stored:** 60 sources and 720 looks (about 2 h).
+  - **Prompt timeline:** back-to-back looks at one source are merged into one line ("60 min ago until 30 min ago: …"), up to 40 lines, so a whole session fits instead of the last ~2 minutes. Up to 15 sources go in.
+  - **Budgets:** answers 9000 chars (was 5000); hint context 8000 (was 6000). The watcher's own notes stay at 1500.
+  - **View:** `watch-memory-get` returns 60 recent looks.
+- **(3) Deleted question.**
+  - **Cause:** an issue stayed open for 10 min unless seen corrected; deleting it didn't count, and the issue wasn't tied to a page.
+  - **Fix:** each issue remembers its page (memory source key).
+    - `openIssues()` returns only issues on the page the student is on now.
+    - An issue is dropped after two looks at its page that no longer show that question (deleted, or moved on). Two looks, because one look can miss an answer.
+- **(1) Video not recognized.** The DB shows no looks from 00:43:59 to 00:45:54, but skips and failed looks were never logged, so the cause can't be told.
+  - Ruled out: the default browser is Chrome, and the helper (2 s) and AppleScript probe (2.5 s) have timeouts.
+  - **Added logging:**
+    - `watch.skipped {state, reason}`: once per reason until the next real look (no titles or apps);
+    - `watch.failed {code}` for each failed look (e.g. RATE_LIMITED for a Gemini 503/429).
+    - The next gap can be read from the `events` table.
+- Tests: 666 pass (48 + 542 + 76). Typecheck and lint are clean (existing warnings only).

@@ -124,9 +124,12 @@ export class Watcher {
   /** Questions a thinking-pause offer was already raised for (once per question). */
   private stalledFlagged = new Set<string>();
   /** Wrong answers on screen that haven't been seen corrected yet (one per question), oldest first. */
-  private issues: Array<{ question: string | null; issue: string; answer: string; lastSeen: number }> = [];
+  /** `sourceKey`: the document it was seen in; `misses`: later looks at it without that question. */
+  private issues: Array<{ question: string | null; issue: string; answer: string; lastSeen: number; sourceKey: string | null; misses: number }> = [];
   private state: WatcherState = 'idle';
   private skipReason: SkipReason | null = null;
+  /** The last skip written to the event log, so a long skip is one event (cleared by a look). */
+  private skipLogged: string | null = null;
   /** The last limit hit was Gemini's own daily quota (not Wolfie's watch.calls_per_day). */
   private quotaExhausted = false;
   /** The browser's last answer for a window, reused while its id and title stay the same. */
@@ -183,13 +186,15 @@ export class Watcher {
   }
 
   /**
-   * Wrong answers seen recently and not yet corrected, in screen order. The help flow works on the
-   * first one, and the offer lists them, so the hint always matches what was flagged.
+   * Wrong answers seen recently and not yet corrected, in screen order, in the document the
+   * student is on now (help on another page never brings up an old problem). The help flow works
+   * on the first one, and the offer lists them, so the hint always matches what was flagged.
    */
   openIssues(): Array<{ question: string | null; issue: string }> {
     const now = this.deps.now();
     this.issues = this.issues.filter((i) => now - i.lastSeen <= ISSUE_TTL_MS);
-    return this.issues.map(({ question, issue }) => ({ question, issue }));
+    const here = this.deps.memory.latest()?.source?.key ?? null;
+    return this.issues.filter((i) => i.sourceKey === here).map(({ question, issue }) => ({ question, issue }));
   }
 
   /** The question of an active thinking pause (flagged and still the one on screen), for hint focus. */
@@ -385,6 +390,7 @@ export class Watcher {
         }
         this.skipReason = resolved.reason ?? null;
         this.setState(resolved.state);
+        this.logSkip(resolved.state, resolved.reason ?? null);
         return;
       }
       const fg = resolved.target;
@@ -399,6 +405,7 @@ export class Watcher {
         this.frame = null;
         this.skipReason = 'window_changed';
         this.setState('skipping');
+        this.logSkip('skipping', 'window_changed');
         return;
       }
       if (stale()) return;
@@ -408,6 +415,7 @@ export class Watcher {
         // 'empty': the window couldn't be captured; the whole screen is never sent instead
         this.skipReason = 'no_window';
         this.setState(shot.reason === 'permission' ? 'no_permission' : shot.reason === 'empty' ? 'skipping' : 'error');
+        this.logSkip('capture_failed', shot.reason);
         return;
       }
       const now = deps.now();
@@ -444,6 +452,7 @@ export class Watcher {
       this.emitSignals(obs, now);
       this.checkStall(deps.now());
       deps.log('watch.observed', { activity: obs.activity, mode: obs.mode, stuck: obs.stuck.likely });
+      this.skipLogged = null;
       this.setState('watching');
       deps.onLook?.();
     } catch (error) {
@@ -457,9 +466,19 @@ export class Watcher {
         console.error('[watch] observe failed:', (error as Error).message);
         this.setState('error');
       }
+      // Why a look failed (the code only), so a gap in the looks can be explained later
+      deps.log('watch.failed', { code: error instanceof LLMError ? error.code : 'UNKNOWN' });
     } finally {
       this.busy = false;
     }
+  }
+
+  /** A skipped look, logged once per reason until the next real look (no titles or apps). */
+  private logSkip(state: string, reason: string | null): void {
+    const key = `${state}|${reason ?? ''}`;
+    if (key === this.skipLogged) return;
+    this.skipLogged = key;
+    this.deps.log('watch.skipped', { state, reason });
   }
 
   private async observe(fg: WatchTarget, dataUrl: string, now: number): Promise<Observation> {
@@ -508,6 +527,15 @@ export class Watcher {
 
   private emitSignals(obs: Observation, now: number): void {
     const { deps } = this;
+    const here = deps.memory.latest()?.source?.key ?? null;
+    // A flagged question no longer on this page (deleted, or fixed and moved on) stops being open
+    // after two looks without it (one look can miss an answer)
+    const onScreen = new Set(obs.answer_checks.map((c) => questionKey(c.question)));
+    this.issues = this.issues.filter((i) => {
+      if (i.sourceKey !== here) return true;
+      i.misses = onScreen.has(questionKey(i.question)) ? 0 : i.misses + 1;
+      return i.misses < ISSUE_MISSES;
+    });
     // Every answer on screen is checked separately: one wrong answer never hides another
     if (STUDY_ACTIVITIES.has(obs.activity)) {
       for (const check of obs.answer_checks) {
@@ -520,8 +548,8 @@ export class Watcher {
         }
         if (check.looks_correct !== false || !check.visible_answer) continue;
         const issue = check.issue?.trim() || 'this answer looks off';
-        if (open) Object.assign(open, { issue, answer: check.visible_answer, lastSeen: now });
-        else this.issues.push({ question: check.question, issue, answer: check.visible_answer, lastSeen: now });
+        if (open) Object.assign(open, { issue, answer: check.visible_answer, lastSeen: now, sourceKey: here, misses: 0 });
+        else this.issues.push({ question: check.question, issue, answer: check.visible_answer, lastSeen: now, sourceKey: here, misses: 0 });
         // A new answer (not the same text seen before) is flagged once
         const answerKey = `${key}|${check.visible_answer.trim().toLowerCase()}`;
         if (this.flaggedAnswers.has(answerKey)) continue;
@@ -560,6 +588,8 @@ const STALL_LOOK_MAX_AGE_MS = 3 * 60_000;
 
 /** Open issues not seen again for this long are dropped (the student moved on). */
 const ISSUE_TTL_MS = 10 * 60_000;
+/** Looks at the same page without the flagged question before it is dropped. */
+const ISSUE_MISSES = 2;
 
 function questionKey(question: string | null): string {
   return (question ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();

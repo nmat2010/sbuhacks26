@@ -50,6 +50,27 @@ describe('SessionMemory', () => {
     expect(text).toContain('step 39');
   });
 
+  it('a long session fits: back-to-back looks at one source are one line, older sources are kept', () => {
+    const m = new SessionMemory();
+    const MIN = 60_000;
+    // 30 min on a paper, 10 min on a video, then 20 min back on the paper: 360 looks at 10 s
+    let t = 0;
+    const look = (minutes: number, over: Parameters<typeof obs>[0], url: string) => {
+      for (const end = t + minutes * MIN; t < end; t += 10_000) m.record(obs({ ...over, summary: `${over?.subject} at ${Math.round(t / MIN)}` }), ctx(t, { contentUrl: url }));
+    };
+    look(30, { subject: 'paper' }, 'https://example.edu/paper.pdf');
+    look(10, { subject: 'video', activity: 'watching_video', source: { kind: 'video', title: 'PCA', locator: null } }, 'https://www.youtube.com/watch?v=HMOI_lkzW08');
+    look(20, { subject: 'paper' }, 'https://example.edu/paper.pdf');
+    const text = m.toPromptText(9000, t);
+    expect(text).toContain('[video] PCA');
+    const timeline = text.split('Recent activity:')[1].trim().split('\n');
+    expect(timeline).toEqual([
+      '- 60 min ago until 30 min ago: paper at 30',
+      '- 30 min ago until 20 min ago: video at 40',
+      '- 20 min ago until just now: paper at 60'
+    ]);
+  });
+
   it('clear() forgets everything', () => {
     const m = new SessionMemory();
     m.record(obs(), ctx(1000));

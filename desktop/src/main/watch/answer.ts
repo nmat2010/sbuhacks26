@@ -98,7 +98,7 @@ export class WatchAnswerService {
       now: latest
         ? { activity: latest.obs.activity, subject: latest.obs.subject, summary: latest.obs.summary, locator: latest.obs.source.locator }
         : null,
-      session_notes: deps.memory.toPromptText(5000, deps.now()),
+      session_notes: deps.memory.toPromptText(9000, deps.now()),
       sources: sources.map((s) => ({ n: s.n, kind: s.kind, title: s.title, locator: s.locator, text: s.text })),
       screenshot_attached: !!frame,
       videos_attached: videos.length

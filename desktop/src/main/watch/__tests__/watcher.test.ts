@@ -545,6 +545,66 @@ describe('Watcher: several answers on one screen', () => {
   });
 });
 
+describe('Watcher: gaps in the looks are explained in the event log', () => {
+  it('logs a skip once per reason (no titles), and a failed look with its code', async () => {
+    const events: Array<[string, Record<string, unknown>]> = [];
+    const w = make({ log: (type, payload) => void events.push([type, payload]) });
+    front = { app: 'Google Chrome', pid: 100, windowId: 7, title: 'Secret - Incognito' };
+    probe = chrome({ incognito: true, title: 'Secret - Incognito' });
+    await w.tick();
+    now += 8000;
+    await w.tick();
+    expect(events).toEqual([['watch.skipped', { state: 'skipping', reason: 'private_window' }]]);
+    front = { app: 'Google Chrome', pid: 100, windowId: 7, title: 'paper.pdf' };
+    probe = chrome();
+    reply = new LLMError('overloaded', 'RATE_LIMITED', 'gemini', true);
+    now += 8000;
+    await w.tick();
+    expect(events.at(-1)).toEqual(['watch.failed', { code: 'RATE_LIMITED' }]);
+    expect(JSON.stringify(events)).not.toContain('Secret');
+  });
+});
+
+describe('Watcher: open issues follow the page (deleted questions, other pages)', () => {
+  const wrong = (questions: string[]) =>
+    obs({
+      activity: 'homework',
+      mode: 'homework',
+      answer_checks: questions.map((q) => ({ question: q, visible_answer: 'x', looks_correct: false, issue: `${q} looks off` }))
+    });
+  const look = async (w: Watcher, o: Observation) => {
+    reply = o;
+    frame = frame === FRAME_A ? FRAME_B : FRAME_A;
+    now += 8000;
+    await w.tick();
+  };
+
+  it('a question deleted from the page stops being open after two looks without it', async () => {
+    const w = make();
+    await look(w, wrong(['What is underfitting?', '2x + 5 = 13']));
+    await look(w, wrong(['What is underfitting?']));
+    expect(w.openIssues().map((i) => i.question)).toEqual(['What is underfitting?', '2x + 5 = 13']); // one miss can be noise
+    await look(w, wrong(['What is underfitting?']));
+    expect(w.openIssues().map((i) => i.question)).toEqual(['What is underfitting?']);
+    await look(w, obs({ activity: 'writing', mode: 'other' }));
+    await look(w, obs({ activity: 'writing', mode: 'other' }));
+    expect(w.openIssues()).toEqual([]);
+  });
+
+  it('help on another page does not bring up the problem from the homework page; back on it, it does', async () => {
+    const w = make();
+    await look(w, wrong(['2x + 5 = 13']));
+    front = { app: 'Google Chrome', pid: 100, windowId: 8, title: 'PCA - YouTube' };
+    probe = chrome({ host: 'www.youtube.com', title: 'PCA - YouTube', contentUrl: 'https://www.youtube.com/watch?v=HMOI_lkzW08' });
+    await look(w, obs({ activity: 'watching_video', mode: 'learning', source: { kind: 'video', title: 'PCA', locator: null } }));
+    expect(w.openIssues()).toEqual([]);
+    front = { app: 'Google Chrome', pid: 100, windowId: 7, title: 'paper.pdf' };
+    probe = chrome();
+    await look(w, wrong(['2x + 5 = 13']));
+    expect(w.openIssues().map((i) => i.question)).toEqual(['2x + 5 = 13']);
+  });
+});
+
 describe('Watcher: thinking pause on an unanswered question', () => {
   const onQuestion = obs({ activity: 'homework', mode: 'homework', unanswered_question: 'What is overfitting?' });
 

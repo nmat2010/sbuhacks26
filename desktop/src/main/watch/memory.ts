@@ -40,8 +40,13 @@ export interface ObservationContext {
   elapsedMs: number;
 }
 
-const MAX_SOURCES = 20;
-const MAX_TIMELINE = 60;
+const MAX_SOURCES = 60;
+/** About two hours of looks at one every ~10 s. */
+const MAX_TIMELINE = 720;
+/** Sources described in the prompt (most recent first, within the budget). */
+const PROMPT_SOURCES = 15;
+/** Timeline lines in the prompt; back-to-back looks at one source are one line. */
+const PROMPT_SEGMENTS = 40;
 const MAX_POINTS = 12;
 const MAX_LOCATORS = 6;
 
@@ -151,7 +156,7 @@ export class SessionMemory {
     const blocks: string[] = [];
     let used = 0;
     const sourceBudget = Math.floor(maxChars * 0.7);
-    for (const s of this.listSources().slice(0, 8)) {
+    for (const s of this.listSources().slice(0, PROMPT_SOURCES)) {
       const head = `- [${s.kind}] ${s.title}${s.url ? ` <${s.url}>` : ''} (last seen ${ago(s.lastSeen)}, ~${Math.max(1, Math.round(s.seconds / 60))} min${s.locators.length ? `, at ${s.locators.join(', ')}` : ''})`;
       const lines = [head, ...s.points.slice(-6).map((p) => `    • ${p}`)];
       while (lines.length > 1 && used + lines.join('\n').length + 1 > sourceBudget) lines.pop();
@@ -161,16 +166,33 @@ export class SessionMemory {
       used += block.length + 1;
     }
     const header = `Sources this session (oldest to newest):\n${blocks.join('\n')}\n\nRecent activity:`;
-    // Then as much of the recent timeline as fits, newest kept
+    // Then as much of the timeline as fits, newest kept. Back-to-back looks at the same source
+    // are one line (with the latest summary), so a long session fits, not just the last minutes
     const recent: string[] = [];
     let room = maxChars - header.length;
-    for (const t of [...this.timeline].reverse().slice(0, 10)) {
-      const line = `\n- ${ago(t.ts)}: ${t.summary}`;
+    for (const seg of this.segments().reverse().slice(0, PROMPT_SEGMENTS)) {
+      const when = ago(seg.from) === ago(seg.to) ? ago(seg.to) : `${ago(seg.from)} until ${ago(seg.to)}`;
+      const line = `\n- ${when}: ${seg.summary}`;
       if (line.length > room) break;
       recent.unshift(line);
       room -= line.length;
     }
     return (header + recent.join('')).slice(0, maxChars);
+  }
+
+  /** The timeline with back-to-back looks at the same source merged, oldest first. */
+  private segments(): Array<{ sourceKey: string; from: number; to: number; summary: string }> {
+    const out: Array<{ sourceKey: string; from: number; to: number; summary: string }> = [];
+    for (const t of this.timeline) {
+      const last = out.at(-1);
+      if (last && last.sourceKey === t.sourceKey) {
+        last.to = t.ts;
+        last.summary = t.summary;
+      } else {
+        out.push({ sourceKey: t.sourceKey, from: t.ts, to: t.ts, summary: t.summary });
+      }
+    }
+    return out;
   }
 
   clear(): void {
