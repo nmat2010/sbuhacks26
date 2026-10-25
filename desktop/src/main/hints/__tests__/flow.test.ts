@@ -78,6 +78,7 @@ function setup(
   const logs: string[] = [];
   const ladderOpen: boolean[] = [];
   const mascot: MascotStateType[] = [];
+  const thinking: boolean[] = [];
   let n = 0;
 
   const client = new LLMClient({ provider: opts.provider ?? new MockLLMProvider({ delayMs: 0 }), retryDelayMs: 1, log: () => {} });
@@ -120,6 +121,7 @@ function setup(
     markImGood,
     log: (type) => void logs.push(type),
     thinkingDelayMs: 10 ** 9,
+    thinking: (on) => void thinking.push(on),
     watch: opts.watch
   });
   flow.start();
@@ -128,7 +130,7 @@ function setup(
   /** Presses a button on the bubble currently on screen. */
   const press = (action: string) => queue.emit('response', { id: last().id, action, via: 'button' });
   const settle = () => new Promise((r) => setTimeout(r, 30));
-  return { flow, bus, queue, sessionChange, pushed, last, press, settle, env, logs, ladderOpen, mascot, markImGood, capture, confirm, requestPageSummary, requestHintsSpy, db };
+  return { flow, bus, queue, sessionChange, pushed, last, press, settle, env, logs, ladderOpen, mascot, thinking, markImGood, capture, confirm, requestPageSummary, requestHintsSpy, db };
 }
 
 const labels = (n: NudgeInput) => (n.buttons ?? []).map((b) => b.action);
@@ -213,6 +215,22 @@ describe('hint flow: accept -> five ladder levels', () => {
     t.press(ACTIONS.SHOW_ANSWER);
     await t.settle();
     expect(t.pushed).toHaveLength(count);
+  });
+});
+
+describe('hint flow: Wolfie thinking while a reply is on its way', () => {
+  it('thinks while the ladder is made and while "Show the answer" is asked; not for pre-built steps', async () => {
+    const t = setup();
+    t.bus.emit('help-requested', 'manual');
+    expect(t.thinking).toEqual([true]);
+    await t.settle();
+    expect(t.thinking).toEqual([true, false]);
+    t.press(ACTIONS.ANOTHER_HINT); // the next level is already there: no wait
+    expect(t.thinking).toEqual([true, false]);
+    t.press(ACTIONS.SHOW_ANSWER);
+    expect(t.thinking).toEqual([true, false, true]);
+    await t.settle();
+    expect(t.thinking).toEqual([true, false, true, false]);
   });
 });
 

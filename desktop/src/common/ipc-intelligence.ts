@@ -425,4 +425,6 @@ export interface IntelligenceEvents {
   'watch-answer': WatchAnswer;
   /** The chat history changed (new message, a step answered, cleared): the full list. */
   'chat-history-changed': ChatMessageView[];
+  /** Wolfie is working on a reply the student asked for (true) or is done (false): thinking sprite. */
+  'wolfie-thinking': boolean;
 }

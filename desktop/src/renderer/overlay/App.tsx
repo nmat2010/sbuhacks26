@@ -37,6 +37,9 @@ function App() {
   const [baseState, setBaseState] = useState<MascotStateType>('idle');
 
   useEffect(() => window.electronAPI.on('overlay-state', setBaseState), []);
+  // Thinking sprite while a reply the student asked for is on its way (wins over bubbles)
+  const [thinking, setThinking] = useState(false);
+  useEffect(() => window.electronAPI.on('wolfie-thinking', setThinking), []);
 
   // While the chat is open it takes the mouse, and help steps are shown in it instead of a bubble
   const chatOpenRef = React.useRef(false);
@@ -106,7 +109,9 @@ function App() {
 
   // Update mascot state based on current nudge
   useEffect(() => {
-    if (currentNudge) {
+    if (thinking) {
+      setMascotState('thinking');
+    } else if (currentNudge) {
       switch (currentNudge.kind) {
         case 'stuck':
           if (currentNudge.level === 1 || currentNudge.level === 2) {
@@ -128,7 +133,7 @@ function App() {
     } else {
       setMascotState(spriteFor(baseState));
     }
-  }, [currentNudge, baseState]);
+  }, [thinking, currentNudge, baseState]);
 
   const handleMouseEnter = () => {
     // Disable click-through when hovering over mascot

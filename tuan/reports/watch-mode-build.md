@@ -319,3 +319,24 @@
   - 668 tests pass; typecheck and lint are clean.
   - Real app on a scratch profile: Thu's idle sprite is drawn under the chat; the chat opens and answers; wheel scrolling moves the chat (925 → 325); "I'm stuck" reaches the chat.
   - A screenshot taken right at startup shows no sprite yet: her canvas draws once the sheet image loads.
+
+## Update: thinking sprite, chat clears Wolfie's head, steady "I'm stuck" button
+- **Thinking sprite while a reply is on its way:**
+  - **`overlay/thinking.ts`:** counts overlapping waits (`beginThinking` / `whileThinking`); Wolfie stops thinking when the last one ends.
+  - **Hint flow:** `busy` now goes through `setBusy()`, which reports `thinking(on)`. That covers the hint ladder (help, "I'm stuck", "Help me with this", accepted offers), "Show the answer", follow-ups and Watch-mode explanations.
+    - Pre-built ladder steps ("Another hint") show instantly, so they don't think.
+  - **Questions:** typed (`chat-send`) and voice answers are wrapped in `whileThinking`.
+  - **Wiring:** the intelligence register broadcasts the `wolfie-thinking` event. The overlay shows the thinking sprite while it's on, ahead of bubbles and the base state.
+  - Watch mode's background looks don't count.
+- **Chat panel:** its bottom edge moved from 150 px to 190 px above the window's bottom, so Thu's 220 px sprite shows its whole head.
+- **"I'm stuck" button:**
+  - It shrank on hover because it was positioned against the mascot's box, which the hover menu reflows.
+  - It's now pinned to the window at the same spot (`position: fixed`, left 54, bottom 52), on one line (`nowrap`, `max-content`).
+- **Verified:**
+  - Real app on a scratch profile:
+    - the button is 87×28 before and while hovering (hover menu open);
+    - the wolfie-thinking events were `[true, false]` around a chat answer;
+    - the chat ends above Wolfie's cap;
+    - wheel scrolling works.
+  - Tests: 671 pass (new: flow thinking, overlapping waits). Typecheck and lint are clean.
+- **Process note:** auto mode's permission check stopped responding mid-task; the work resumed after switching permission modes.

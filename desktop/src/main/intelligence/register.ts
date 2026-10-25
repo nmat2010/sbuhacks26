@@ -16,6 +16,7 @@ import { EscalationEngine } from '../stuck/engine.js';
 import { getDatabase } from '../db/index.js';
 import { logEvent } from '../events.js';
 import { setMascotState } from '../overlay/state.js';
+import { beginThinking, thinkingEvents, whileThinking } from '../overlay/thinking.js';
 import { requestPageSummary } from '../sync/context.js';
 import { captureActiveWindow } from '../hints/capture.js';
 import { HintFlow } from '../hints/flow.js';
@@ -88,6 +89,8 @@ export function registerIntelligence(): void {
   initLLMClient();
   configureHintService({ imageDir: join(app.getPath('userData'), 'images') });
   configureReading({ papersDir: join(app.getPath('userData'), 'papers') });
+  // Wolfie's thinking sprite while a reply the student asked for is on its way (overlay/thinking.ts)
+  cleanups.push(thinkingEvents.on('change', (thinking) => broadcast('wolfie-thinking', thinking)));
   registerVoice();
   registerEscalation();
   registerWatch();
@@ -129,6 +132,8 @@ function registerEscalation(): void {
 function registerHintFlow(): void {
   const queue = getNudgeQueue();
   const hints = getHintService();
+  let endFlowThinking: (() => void) | null = null;
+  cleanups.push(() => endFlowThinking?.());
 
   flow = new HintFlow({
     now: Date.now,
@@ -173,6 +178,10 @@ function registerHintFlow(): void {
     setLadderOpen: (open) => engine?.setLadderOpen(open),
     markImGood: () => engine?.imGood(),
     log: safeLog,
+    thinking: (on) => {
+      endFlowThinking?.();
+      endFlowThinking = on ? beginThinking() : null;
+    },
     watch: watchHooks
   });
   flow.start();
@@ -355,7 +364,7 @@ function registerWatch(): void {
       void flow.followup(message);
       return { kind: 'followup' as const };
     }
-    const res = await answers.ask({ question: message, inputMode: 'text', history });
+    const res = await whileThinking(answers.ask({ question: message, inputMode: 'text', history }));
     if (res.success && res.data) {
       chatLog?.add({ role: 'wolfie', text: res.data.answer, label: res.data.label, citations: res.data.citations, resources: res.data.resources });
       notifyChat();
@@ -495,7 +504,7 @@ function registerVoice(): void {
       if (!focusedPaperId && watchController?.isActive() && watchAnswers) {
         const history = chatLog?.recentTurns(6) ?? [];
         chatLog?.add({ role: 'user', text: utterance });
-        const res = await watchAnswers.ask({ question: utterance, inputMode: 'voice', history });
+        const res = await whileThinking(watchAnswers.ask({ question: utterance, inputMode: 'voice', history }));
         if (res.success && res.data) {
           chatLog?.add({ role: 'wolfie', text: res.data.answer, label: res.data.label, citations: res.data.citations, resources: res.data.resources });
           notifyChat();

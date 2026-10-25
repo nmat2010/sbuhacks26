@@ -104,6 +104,8 @@ export interface HintFlowDeps {
   log: (type: EventType, payload: Record<string, unknown>) => void;
   /** Delay before "Let me take a look..." appears; slow model calls only. */
   thinkingDelayMs?: number;
+  /** The flow started (true) or finished (false) working on a reply: Wolfie's thinking sprite. */
+  thinking?: (on: boolean) => void;
   watch?: WatchHooks;
 }
 
@@ -136,6 +138,13 @@ export class HintFlow {
   private seq = 0;
 
   constructor(private readonly deps: HintFlowDeps) {}
+
+  /** Working on a reply (hints, a follow-up, an explanation): no second request meanwhile. */
+  private setBusy(busy: boolean): void {
+    if (busy === this.busy) return;
+    this.busy = busy;
+    this.deps.thinking?.(busy);
+  }
 
   start(): void {
     if (this.unsubs.length) return;
@@ -225,7 +234,7 @@ export class HintFlow {
       await this.explainFromSession(trigger, null);
       return;
     }
-    this.busy = true;
+    this.setBusy(true);
     deps.setLadderOpen(true);
 
     let thinkingTimer: ReturnType<typeof setTimeout> | undefined;
@@ -270,7 +279,7 @@ export class HintFlow {
       deps.setLadderOpen(false);
       this.say(FLOW_TEXT.failed);
     } finally {
-      this.busy = false;
+      this.setBusy(false);
     }
   }
 
@@ -397,7 +406,7 @@ export class HintFlow {
   private async explainFromSession(trigger: HintTriggerType, question: string | null, previousAnswer?: string): Promise<void> {
     const { deps } = this;
     const watch = deps.watch!;
-    this.busy = true;
+    this.setBusy(true);
     deps.setLadderOpen(true);
     const thinkingTimer = setTimeout(
       () => deps.push({ kind: 'stuck', level: 3, text: FLOW_TEXT.thinking, priority: 8 }),
@@ -431,7 +440,7 @@ export class HintFlow {
       deps.setLadderOpen(false);
       this.say(FLOW_TEXT.failed);
     } finally {
-      this.busy = false;
+      this.setBusy(false);
     }
   }
 
@@ -511,7 +520,7 @@ export class HintFlow {
   async followup(utterance: string): Promise<void> {
     const ladder = this.ladder;
     if (!ladder || this.busy) return;
-    this.busy = true;
+    this.setBusy(true);
     ladder.lastTouch = this.deps.now();
     try {
       const history = ladder.history.slice(-6);
@@ -531,7 +540,7 @@ export class HintFlow {
       console.error('[hint-flow] follow-up failed:', (error as Error).message);
       this.say(FLOW_TEXT.failed);
     } finally {
-      this.busy = false;
+      this.setBusy(false);
     }
   }
 

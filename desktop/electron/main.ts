@@ -266,7 +266,16 @@ app.whenReady().then(() => {
           const ui = (js: string) => overlayWindow!.webContents.executeJavaScript(js);
           // WOLFIE_SMOKE_STUCK: a picture of the "I'm stuck" button, then press it and see the chat
           if (process.env.WOLFIE_SMOKE_STUCK) {
+            await new Promise((r) => setTimeout(r, 1500)); // the sprite sheet loads first
             writeFileSync(process.env.WOLFIE_SMOKE_SHOT.replace(/\.png$/, '-button.png'), (await overlayWindow.webContents.capturePage()).toPNG());
+            // Hover Wolfie (the hover menu opens): the button must keep its size
+            console.log(`[smoke] stuck-button size=${await ui("(() => { const r = document.querySelector('.stuck-button').getBoundingClientRect(); return Math.round(r.width) + 'x' + Math.round(r.height); })()")}`);
+            const m = await ui("(() => { const r = document.querySelector('.mascot').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()");
+            overlayWindow.webContents.sendInputEvent({ type: 'mouseMove', x: Math.round(m.x), y: Math.round(m.y) });
+            await new Promise((r) => setTimeout(r, 800));
+            console.log(`[smoke] stuck-button size=${await ui("(() => { const r = document.querySelector('.stuck-button').getBoundingClientRect(); return Math.round(r.width) + 'x' + Math.round(r.height); })()")} (hovered)`);
+            writeFileSync(process.env.WOLFIE_SMOKE_SHOT.replace(/\.png$/, '-hover.png'), (await overlayWindow.webContents.capturePage()).toPNG());
+            overlayWindow.webContents.sendInputEvent({ type: 'mouseMove', x: 2, y: 2 });
             await ui("document.querySelector('.stuck-button').click()");
             await new Promise((r) => setTimeout(r, 6000));
             console.log(`[smoke] stuck: chat-open=${await ui("!!document.querySelector('.hint-messages')")}`);
@@ -274,6 +283,8 @@ app.whenReady().then(() => {
           await ui("document.querySelector('.mascot').click()");
           await new Promise((r) => setTimeout(r, 500));
           console.log(`[smoke] chat-open messages=${await ui("document.querySelectorAll('.message-text').length")} first=${await ui("document.querySelector('.message-text')?.textContent?.slice(0, 40)")}`);
+          // Record Wolfie's thinking signal while the question is answered
+          await ui("window.__thinking = []; window.electronAPI.on('wolfie-thinking', (on) => window.__thinking.push(on)); 0");
           await ui(`(() => {
             const input = document.querySelector('.hint-input');
             const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
@@ -284,6 +295,7 @@ app.whenReady().then(() => {
           await new Promise((r) => setTimeout(r, process.env.WOLFIE_SMOKE_QUESTION ? 8000 : 2500));
           const texts = await ui("[...document.querySelectorAll('.message-text')].map((e) => e.textContent).join(' | ')");
           console.log(`[smoke] chat: ${texts}`);
+          console.log(`[smoke] thinking: ${await ui('JSON.stringify(window.__thinking)')}`);
           // WOLFIE_SMOKE_QUESTION: just that question (e.g. suggested resources), then the picture
           const resources = await ui("[...document.querySelectorAll('.resource-link')].map((e) => e.title + ' :: ' + e.textContent).join(' | ')");
           if (resources) console.log(`[smoke] resources: ${resources}`);

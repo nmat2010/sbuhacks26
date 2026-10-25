@@ -5,7 +5,8 @@
   top: 6px;
   left: 6px;
   right: 6px;
-  bottom: 150px;
+  /* Clears the top of Wolfie's head (Thu's 220px sprite sits at the bottom of the window) */
+  bottom: 190px;
   display: flex;
   align-items: stretch;
   justify-content: center;

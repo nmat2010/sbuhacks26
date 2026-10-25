@@ -35,10 +35,14 @@ export function StuckButton({ onMouseEnter, onMouseLeave }: StuckButtonProps) {
       onMouseLeave={onMouseLeave}
       title="Get a hint on what you're working on now"
       style={{
-        position: 'absolute',
-        left: -16,
-        bottom: 40,
+        // Pinned to the window (left of Wolfie's feet), so the hover menu reflowing the mascot's
+        // box can't squeeze it; one line, whatever the room
+        position: 'fixed',
+        left: 54,
+        bottom: 52,
         zIndex: 2,
+        whiteSpace: 'nowrap',
+        width: 'max-content',
         padding: '6px 10px',
         border: 'none',
         borderRadius: 999,
