@@ -1,4 +1,5 @@
 import type { Observation, SourceKind, WatchModeKind } from './types.js';
+import { sameTitle } from './similar.js';
 
 // Session memory for Watch mode: what the student looked at this session, kept in memory as text
 // only (never frames). It is what lets Wolfie answer "how did the prof change the transformer?"
@@ -20,6 +21,8 @@ export interface SourceEntry {
   locators: string[];
   /** Facts worth remembering, newest last. */
   points: string[];
+  /** Titles it was seen under (the watcher's and the window's), to recognize it again. */
+  aliases: string[];
 }
 
 export interface TimelineEntry {
@@ -49,6 +52,7 @@ const PROMPT_SOURCES = 15;
 const PROMPT_SEGMENTS = 40;
 const MAX_POINTS = 12;
 const MAX_LOCATORS = 6;
+const MAX_ALIASES = 8;
 
 export class SessionMemory {
   private sources = new Map<string, SourceEntry>();
@@ -59,8 +63,16 @@ export class SessionMemory {
 
   record(obs: Observation, ctx: ObservationContext): SourceEntry {
     const title = (obs.source.title ?? ctx.windowTitle ?? obs.subject ?? ctx.appName).trim() || ctx.appName;
-    const key = sourceKey(obs.source.kind, title, ctx.contentUrl);
+    const names = [...new Set([title, ctx.windowTitle?.trim()].filter((n): n is string => !!n))];
+    let key = sourceKey(obs.source.kind, title, ctx.contentUrl);
     let entry = this.sources.get(key);
+    // Without a URL the title is all there is, and the watcher words it differently between looks
+    // ("120. Triangle - LeetCode" / "Triangle - LeetCode"): a source seen under a matching title,
+    // or in the same window, is the same source
+    if (!entry && !ctx.contentUrl) {
+      entry = [...this.sources.values()].find((s) => !s.url && names.some((n) => s.aliases.some((a) => sameTitle(a, n))));
+      if (entry) key = entry.key;
+    }
     if (!entry) {
       entry = {
         key,
@@ -72,7 +84,8 @@ export class SessionMemory {
         lastSeen: ctx.ts,
         seconds: 0,
         locators: [],
-        points: []
+        points: [],
+        aliases: []
       };
       const pending = ctx.contentUrl ? this.pendingPapers.get(ctx.contentUrl) : undefined;
       if (pending) {
@@ -85,6 +98,7 @@ export class SessionMemory {
     entry.lastSeen = ctx.ts;
     entry.seconds += Math.max(0, Math.round(ctx.elapsedMs / 1000));
     if (obs.source.title && entry.title !== obs.source.title && entry.title === ctx.appName) entry.title = obs.source.title;
+    for (const n of names) pushUnique(entry.aliases, n, MAX_ALIASES);
     if (obs.source.locator) pushUnique(entry.locators, obs.source.locator.trim(), MAX_LOCATORS);
     for (const p of obs.key_points) pushUnique(entry.points, p.trim(), MAX_POINTS);
 

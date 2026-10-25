@@ -4,10 +4,12 @@ import { openDatabase } from '../../db/index.js';
 import type { LlmCall } from '../../llm/client.js';
 import { LLMError } from '../../llm/provider.js';
 import { obs } from '../../watch/__tests__/helpers.js';
-import { isRealQuestion, mergeProblemFacts, sameProblem, SessionTracker } from '../tracker.js';
+import { isRealQuestion, mergeProblemFacts, mergeSourceFacts, sameProblem, SessionTracker } from '../tracker.js';
+import { sameTitle } from '../../watch/similar.js';
+import { SessionMemory } from '../../watch/memory.js';
 import { ReportService, type SessionSnapshot } from '../service.js';
 import { ReportStore } from '../store.js';
-import type { ProblemFact, ReportProse } from '../types.js';
+import type { ProblemFact, ReportProse, SourceFact } from '../types.js';
 
 const check = (question: string, looks_correct: boolean | null, visible_answer: string | null = 'x', issue: string | null = null) => ({
   question,
@@ -191,5 +193,41 @@ describe('one entry per problem (from a real report with 6 copies of Coin Change
       'i am all good now, thanks'
     ];
     expect(asked.filter(isRealQuestion)).toEqual(['can you read me implementation?', 'state, how should i define state for dp']);
+  });
+});
+
+describe('one entry per source (from a real report: Triangle 3 times)', () => {
+  const src = (title: string, minutes: number, locator: string): SourceFact => ({ kind: 'webpage', title, url: null, minutes, locators: [locator], points: [] });
+
+  it('titles of one page match, the site part ignored; different problems stay apart', () => {
+    expect(sameTitle('120. Triangle - LeetCode', 'Triangle - LeetCode')).toBe(true);
+    expect(sameTitle('120. Triangle - LeetCode', '120. Triangle')).toBe(true);
+    expect(sameTitle('Triangle - LeetCode', '120. Triangle')).toBe(true);
+    expect(sameTitle('120. Triangle', '322. Coin Change - LeetCode')).toBe(false);
+    expect(sameTitle('Two Sum - LeetCode', 'Three Sum - LeetCode')).toBe(false);
+    expect(sameTitle('Triangle - LeetCode', 'Coin Change - LeetCode')).toBe(false);
+  });
+
+  it('merges saved sources: minutes added, places kept', () => {
+    const merged = mergeSourceFacts([
+      src('120. Triangle - LeetCode', 0, 'Problem 120'),
+      src('Triangle - LeetCode', 1, 'Problem 120'),
+      src('120. Triangle', 2, 'LeetCode'),
+      src('322. Coin Change - LeetCode', 1, 'Problem 322')
+    ]);
+    expect(merged.map((s) => [s.title, s.minutes, s.locators])).toEqual([
+      ['120. Triangle - LeetCode', 3, ['Problem 120', 'LeetCode']],
+      ['322. Coin Change - LeetCode', 1, ['Problem 322']]
+    ]);
+  });
+
+  it('session memory keeps one source while the watcher re-titles the page', () => {
+    const m = new SessionMemory();
+    const ctx = (ts: number) => ({ ts, appName: 'Google Chrome', windowTitle: 'Triangle - LeetCode', contentUrl: null, elapsedMs: 60_000 });
+    for (const [i, title] of ['120. Triangle - LeetCode', 'Triangle - LeetCode', '120. Triangle'].entries()) {
+      m.record(obs({ source: { kind: 'webpage', title, locator: null } }), ctx(i * 60_000));
+    }
+    m.record(obs({ source: { kind: 'webpage', title: '322. Coin Change - LeetCode', locator: null } }), { ...ctx(300_000), windowTitle: 'Coin Change - LeetCode' });
+    expect(m.listSources().map((s) => s.title).sort()).toEqual(['120. Triangle - LeetCode', '322. Coin Change - LeetCode']);
   });
 });

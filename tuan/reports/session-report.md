@@ -66,3 +66,14 @@ The strengths & weaknesses record: combine report topics across sessions (eviden
   - **Live watch model with v5:** an accepted Coin Change was named exactly "Coin Change" and judged correct; a compile error was judged wrong with the reason.
   - **Read-only on Tuan's saved report:** 8 problems become 3 (Coin Change, the compile-error step, Triangle state), and 9 questions become 2 real ones.
   - Tests: 690 pass. Typecheck and lint are clean.
+
+## Update: one entry per source in "What you studied"
+- **Seen (second real session):** "120. Triangle - LeetCode", "Triangle - LeetCode" and "120. Triangle" were listed as three sources.
+- **Cause:** without the browser extension there's no page URL, so session memory keyed each source by the title the watcher wrote, and that title varies between looks.
+- **Fix:**
+  - **`watch/similar.ts`:** the name matching now lives in one place (`sameName`; the tracker's `sameProblem` uses it), plus `sameTitle`. `sameTitle` drops the site part ("Triangle - LeetCode" becomes "Triangle"), lets a one-word title be contained in another, and keeps the numbers rule ("120. Triangle" ≠ "322. Coin Change").
+  - **`SessionMemory.record`:** with no URL, a look whose title or window title matches a source already seen is that source. Each source keeps its titles (`aliases`, up to 8).
+  - **`mergeSourceFacts`:** saved reports are merged the same way when written or rewritten (minutes added, places and points pooled).
+- **Verified:**
+  - **Read-only on Tuan's saved report:** 4 sources become 2 (Triangle, 3 min; Coin Change, 1 min).
+  - Tests: 693 pass. Typecheck and lint are clean.

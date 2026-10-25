@@ -1,5 +1,6 @@
 import type { Observation } from '../watch/types.js';
-import type { ProblemFact, ProblemOutcome } from './types.js';
+import { nameKey, sameName, sameTitle } from '../watch/similar.js';
+import type { ProblemFact, ProblemOutcome, SourceFact } from './types.js';
 
 // Follows each problem during a study session, for its report: answers Watch mode checked (right
 // or wrong), long pauses, the hints used and "Show the answer", plus the questions asked in the
@@ -21,48 +22,9 @@ interface Problem {
   stalled: boolean;
 }
 
-export function problemKey(question: string): string {
-  return question.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-}
-
-const STOPWORDS = new Set(
-  'a an the to of for in on at by with from and or is are be was were it its this that these those you your we our i me my what how which find return given make up get'.split(' ')
-);
-
-/** Meaningful words of a problem name ("coins"/"coin", "needed"/"need" are the same; "ii" and "13" count). */
-function words(question: string): Set<string> {
-  const stem = (w: string) =>
-    w.length > 5 && w.endsWith('ing') ? w.slice(0, -3) : w.length > 4 && w.endsWith('ed') ? w.slice(0, -2) : w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : w;
-  return new Set(
-    problemKey(question)
-      .split(' ')
-      .filter((w) => w && !STOPWORDS.has(w))
-      .map(stem)
-  );
-}
-
-/**
- * The same problem under two names: the watcher sometimes re-words a problem between looks
- * ("Implement coinChange to find the minimum number of coins..." / "...to return the minimum
- * number of coins..."). Same if most words are shared, or a short title is contained in the other.
- */
-export function sameProblem(a: string, b: string): boolean {
-  if (problemKey(a) === problemKey(b)) return true;
-  const wa = words(a);
-  const wb = words(b);
-  // Numbers, roman numerals and single letters tell problems apart ("= 13" vs "= 12", "Q2" vs
-  // "Q3", "datasets i and ii" vs "iii and iv"): when both names have them, they must match
-  const ids = (w: Set<string>) => [...w].filter(isIdentifier).sort().join(' ');
-  if (ids(wa) && ids(wb) && ids(wa) !== ids(wb)) return false;
-  const shared = [...wa].filter((w) => wb.has(w)).length;
-  const smaller = Math.min(wa.size, wb.size);
-  if (smaller >= 2 && smaller <= 3 && shared === smaller) return true;
-  return shared >= 3 && shared / smaller >= 0.7;
-}
-
-function isIdentifier(word: string): boolean {
-  return /\d/.test(word) || /^(ii|iii|iv|v|vi|vii|viii|ix|x)$/.test(word) || word.length === 1;
-}
+/** One problem's names: see watch/similar.ts. */
+export const problemKey = nameKey;
+export const sameProblem = (a: string, b: string): boolean => sameName(a, b);
 
 /** A real question to Wolfie, not chat ("how about now?", "thanks, I'm good"). */
 export function isRealQuestion(text: string): boolean {
@@ -73,6 +35,27 @@ export function isRealQuestion(text: string): boolean {
     /^(how|what|why|when|where|which|who|can|could|should|would|is|are|does|do|explain|tell me)\b/i.test(t) ||
     /\b(how|why|what)\b.*\b(should|do|does|is|are|can|would|to)\b/i.test(t)
   );
+}
+
+/** Sources that turned out to be one (titles worded differently, no URL to tell): merged. */
+export function mergeSourceFacts(sources: SourceFact[]): SourceFact[] {
+  const out: SourceFact[] = [];
+  const titles = new Map<SourceFact, string[]>();
+  for (const s of sources) {
+    const same = out.find((o) => (o.url && s.url ? o.url === s.url : titles.get(o)!.some((t) => sameTitle(t, s.title))));
+    if (!same) {
+      const first = { ...s, locators: [...s.locators], points: [...s.points] };
+      out.push(first);
+      titles.set(first, [s.title]);
+      continue;
+    }
+    titles.get(same)!.push(s.title);
+    same.minutes += s.minutes;
+    same.url ??= s.url;
+    for (const l of s.locators) if (!same.locators.includes(l)) same.locators.push(l);
+    for (const p of s.points) if (!same.points.includes(p) && same.points.length < 6) same.points.push(p);
+  }
+  return out;
 }
 
 /** Problems that turned out to be one (saved before names were stable): merged, outcomes combined. */

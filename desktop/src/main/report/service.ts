@@ -3,7 +3,7 @@ import type { LlmCall } from '../llm/client.js';
 import { renderPrompt } from '../llm/prompts/index.js';
 import { LLMError } from '../llm/provider.js';
 import type { ReportStore, StoredReport } from './store.js';
-import { isRealQuestion, mergeProblemFacts } from './tracker.js';
+import { isRealQuestion, mergeProblemFacts, mergeSourceFacts } from './tracker.js';
 import { ReportProseSchema, type ProblemFact, type SessionFacts, type SourceFact } from './types.js';
 
 // Writes the report for a finished study session: the app gathers the facts (time, sources,
@@ -63,10 +63,11 @@ export class ReportService {
 
   private async write(raw: SessionFacts): Promise<StoredReport> {
     const { deps } = this;
-    // Tidy saved facts too (a report regenerated from before names were stable): one entry per
-    // problem, and real questions only
+    // Tidy saved facts too (a report rewritten from before names were stable): one entry per
+    // source and per problem, and real questions only
     const facts: SessionFacts = {
       ...raw,
+      sources: mergeSourceFacts(raw.sources),
       problems: mergeProblemFacts(raw.problems),
       questionsAsked: raw.questionsAsked.filter(isRealQuestion)
     };
