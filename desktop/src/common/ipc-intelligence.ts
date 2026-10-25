@@ -354,6 +354,13 @@ export interface IntelligenceInvoke {
   /** A question about what the student is studying, answered from the whole session. */
   'watch-ask': { args: [input: { question: string; inputMode: 'text' | 'voice' }]; result: BResult<WatchAnswer> };
   'voice-status': { args: []; result: VoiceStatus };
+  /** Push-to-talk: may the mic be used? Asks macOS the first time; false if denied (opens settings). */
+  'voice-mic-ready': { args: []; result: { granted: boolean; error?: string } };
+  /** Push-to-talk: the recorded clip, transcribed (then sent with chat-send like typed text). */
+  'voice-transcribe': {
+    args: [clip: { audio: Uint8Array; mimeType: string }];
+    result: { success: true; text: string } | { success: false; error: string };
+  };
   /** Stop Wolfie talking now (the chat closed, or reading replies was turned off). */
   'voice-stop-speaking': { args: []; result: { success: boolean } };
   /**

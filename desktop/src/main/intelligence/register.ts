@@ -38,6 +38,7 @@ import { selectVoiceProviders, type VoiceProviderChoice } from '../voice/provide
 import type { SocketFactory } from '../voice/elevenlabs-stt.js';
 import { attachNudgeSpeech } from '../voice/nudge-speech.js';
 import { isUnaskedOffer, spokenReply } from '../voice/read-aloud.js';
+import { createClipStt } from '../voice/clip-stt.js';
 import { createVoiceService, type VoiceService } from '../voice/service.js';
 import type { IntentHandler } from '../voice/router.js';
 import type { VoiceIntent } from '../voice/intents.js';
@@ -615,6 +616,26 @@ function registerVoice(): void {
     note: providers.note
   }));
   handle('voice-audio-in', async (pcm) => voice?.writeAudio(pcm));
+
+  // Push-to-talk in the chat: one clip per press, transcribed by ElevenLabs (not the mock in demo
+  // mode: there is no fake speech to transcribe)
+  const apiKey = process.env.ELEVENLABS_API_KEY?.trim();
+  const transcribe = apiKey && process.env.DEMO_MODE !== '1' ? createClipStt({ apiKey, model: process.env.ELEVENLABS_PTT_MODEL?.trim() }) : null;
+  handle('voice-mic-ready', async () => {
+    if (process.platform !== 'darwin') return { granted: true };
+    const status = systemPreferences.getMediaAccessStatus('microphone');
+    if (status === 'granted') return { granted: true };
+    if (status === 'not-determined') return { granted: await systemPreferences.askForMediaAccess('microphone') };
+    void shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone');
+    return { granted: false, error: 'Allow the microphone for Wolfie in System Settings, then try again.' };
+  });
+  handle('voice-transcribe', async (clip) => {
+    if (!transcribe) return { success: false as const, error: 'Talking to Wolfie needs ELEVENLABS_API_KEY in desktop/.env.' };
+    const audio = clip?.audio instanceof Uint8Array ? clip.audio : new Uint8Array(0);
+    const res = await transcribe(audio, String(clip?.mimeType ?? ''));
+    safeLog('voice.ptt', { ok: res.ok, bytes: audio.byteLength });
+    return res.ok ? { success: true as const, text: res.text } : { success: false as const, error: res.error };
+  });
 
   announceNote();
   refresh();
