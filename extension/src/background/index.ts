@@ -177,6 +177,12 @@ async function handle(message: RuntimeMessage, sender: chrome.runtime.MessageSen
       if (domain) conn.send('ext.signal', { signal: message.signal, domain });
       return { success: true };
     }
+    case 'BRIGHTSPACE_DATA': {
+      // Forward Brightspace data to desktop
+      console.log('[Wolfie BG] Received Brightspace data, forwarding to desktop:', message.data);
+      conn.send('ext.brightspace_data', { data: message.data });
+      return { success: true };
+    }
     case 'GET_CONTENT_STATE':
       return sender.tab ? contentStateFor(sender.tab) : { reporting: false, capturePageText: false };
     case 'GET_STATUS':

@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Goal tree</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#1a1214}
+.h{font-family:'Press Start 2P',monospace;line-height:1.5;font-weight:400}
+.card{background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9,8px 8px 0 0 #0d0709}
+.card2{background:#3a2328;box-shadow:0 -4px 0 0 #5a3a41,0 4px 0 0 #5a3a41,-4px 0 0 0 #5a3a41,4px 0 0 0 #5a3a41}
+.sel{background:#3a2328;box-shadow:0 -4px 0 0 #f2b632,0 4px 0 0 #f2b632,-4px 0 0 0 #f2b632,4px 0 0 0 #f2b632}
+.btn{display:inline-block;border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.4;color:#f5ecd9;background:#c41e1e;padding:16px 22px;text-decoration:none;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #7a0000,inset 0 6px 0 0 #e0504f}
+.btn:active{transform:translateY(2px)}
+.btn.gold{background:#f2b632;color:#1a1214;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #b9801a,inset 0 6px 0 0 #ffd878}
+.btn.ghost{background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9}
+.nav{display:flex;align-items:center;gap:12px;width:100%;border:0;background:transparent;color:#e0d2c2;font-family:'Press Start 2P',monospace;font-size:10px;padding:14px 12px;cursor:pointer;text-align:left}
+.nav.on{background:#990000;color:#f5ecd9}
+.nav i{width:12px;height:12px;background:#5a3a41;flex:none}
+.nav.on i{background:#f2b632}
+.xp{font-family:'Press Start 2P',monospace;font-size:9px;background:#f2b632;color:#1a1214;padding:6px 8px;flex:none}
+.chip{display:inline-block;font-size:15px;padding:4px 10px;background:#0d0709;color:#f5ecd9}
+.tab{border:0;cursor:pointer;font-family:'Pixelify Sans',monospace;font-size:16px;padding:8px 16px;background:#3a2328;color:#f5ecd9;box-shadow:0 -3px 0 0 #5a3a41,0 3px 0 0 #5a3a41,-3px 0 0 0 #5a3a41,3px 0 0 0 #5a3a41}
+.tab.on{background:#f2b632;color:#1a1214;box-shadow:0 -3px 0 0 #b9801a,0 3px 0 0 #b9801a,-3px 0 0 0 #b9801a,3px 0 0 0 #b9801a}
+.a{padding:12px 14px;display:flex;align-items:center;gap:12px}
+.chk{width:20px;height:20px;flex:none;background:#1a1214;box-shadow:0 0 0 3px #f5ecd9}
+.chk.d{background:#6fd27a;box-shadow:none}
+.ms{display:flex;flex-direction:column;gap:12px;padding-left:20px;border-left:4px dashed #5a3a41}
+.seg{display:flex;gap:4px}
+.seg span{flex:1;height:14px;background:#5a3a41}
+.seg span.f{background:#c41e1e}
+</style>
+</head>
+<body>
+<div style="width:100%;min-height:1160px;background:#1a1214;color:#f5ecd9;font-family:'Pixelify Sans',monospace;font-size:18px;display:flex;flex-direction:column">
+
+<div style="height:44px;background:#0d0709;border-bottom:4px solid #990000;display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex:none">
+<span class="h" style="font-size:11px">WOLFIE SENSEI</span>
+<span class="h" style="font-size:10px;color:#c9b8a6">GOAL TREE</span>
+<div style="display:flex;gap:8px" aria-hidden="true"><span style="width:14px;height:14px;background:#f2b632"></span><span style="width:14px;height:14px;background:#6fd27a"></span><span style="width:14px;height:14px;background:#e5484d"></span></div>
+</div>
+
+<div style="flex:1;display:flex;flex-wrap:wrap;align-items:stretch">
+
+<nav aria-label="Main" style="flex:0 0 232px;width:232px;max-width:100%;background:#0d0709;padding:24px 16px;display:flex;flex-direction:column;gap:6px;box-sizing:border-box">
+<button type="button" class="nav"><i></i>HOME</button>
+<button type="button" class="nav"><i></i>QUESTS</button>
+<button type="button" class="nav"><i></i>TO-DO</button>
+<button type="button" class="nav on" aria-current="page"><i></i>GOAL TREE</button>
+<button type="button" class="nav"><i></i>FOCUS</button>
+<button type="button" class="nav"><i></i>SHIELDS</button>
+<button type="button" class="nav"><i></i>SETTINGS</button>
+<div style="margin-top:auto;padding-top:28px;display:flex;flex-direction:column;align-items:center;gap:12px">
+<svg aria-hidden="true" viewBox="0 0 16 16" width="88" height="88" shape-rendering="crispEdges" style="image-rendering:pixelated"><rect x="2" y="1" width="3" height="3" fill="#5d6270"/><rect x="11" y="1" width="3" height="3" fill="#5d6270"/><rect x="3" y="2" width="1" height="2" fill="#d9a3a3"/><rect x="12" y="2" width="1" height="2" fill="#d9a3a3"/><rect x="3" y="3" width="10" height="1" fill="#9aa0ac"/><rect x="2" y="4" width="12" height="6" fill="#9aa0ac"/><rect x="3" y="10" width="10" height="1" fill="#9aa0ac"/><rect x="4" y="11" width="8" height="1" fill="#9aa0ac"/><rect x="2" y="4" width="12" height="2" fill="#c41e1e"/><rect x="14" y="5" width="2" height="1" fill="#990000"/><rect x="14" y="6" width="1" height="2" fill="#990000"/><rect x="4" y="7" width="2" height="2" fill="#1a1214"/><rect x="10" y="7" width="2" height="2" fill="#1a1214"/><rect x="4" y="7" width="1" height="1" fill="#f5ecd9"/><rect x="10" y="7" width="1" height="1" fill="#f5ecd9"/><rect x="5" y="9" width="6" height="3" fill="#efe6d6"/><rect x="7" y="9" width="2" height="1" fill="#1a1214"/></svg>
+<span class="h" style="font-size:9px;color:#c9b8a6">SENSEI · IDLE</span>
+</div>
+</nav>
+
+<main style="flex:999 1 560px;min-width:0;padding:32px 36px 40px;display:flex;flex-direction:column;gap:28px;box-sizing:border-box">
+
+<div style="display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap">
+<h1 class="h" style="margin:0;font-size:20px;color:#f2b632">GOAL TREE</h1>
+<div style="display:flex;gap:12px;flex-wrap:wrap" role="group" aria-label="Goals"><button type="button" class="tab on" aria-pressed="true">Join a research lab</button><button type="button" class="tab">+ Add goal</button></div>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
+
+<section class="card" style="flex:2 1 480px;padding:28px;display:flex;flex-direction:column;gap:22px">
+<div class="sel" style="padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><span class="h" style="font-size:13px;color:#f2b632">BOSS: JOIN A RESEARCH LAB</span><span style="font-size:15px;color:#c9b8a6">2 of 9 steps · target: Spring 2027</span></div>
+<div class="seg" role="img" aria-label="2 of 9 steps cleared"><span class="f"></span><span class="f"></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+</div>
+
+<div class="ms">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><span class="h" style="font-size:11px">1 · FIND LABS THAT FIT</span><span style="font-size:15px;color:#6fd27a">2 / 3</span></div>
+<div class="card2 a"><span class="chk d" aria-hidden="true"></span><span style="flex:1;color:#c9b8a6;text-decoration:line-through">Browse faculty pages in your department</span><span class="xp">+10 XP</span></div>
+<div class="card2 a"><span class="chk d" aria-hidden="true"></span><span style="flex:1;color:#c9b8a6;text-decoration:line-through">Shortlist 5 labs</span><span class="xp">+10 XP</span></div>
+<div class="sel a"><span class="chk" aria-hidden="true"></span><span style="flex:1;font-weight:600">Read one recent paper abstract per lab</span><span class="xp">+20 XP</span></div>
+</div>
+
+<div class="ms">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><span class="h" style="font-size:11px">2 · REACH OUT</span><span style="font-size:15px;color:#c9b8a6">0 / 3</span></div>
+<div class="card2 a"><span class="chk" aria-hidden="true"></span><span style="flex:1">Draft your first email in your own words</span><span class="xp">+20 XP</span></div>
+<div class="card2 a"><span class="chk" aria-hidden="true"></span><span style="flex:1">Send 5 emails</span><span class="xp">+30 XP</span></div>
+<div class="card2 a"><span class="chk" aria-hidden="true"></span><span style="flex:1">Book one conversation with a lab</span><span class="xp">+30 XP</span></div>
+</div>
+
+<div class="ms">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><span class="h" style="font-size:11px;color:#b9a898">3 · PREP AND FOLLOW UP</span><span class="h" style="font-size:9px;background:#4a3a3d;color:#e0d2c2;padding:6px 8px">LOCKED</span></div>
+<p style="margin:0;font-size:16px;color:#c9b8a6;line-height:1.35">Unlocks after your first reply. I'll build these steps from what the lab says.</p>
+</div>
+</section>
+
+<aside style="flex:1 1 320px;display:flex;flex-direction:column;gap:32px">
+<div class="card" style="padding:24px;display:flex;flex-direction:column;gap:16px">
+<span class="h" style="font-size:10px;color:#f2b632">NEXT ACTION</span>
+<span style="font-weight:600;line-height:1.3">Read one recent paper abstract per lab</span>
+<p style="margin:0;font-size:16px;line-height:1.4;color:#e0d2c2">Why: knowing what a lab actually works on makes your first email specific, and specific emails get answered more often.</p>
+<div style="display:flex;gap:12px;flex-wrap:wrap"><button type="button" class="btn" style="font-size:10px;padding:12px 14px">START FOCUS</button><button type="button" class="btn ghost" style="font-size:10px;padding:12px 14px">MARK DONE</button></div>
+</div>
+
+<div class="card" style="padding:24px;display:flex;flex-direction:column;gap:14px">
+<span class="h" style="font-size:10px;color:#f2b632">RESOURCES FOR THIS STEP</span>
+<div class="card2" style="padding:12px 14px;display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">Faculty directory</span><span style="font-size:15px;color:#c9b8a6">Your shortlisted labs, with links</span></div>
+<div class="card2" style="padding:12px 14px;display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">How to skim a paper</span><span style="font-size:15px;color:#c9b8a6">Abstract, figures, conclusion, in that order</span></div>
+<div class="card2" style="padding:12px 14px;display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">Questions to jot down</span><span style="font-size:15px;color:#c9b8a6">Two per paper, for your email</span></div>
+<span style="font-size:15px;color:#c9b8a6">Sample resources. Real links come from the plan Wolfie builds.</span>
+</div>
+
+<div class="card2" style="padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+<span style="line-height:1.35">Plan feels off? Tell Wolfie what changed and I'll rebuild the steps.</span>
+<button type="button" class="btn ghost" style="font-size:10px;padding:12px 14px;align-self:flex-start">REBUILD PLAN</button>
+</div>
+</aside>
+
+</div>
+
+</main>
+</div>
+</div>
+</body>
+</html>

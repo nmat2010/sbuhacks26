@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connect extension</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#1a1214}
+.h{font-family:'Press Start 2P',monospace;line-height:1.5;font-weight:400}
+.card{background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9,8px 8px 0 0 #0d0709}
+.card2{background:#3a2328;box-shadow:0 -4px 0 0 #5a3a41,0 4px 0 0 #5a3a41,-4px 0 0 0 #5a3a41,4px 0 0 0 #5a3a41}
+.btn{display:inline-block;border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.4;color:#f5ecd9;background:#c41e1e;padding:16px 22px;text-decoration:none;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #7a0000,inset 0 6px 0 0 #e0504f}
+.btn:active{transform:translateY(2px)}
+.btn.gold{background:#f2b632;color:#1a1214;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #b9801a,inset 0 6px 0 0 #ffd878}
+.btn.ghost{background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9}
+.btn.off{background:#4a3a3d;color:#c9b8a6;cursor:not-allowed;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709}
+@keyframes blink{50%{opacity:.25}}
+.blink{animation:blink 1s steps(2) infinite}
+@media (prefers-reduced-motion:reduce){.blink{animation:none}}
+</style>
+</head>
+<body>
+<div style="width:100%;min-height:820px;display:flex;flex-direction:column;background:#1a1214;color:#f5ecd9;font-family:'Pixelify Sans',monospace;font-size:18px">
+
+<div style="height:44px;background:#0d0709;border-bottom:4px solid #990000;display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex:none">
+<span class="h" style="font-size:11px">WOLFIE SENSEI</span>
+<span class="h" style="font-size:10px;color:#c9b8a6">SETUP · 2 OF 7</span>
+<div style="display:flex;gap:8px" aria-hidden="true"><span style="width:14px;height:14px;background:#f2b632"></span><span style="width:14px;height:14px;background:#6fd27a"></span><span style="width:14px;height:14px;background:#e5484d"></span></div>
+</div>
+
+<div style="flex:1;display:flex;flex-wrap:wrap;gap:48px;align-items:center;justify-content:center;padding:48px 32px;max-width:1180px;width:100%;box-sizing:border-box;margin:0 auto">
+
+<div style="flex:1 1 280px;max-width:340px;display:flex;flex-direction:column;align-items:center;gap:24px">
+<svg aria-hidden="true" viewBox="0 0 16 16" width="192" height="192" shape-rendering="crispEdges" style="image-rendering:pixelated"><rect x="2" y="1" width="3" height="3" fill="#5d6270"/><rect x="11" y="1" width="3" height="3" fill="#5d6270"/><rect x="3" y="2" width="1" height="2" fill="#d9a3a3"/><rect x="12" y="2" width="1" height="2" fill="#d9a3a3"/><rect x="3" y="3" width="10" height="1" fill="#9aa0ac"/><rect x="2" y="4" width="12" height="6" fill="#9aa0ac"/><rect x="3" y="10" width="10" height="1" fill="#9aa0ac"/><rect x="4" y="11" width="8" height="1" fill="#9aa0ac"/><rect x="2" y="4" width="12" height="2" fill="#c41e1e"/><rect x="14" y="5" width="2" height="1" fill="#990000"/><rect x="14" y="6" width="1" height="2" fill="#990000"/><rect x="4" y="7" width="2" height="2" fill="#1a1214"/><rect x="10" y="7" width="2" height="2" fill="#1a1214"/><rect x="4" y="7" width="1" height="1" fill="#f5ecd9"/><rect x="10" y="7" width="1" height="1" fill="#f5ecd9"/><rect x="5" y="9" width="6" height="3" fill="#efe6d6"/><rect x="7" y="9" width="2" height="1" fill="#1a1214"/></svg>
+<div class="card2" style="padding:20px 22px;line-height:1.35">First, let's link your browser. The extension lets me read your Brightspace courses and notice when you wander onto a distracting site.</div>
+<span class="h" style="font-size:9px;color:#c9b8a6">SENSEI · IDLE · placeholder sprite</span>
+</div>
+
+<div class="card" style="flex:2 1 520px;max-width:700px;padding:36px 36px 32px;display:flex;flex-direction:column;gap:26px">
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<h1 class="h" style="margin:0;font-size:18px;color:#f2b632">CONNECT THE EXTENSION</h1>
+<p style="margin:0;color:#e0d2c2;line-height:1.35">Two quick steps. The extension and the app will stay paired on this computer.</p>
+</div>
+
+<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+<span class="h" style="width:40px;height:40px;background:#c41e1e;display:flex;align-items:center;justify-content:center;font-size:14px;flex:none">1</span>
+<span style="flex:1 1 220px;font-weight:600">Install the Wolfie Sensei extension in your browser</span>
+<button type="button" class="btn gold" style="font-size:11px;padding:14px 18px">GET EXTENSION</button>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;align-items:center;gap:16px">
+<span class="h" style="width:40px;height:40px;background:#c41e1e;display:flex;align-items:center;justify-content:center;font-size:14px;flex:none">2</span>
+<span style="font-weight:600">Type this code into the extension popup</span>
+</div>
+<div style="display:flex;gap:14px;flex-wrap:wrap;padding:8px 8px 8px 56px" role="img" aria-label="Pairing code 7 K 2 W Q 9">
+<div class="h" style="width:52px;height:68px;background:#0d0709;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px #f2b632;font-size:24px;color:#f2b632">7</div>
+<div class="h" style="width:52px;height:68px;background:#0d0709;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px #f2b632;font-size:24px;color:#f2b632">K</div>
+<div class="h" style="width:52px;height:68px;background:#0d0709;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px #f2b632;font-size:24px;color:#f2b632">2</div>
+<div class="h" style="width:52px;height:68px;background:#0d0709;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px #f2b632;font-size:24px;color:#f2b632">W</div>
+<div class="h" style="width:52px;height:68px;background:#0d0709;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px #f2b632;font-size:24px;color:#f2b632">Q</div>
+<div class="h" style="width:52px;height:68px;background:#0d0709;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px #f2b632;font-size:24px;color:#f2b632">9</div>
+</div>
+<div style="padding-left:56px;color:#c9b8a6;font-size:16px">Code expires in 04:32 · <button type="button" style="background:none;border:0;padding:0;color:#f5ecd9;font:inherit;text-decoration:underline;cursor:pointer">new code</button></div>
+</div>
+
+<div class="card2" style="padding:16px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+<div style="display:flex;gap:6px" aria-hidden="true"><span class="blink" style="width:12px;height:12px;background:#f2a03a"></span><span class="blink" style="width:12px;height:12px;background:#f2a03a;animation-delay:.2s"></span><span class="blink" style="width:12px;height:12px;background:#f2a03a;animation-delay:.4s"></span></div>
+<span style="color:#f2a03a;font-weight:600">Waiting for the extension…</span>
+<span style="color:#c9b8a6;font-size:16px;margin-left:auto">This turns green when paired.</span>
+</div>
+
+<button type="button" class="card2" style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:14px 20px;border:0;color:#f5ecd9;font-family:'Pixelify Sans',monospace;font-size:17px;cursor:pointer;text-align:left"><span>Extension not showing up?</span><span class="h" style="font-size:14px;color:#f2b632" aria-hidden="true">+</span></button>
+
+<div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:6px">
+<button type="button" class="btn ghost">BACK</button>
+<button type="button" class="btn off" aria-disabled="true">CONTINUE</button>
+</div>
+
+</div>
+</div>
+
+<div style="background:#0d0709;padding:20px 32px 28px;overflow-x:auto;flex:none">
+<div style="display:flex;align-items:flex-start;min-width:860px;max-width:1100px;margin:0 auto">
+<div style="width:88px;display:flex;flex-direction:column;align-items:center;gap:12px"><div style="width:24px;height:24px;background:#f2b632;box-shadow:0 0 0 4px #5a3a41"></div><span style="font-size:14px;color:#f2b632">Hello</span></div>
+<div style="flex:1;height:4px;margin-top:10px;background:repeating-linear-gradient(90deg,#f2b632 0 8px,transparent 8px 16px)"></div>
+<div style="width:88px;display:flex;flex-direction:column;align-items:center;gap:12px"><div style="width:24px;height:24px;background:#c41e1e;box-shadow:0 0 0 4px #f5ecd9"></div><span style="font-size:14px;color:#f5ecd9;font-weight:600">Extension</span></div>
+<div style="flex:1;height:4px;margin-top:10px;background:repeating-linear-gradient(90deg,#5a3a41 0 8px,transparent 8px 16px)"></div>
+<div style="width:88px;display:flex;flex-direction:column;align-items:center;gap:12px"><div style="width:24px;height:24px;background:#3a2328;box-shadow:0 0 0 4px #5a3a41"></div><span style="font-size:14px;color:#b9a898">Brightspace</span></div>
+<div style="flex:1;height:4px;margin-top:10px;background:repeating-linear-gradient(90deg,#5a3a41 0 8px,transparent 8px 16px)"></div>
+<div style="width:88px;display:flex;flex-direction:column;align-items:center;gap:12px"><div style="width:24px;height:24px;background:#3a2328;box-shadow:0 0 0 4px #5a3a41"></div><span style="font-size:14px;color:#b9a898">Powers</span></div>
+<div style="flex:1;height:4px;margin-top:10px;background:repeating-linear-gradient(90deg,#5a3a41 0 8px,transparent 8px 16px)"></div>
+<div style="width:88px;display:flex;flex-direction:column;align-items:center;gap:12px"><div style="width:24px;height:24px;background:#3a2328;box-shadow:0 0 0 4px #5a3a41"></div><span style="font-size:14px;color:#b9a898">Goals</span></div>
+<div style="flex:1;height:4px;margin-top:10px;background:repeating-linear-gradient(90deg,#5a3a41 0 8px,transparent 8px 16px)"></div>
+<div style="width:88px;display:flex;flex-direction:column;align-items:center;gap:12px"><div style="width:24px;height:24px;background:#3a2328;box-shadow:0 0 0 4px #5a3a41"></div><span style="font-size:14px;color:#b9a898">Shields</span></div>
+<div style="flex:1;height:4px;margin-top:10px;background:repeating-linear-gradient(90deg,#5a3a41 0 8px,transparent 8px 16px)"></div>
+<div style="width:88px;display:flex;flex-direction:column;align-items:center;gap:12px"><div style="width:24px;height:24px;background:#3a2328;box-shadow:0 0 0 4px #5a3a41"></div><span style="font-size:14px;color:#b9a898">Train!</span></div>
+</div>
+</div>
+
+</div>
+</body>
+</html>

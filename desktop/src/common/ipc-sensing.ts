@@ -1,5 +1,5 @@
 // Agent A's IPC channels. Merged into the maps in ipc.ts; only Agent A edits this file.
-import type { SettingsValues, StreakSnapshotType } from '@wolfie/shared';
+import type { SettingsValues, StreakSnapshotType, BrightspaceCourse } from '@wolfie/shared';
 
 export type PermissionState = 'granted' | 'denied' | 'not-determined' | 'restricted' | 'unknown';
 export type PermissionKind = 'screen' | 'accessibility' | 'automation' | 'microphone';
@@ -147,6 +147,10 @@ export interface SensingInvoke {
   'data-export': { args: []; result: DataExportResult };
   /** Deletes all data and re-seeds the streak row. The UI should confirm first. */
   'data-clear': { args: [opts?: { keepSettings?: boolean }]; result: DataClearResult };
+  /** Gets all Brightspace courses with their assignments. */
+  'brightspace-get-courses': { args: []; result: BrightspaceCourse[] };
+  /** Gets the current semester from Brightspace data. */
+  'brightspace-get-semester': { args: []; result: string | null };
 }
 
 /** renderer -> main, fire-and-forget: 'channel': [...args] */

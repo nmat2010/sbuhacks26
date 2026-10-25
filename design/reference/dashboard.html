@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Home dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#1a1214}
+.h{font-family:'Press Start 2P',monospace;line-height:1.5;font-weight:400}
+.card{background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9,8px 8px 0 0 #0d0709}
+.card2{background:#3a2328;box-shadow:0 -4px 0 0 #5a3a41,0 4px 0 0 #5a3a41,-4px 0 0 0 #5a3a41,4px 0 0 0 #5a3a41}
+.btn{display:inline-block;border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.4;color:#f5ecd9;background:#c41e1e;padding:16px 22px;text-decoration:none;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #7a0000,inset 0 6px 0 0 #e0504f}
+.btn:active{transform:translateY(2px)}
+.btn.gold{background:#f2b632;color:#1a1214;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #b9801a,inset 0 6px 0 0 #ffd878}
+.nav{display:flex;align-items:center;gap:12px;width:100%;border:0;background:transparent;color:#e0d2c2;font-family:'Press Start 2P',monospace;font-size:10px;padding:14px 12px;cursor:pointer;text-align:left}
+.nav.on{background:#990000;color:#f5ecd9}
+.nav i{width:12px;height:12px;background:#5a3a41;flex:none}
+.nav.on i{background:#f2b632}
+.xp{font-family:'Press Start 2P',monospace;font-size:9px;background:#f2b632;color:#1a1214;padding:6px 8px;flex:none}
+.src{font-family:'Press Start 2P',monospace;font-size:8px;padding:5px 6px;flex:none;background:#0d0709;color:#c9b8a6}
+.seg{display:flex;gap:3px}
+.seg span{flex:1;height:12px;background:#5a3a41}
+.seg span.f{background:#c41e1e}
+.seg.g span.f{background:#f2b632}
+.seg.b span.f{background:#6fd27a}
+</style>
+</head>
+<body>
+<div style="width:100%;min-height:1120px;background:#1a1214;color:#f5ecd9;font-family:'Pixelify Sans',monospace;font-size:18px;display:flex;flex-direction:column">
+
+<div style="height:44px;background:#0d0709;border-bottom:4px solid #990000;display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex:none">
+<span class="h" style="font-size:11px">WOLFIE SENSEI</span>
+<span class="h" style="font-size:10px;color:#c9b8a6">HOME</span>
+<div style="display:flex;gap:8px" aria-hidden="true"><span style="width:14px;height:14px;background:#f2b632"></span><span style="width:14px;height:14px;background:#6fd27a"></span><span style="width:14px;height:14px;background:#e5484d"></span></div>
+</div>
+
+<div style="flex:1;display:flex;flex-wrap:wrap;align-items:stretch">
+
+<nav aria-label="Main" style="flex:0 0 232px;width:232px;max-width:100%;background:#0d0709;padding:24px 16px;display:flex;flex-direction:column;gap:6px;box-sizing:border-box">
+<button type="button" class="nav on"><i></i>HOME</button>
+<button type="button" class="nav"><i></i>QUESTS</button>
+<button type="button" class="nav"><i></i>TO-DO</button>
+<button type="button" class="nav"><i></i>GOAL TREE</button>
+<button type="button" class="nav"><i></i>FOCUS</button>
+<button type="button" class="nav"><i></i>SHIELDS</button>
+<button type="button" class="nav"><i></i>SETTINGS</button>
+<div style="margin-top:auto;padding-top:28px;display:flex;flex-direction:column;align-items:center;gap:12px">
+<svg aria-hidden="true" viewBox="0 0 16 16" width="88" height="88" shape-rendering="crispEdges" style="image-rendering:pixelated"><rect x="2" y="1" width="3" height="3" fill="#5d6270"/><rect x="11" y="1" width="3" height="3" fill="#5d6270"/><rect x="3" y="2" width="1" height="2" fill="#d9a3a3"/><rect x="12" y="2" width="1" height="2" fill="#d9a3a3"/><rect x="3" y="3" width="10" height="1" fill="#9aa0ac"/><rect x="2" y="4" width="12" height="6" fill="#9aa0ac"/><rect x="3" y="10" width="10" height="1" fill="#9aa0ac"/><rect x="4" y="11" width="8" height="1" fill="#9aa0ac"/><rect x="2" y="4" width="12" height="2" fill="#c41e1e"/><rect x="14" y="5" width="2" height="1" fill="#990000"/><rect x="14" y="6" width="1" height="2" fill="#990000"/><rect x="4" y="7" width="2" height="2" fill="#1a1214"/><rect x="10" y="7" width="2" height="2" fill="#1a1214"/><rect x="4" y="7" width="1" height="1" fill="#f5ecd9"/><rect x="10" y="7" width="1" height="1" fill="#f5ecd9"/><rect x="5" y="9" width="6" height="3" fill="#efe6d6"/><rect x="7" y="9" width="2" height="1" fill="#1a1214"/></svg>
+<span class="h" style="font-size:9px;color:#c9b8a6">SENSEI · IDLE</span>
+</div>
+</nav>
+
+<main style="flex:999 1 560px;min-width:0;padding:32px 36px 40px;display:flex;flex-direction:column;gap:32px;box-sizing:border-box">
+
+<div style="display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:10px">
+<h1 class="h" style="margin:0;font-size:20px;color:#f2b632">TODAY'S TRAINING</h1>
+<div style="display:flex;gap:10px;flex-wrap:wrap"><span class="card2" style="padding:4px 12px;font-size:16px">Fall 2026</span><span class="card2" style="padding:4px 12px;font-size:16px">5 courses</span><span class="card2" style="padding:4px 12px;font-size:16px;color:#6fd27a">Brightspace synced</span></div>
+</div>
+<button type="button" class="btn gold">START FOCUS SESSION</button>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:32px">
+
+<div class="card" style="flex:1 1 260px;padding:22px;display:flex;flex-direction:column;gap:14px">
+<span class="h" style="font-size:10px;color:#c9b8a6">LEVEL</span>
+<div style="display:flex;align-items:baseline;gap:12px"><span class="h" style="font-size:26px;color:#f2b632">4</span><span style="font-weight:600">Pup Scholar</span></div>
+<div class="seg g" role="img" aria-label="340 of 500 XP"><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span></span><span></span><span></span></div>
+<span style="font-size:15px;color:#c9b8a6">340 / 500 XP</span>
+</div>
+
+<div class="card" style="flex:1 1 260px;padding:22px;display:flex;flex-direction:column;gap:14px">
+<span class="h" style="font-size:10px;color:#c9b8a6">STREAK</span>
+<div style="display:flex;align-items:baseline;gap:12px"><span class="h" style="font-size:26px;color:#f2b632">6</span><span style="font-weight:600">days</span></div>
+<div style="display:flex;gap:6px" role="img" aria-label="Last 7 days: 6 done"><span style="width:22px;height:22px;background:#f2b632"></span><span style="width:22px;height:22px;background:#f2b632"></span><span style="width:22px;height:22px;background:#f2b632"></span><span style="width:22px;height:22px;background:#f2b632"></span><span style="width:22px;height:22px;background:#f2b632"></span><span style="width:22px;height:22px;background:#f2b632"></span><span style="width:22px;height:22px;background:#5a3a41"></span></div>
+<span style="font-size:15px;color:#c9b8a6">Do one quest today to keep it</span>
+</div>
+
+<div class="card" style="flex:2 1 340px;padding:22px;display:flex;flex-direction:column;gap:14px">
+<span class="h" style="font-size:10px;color:#c9b8a6">MENTAL MUSCLE · SAMPLE DATA</span>
+<div style="display:flex;align-items:center;gap:14px"><span style="width:116px;flex:none;font-size:16px">Recall</span><div class="seg b" style="flex:1" role="img" aria-label="Recall 6 of 10"><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span></span><span></span><span></span><span></span></div></div>
+<div style="display:flex;align-items:center;gap:14px"><span style="width:116px;flex:none;font-size:16px">Focus</span><div class="seg b" style="flex:1" role="img" aria-label="Focus 7 of 10"><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span></span><span></span><span></span></div></div>
+<div style="display:flex;align-items:center;gap:14px"><span style="width:116px;flex:none;font-size:16px">Independence</span><div class="seg b" style="flex:1" role="img" aria-label="Independence 4 of 10"><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
+</div>
+
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
+
+<section class="card" style="flex:2 1 420px;padding:26px;display:flex;flex-direction:column;gap:14px">
+<h2 class="h" style="margin:0 0 4px;font-size:13px;color:#f2b632">QUESTS FOR TODAY</h2>
+<div class="card2" style="padding:12px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span style="width:20px;height:20px;background:#1a1214;box-shadow:0 0 0 3px #f5ecd9;flex:none" aria-hidden="true"></span><div style="flex:1 1 200px;display:flex;flex-direction:column"><span>Lab 4 report</span><span style="font-size:15px;color:#c9b8a6">ESE 271 · due Tue Oct 27</span></div><span class="src">BRIGHTSPACE</span><span class="xp">+40 XP</span></div>
+<div class="card2" style="padding:12px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span style="width:20px;height:20px;background:#1a1214;box-shadow:0 0 0 3px #f5ecd9;flex:none" aria-hidden="true"></span><div style="flex:1 1 200px;display:flex;flex-direction:column"><span>Problem set 6</span><span style="font-size:15px;color:#c9b8a6">AMS 261 · due Wed Oct 28</span></div><span class="src">BRIGHTSPACE</span><span class="xp">+30 XP</span></div>
+<div class="card2" style="padding:12px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span style="width:20px;height:20px;background:#1a1214;box-shadow:0 0 0 3px #f5ecd9;flex:none" aria-hidden="true"></span><div style="flex:1 1 200px;display:flex;flex-direction:column"><span>Project milestone</span><span style="font-size:15px;color:#c9b8a6">CSE 220 · due Fri Oct 30</span></div><span class="src">BRIGHTSPACE</span><span class="xp">+40 XP</span></div>
+<div class="card2" style="padding:12px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span style="width:20px;height:20px;background:#1a1214;box-shadow:0 0 0 3px #f5ecd9;flex:none" aria-hidden="true"></span><div style="flex:1 1 200px;display:flex;flex-direction:column"><span>Read one lab's recent paper abstract</span><span style="font-size:15px;color:#c9b8a6">Goal · Join a research lab</span></div><span class="src" style="background:#990000;color:#f5ecd9">GOAL</span><span class="xp">+20 XP</span></div>
+<div class="card2" style="padding:12px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span style="width:20px;height:20px;background:#6fd27a;flex:none" aria-hidden="true"></span><div style="flex:1 1 200px;display:flex;flex-direction:column"><span style="color:#c9b8a6;text-decoration:line-through">Shortlist 5 labs</span><span style="font-size:15px;color:#c9b8a6">Goal · Join a research lab</span></div><span class="src" style="background:#990000;color:#f5ecd9">GOAL</span><span class="xp">DONE</span></div>
+</section>
+
+<aside style="flex:1 1 300px;display:flex;flex-direction:column;gap:32px">
+<div class="card" style="padding:24px;display:flex;flex-direction:column;gap:16px">
+<span class="h" style="font-size:10px;color:#f2b632">SENSEI SAYS</span>
+<p style="margin:0;line-height:1.4">Lab 4 is due in three days. Try the first problem on paper before you open any AI. I'll hold the gate.</p>
+<button type="button" class="btn" style="align-self:flex-start">START 25 MIN</button>
+</div>
+
+<div class="card" style="padding:24px;display:flex;flex-direction:column;gap:14px">
+<span class="h" style="font-size:10px;color:#f2b632">MAIN QUEST</span>
+<span style="font-weight:600">Join a research lab</span>
+<div class="seg" role="img" aria-label="2 of 9 steps"><span class="f"></span><span class="f"></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+<span style="font-size:15px;color:#c9b8a6">Next: read one abstract per lab</span>
+<button type="button" class="btn gold" style="align-self:flex-start;font-size:10px;padding:12px 16px">OPEN GOAL TREE</button>
+</div>
+</aside>
+
+</div>
+
+<section class="card" style="padding:26px;display:flex;flex-wrap:wrap;gap:32px;align-items:flex-end">
+<div style="flex:1 1 260px;display:flex;flex-direction:column;gap:16px">
+<h2 class="h" style="margin:0;font-size:13px;color:#f2b632">SHIELD LOG · THIS WEEK</h2>
+<div style="display:flex;gap:28px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:4px"><span class="h" style="font-size:20px;color:#f2b632">4</span><span style="font-size:15px;color:#c9b8a6">AI gates</span></div>
+<div style="display:flex;flex-direction:column;gap:4px"><span class="h" style="font-size:20px;color:#6fd27a">3</span><span style="font-size:15px;color:#c9b8a6">tried first</span></div>
+<div style="display:flex;flex-direction:column;gap:4px"><span class="h" style="font-size:20px;color:#e5484d">2</span><span style="font-size:15px;color:#c9b8a6">blocked</span></div>
+</div>
+<span style="font-size:15px;color:#c9b8a6">Sample numbers. Real counts come from the overlay.</span>
+</div>
+<div style="flex:2 1 340px;display:flex;flex-direction:column;gap:10px">
+<span style="font-size:15px;color:#c9b8a6">Focus minutes by day</span>
+<div style="display:flex;align-items:flex-end;gap:12px;height:120px" role="img" aria-label="Focus minutes Monday to Sunday: 50, 75, 40, 95, 60, 25, 10">
+<div style="flex:1;height:50%;background:#f2b632"></div><div style="flex:1;height:75%;background:#f2b632"></div><div style="flex:1;height:40%;background:#f2b632"></div><div style="flex:1;height:95%;background:#f2b632"></div><div style="flex:1;height:60%;background:#f2b632"></div><div style="flex:1;height:25%;background:#c41e1e"></div><div style="flex:1;height:10%;background:#5a3a41"></div>
+</div>
+<div style="display:flex;gap:12px;font-size:14px;color:#c9b8a6"><span style="flex:1;text-align:center">M</span><span style="flex:1;text-align:center">T</span><span style="flex:1;text-align:center">W</span><span style="flex:1;text-align:center">T</span><span style="flex:1;text-align:center">F</span><span style="flex:1;text-align:center">S</span><span style="flex:1;text-align:center">S</span></div>
+</div>
+</section>
+
+</main>
+</div>
+</div>
+</body>
+</html>

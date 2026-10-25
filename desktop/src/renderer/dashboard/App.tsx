@@ -4,7 +4,7 @@ import { ReportView } from './views/ReportView';
 import { SkillsView } from './views/SkillsView';
 import { MaterialsView } from './views/MaterialsView';
 import { SettingsView } from './views/SettingsView';
-import { Onboarding } from './components/Onboarding';
+import { RetroOnboarding } from './components/RetroOnboarding';
 import './styles/Dashboard.css';
 
 // The dashboard skeleton (tuan/reports/dashboard-skeleton.md): the student's performance seen the
@@ -65,34 +65,37 @@ function App() {
 
   return (
     <div className="dashboard">
-      {/* Sidebar Navigation */}
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <h1 className="app-title">Wolfie Sensei</h1>
-          <p className="app-subtitle">Study Companion</p>
-        </div>
+      {showOnboarding ? (
+        <RetroOnboarding onComplete={handleOnboardingComplete} />
+      ) : (
+        <>
+          {/* Sidebar Navigation */}
+          <aside className="sidebar">
+            <div className="sidebar-header">
+              <h1 className="app-title">Wolfie Sensei</h1>
+              <p className="app-subtitle">Study Companion</p>
+            </div>
 
-        <nav className="nav-menu">
-          {NAV.map((item) => (
-            <button
-              key={item.view}
-              className={`nav-item ${currentView === item.view ? 'active' : ''}`}
-              onClick={() => setCurrentView(item.view)}
-            >
-              <span className="nav-icon">{item.icon}</span>
-              <span className="nav-label">{item.label}</span>
-            </button>
-          ))}
-        </nav>
-      </aside>
+            <nav className="nav-menu">
+              {NAV.map((item) => (
+                <button
+                  key={item.view}
+                  className={`nav-item ${currentView === item.view ? 'active' : ''}`}
+                  onClick={() => setCurrentView(item.view)}
+                >
+                  <span className="nav-icon">{item.icon}</span>
+                  <span className="nav-label">{item.label}</span>
+                </button>
+              ))}
+            </nav>
+          </aside>
 
-      {/* Main Content Area */}
-      <main className="main-content">
-        {renderView()}
-      </main>
-
-      {/* Onboarding Modal */}
-      {showOnboarding && <Onboarding onComplete={handleOnboardingComplete} />}
+          {/* Main Content Area */}
+          <main className="main-content">
+            {renderView()}
+          </main>
+        </>
+      )}
     </div>
   );
 }

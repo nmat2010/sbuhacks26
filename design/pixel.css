@@ -1,0 +1,255 @@
+/* Wolfie Sensei pixel styles. GENERATED from the approved mockups.
+   Every rule is scoped under .pg-<screen> so screens with the same class names
+   (.seg, .chip, .tag, ...) keep the exact look they have in the mockups.
+   Put className="pg-<screen>" on each screen's outermost div.
+   Pass 2 (after pixel match): merge the duplicated rules into shared components. */
+
+html, body { margin: 0; background: #1a1214; }
+
+@keyframes blink { 50% { opacity: .25; } }
+
+/* ===== welcome (Welcome.dc.html) · .pg-welcome ===== */
+.pg-welcome .h { font-family:'Press Start 2P',monospace;line-height:1.5;font-weight:400 }
+.pg-welcome .card { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9,8px 8px 0 0 #0d0709 }
+.pg-welcome .card2 { background:#3a2328;box-shadow:0 -4px 0 0 #5a3a41,0 4px 0 0 #5a3a41,-4px 0 0 0 #5a3a41,4px 0 0 0 #5a3a41 }
+.pg-welcome .btn { display:inline-block;border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.4;color:#f5ecd9;background:#c41e1e;padding:16px 22px;text-decoration:none;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #7a0000,inset 0 6px 0 0 #e0504f }
+.pg-welcome .btn:active { transform:translateY(2px) }
+.pg-welcome .btn.gold { background:#f2b632;color:#1a1214;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #b9801a,inset 0 6px 0 0 #ffd878 }
+
+/* ===== connect (Main.dc.html) · .pg-connect ===== */
+.pg-connect .h { font-family:'Press Start 2P',monospace;line-height:1.5;font-weight:400 }
+.pg-connect .card { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9,8px 8px 0 0 #0d0709 }
+.pg-connect .card2 { background:#3a2328;box-shadow:0 -4px 0 0 #5a3a41,0 4px 0 0 #5a3a41,-4px 0 0 0 #5a3a41,4px 0 0 0 #5a3a41 }
+.pg-connect .btn { display:inline-block;border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.4;color:#f5ecd9;background:#c41e1e;padding:16px 22px;text-decoration:none;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #7a0000,inset 0 6px 0 0 #e0504f }
+.pg-connect .btn:active { transform:translateY(2px) }
+.pg-connect .btn.gold { background:#f2b632;color:#1a1214;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #b9801a,inset 0 6px 0 0 #ffd878 }
+.pg-connect .btn.ghost { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9 }
+.pg-connect .btn.off { background:#4a3a3d;color:#c9b8a6;cursor:not-allowed;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709 }
+.pg-connect .blink { animation:blink 1s steps(2) infinite }
+@media (prefers-reduced-motion:reduce) { .pg-connect .blink { animation:none } }
+
+/* ===== brightspace (Brightspace.dc.html) · .pg-brightspace ===== */
+.pg-brightspace .h { font-family:'Press Start 2P',monospace;line-height:1.5;font-weight:400 }
+.pg-brightspace .card { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9,8px 8px 0 0 #0d0709 }
+.pg-brightspace .card2 { background:#3a2328;box-shadow:0 -4px 0 0 #5a3a41,0 4px 0 0 #5a3a41,-4px 0 0 0 #5a3a41,4px 0 0 0 #5a3a41 }
+.pg-brightspace .btn { display:inline-block;border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.4;color:#f5ecd9;background:#c41e1e;padding:16px 22px;text-decoration:none;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #7a0000,inset 0 6px 0 0 #e0504f }
+.pg-brightspace .btn:active { transform:translateY(2px) }
+.pg-brightspace .btn.gold { background:#f2b632;color:#1a1214;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #b9801a,inset 0 6px 0 0 #ffd878 }
+.pg-brightspace .btn.ghost { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9 }
+.pg-brightspace .blink { animation:blink 1s steps(2) infinite }
+@media (prefers-reduced-motion:reduce) { .pg-brightspace .blink { animation:none } }
+
+/* ===== permissions (Permissions.dc.html) · .pg-permissions ===== */
+.pg-permissions .h { font-family:'Press Start 2P',monospace;line-height:1.5;font-weight:400 }
+.pg-permissions .card { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9,8px 8px 0 0 #0d0709 }
+.pg-permissions .card2 { background:#3a2328;box-shadow:0 -4px 0 0 #5a3a41,0 4px 0 0 #5a3a41,-4px 0 0 0 #5a3a41,4px 0 0 0 #5a3a41 }
+.pg-permissions .btn { display:inline-block;border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.4;color:#f5ecd9;background:#c41e1e;padding:16px 22px;text-decoration:none;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #7a0000,inset 0 6px 0 0 #e0504f }
+.pg-permissions .btn:active { transform:translateY(2px) }
+.pg-permissions .btn.gold { background:#f2b632;color:#1a1214;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #b9801a,inset 0 6px 0 0 #ffd878 }
+.pg-permissions .btn.ghost { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9 }
+.pg-permissions .btn.off { background:#4a3a3d;color:#c9b8a6;cursor:not-allowed;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709 }
+
+/* ===== goals (Goals.dc.html) · .pg-goals ===== */
+.pg-goals .h { font-family:'Press Start 2P',monospace;line-height:1.5;font-weight:400 }
+.pg-goals .card { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9,8px 8px 0 0 #0d0709 }
+.pg-goals .card2 { background:#3a2328;box-shadow:0 -4px 0 0 #5a3a41,0 4px 0 0 #5a3a41,-4px 0 0 0 #5a3a41,4px 0 0 0 #5a3a41 }
+.pg-goals .sel { background:#3a2328;box-shadow:0 -4px 0 0 #f2b632,0 4px 0 0 #f2b632,-4px 0 0 0 #f2b632,4px 0 0 0 #f2b632 }
+.pg-goals .btn { display:inline-block;border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.4;color:#f5ecd9;background:#c41e1e;padding:16px 22px;text-decoration:none;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #7a0000,inset 0 6px 0 0 #e0504f }
+.pg-goals .btn:active { transform:translateY(2px) }
+.pg-goals .btn.ghost { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9 }
+.pg-goals .chip { display:inline-block;font-size:15px;padding:4px 10px;background:#0d0709;color:#f5ecd9 }
+.pg-goals .xp { font-family:'Press Start 2P',monospace;font-size:9px;background:#f2b632;color:#1a1214;padding:6px 8px;flex:none }
+
+/* ===== distractions (Distractions.dc.html) · .pg-distractions ===== */
+.pg-distractions .h { font-family:'Press Start 2P',monospace;line-height:1.5;font-weight:400 }
+.pg-distractions .card { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9,8px 8px 0 0 #0d0709 }
+.pg-distractions .card2 { background:#3a2328;box-shadow:0 -4px 0 0 #5a3a41,0 4px 0 0 #5a3a41,-4px 0 0 0 #5a3a41,4px 0 0 0 #5a3a41 }
+.pg-distractions .btn { display:inline-block;border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.4;color:#f5ecd9;background:#c41e1e;padding:16px 22px;text-decoration:none;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #7a0000,inset 0 6px 0 0 #e0504f }
+.pg-distractions .btn:active { transform:translateY(2px) }
+.pg-distractions .btn.gold { background:#f2b632;color:#1a1214;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #b9801a,inset 0 6px 0 0 #ffd878 }
+.pg-distractions .btn.ghost { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9 }
+.pg-distractions .seg { display:flex;gap:4px;flex:none }
+.pg-distractions .seg button { border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:9px;padding:10px 10px;background:#1a1214;color:#c9b8a6 }
+.pg-distractions .seg button.warn { background:#f2a03a;color:#1a1214 }
+.pg-distractions .seg button.gate { background:#f2b632;color:#1a1214 }
+.pg-distractions .seg button.block { background:#e5484d;color:#1a1214 }
+.pg-distractions .tile { width:40px;height:40px;background:#0d0709;display:flex;align-items:center;justify-content:center;font-family:'Press Start 2P',monospace;font-size:14px;color:#f2b632;flex:none }
+.pg-distractions .tag { font-family:'Press Start 2P',monospace;font-size:8px;background:#990000;color:#f5ecd9;padding:4px 6px }
+
+/* ===== done (Done.dc.html) · .pg-done ===== */
+.pg-done .h { font-family:'Press Start 2P',monospace;line-height:1.5;font-weight:400 }
+.pg-done .card { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9,8px 8px 0 0 #0d0709 }
+.pg-done .card2 { background:#3a2328;box-shadow:0 -4px 0 0 #5a3a41,0 4px 0 0 #5a3a41,-4px 0 0 0 #5a3a41,4px 0 0 0 #5a3a41 }
+.pg-done .btn { display:inline-block;border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.4;color:#f5ecd9;background:#c41e1e;padding:16px 22px;text-decoration:none;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #7a0000,inset 0 6px 0 0 #e0504f }
+.pg-done .btn:active { transform:translateY(2px) }
+.pg-done .btn.gold { background:#f2b632;color:#1a1214;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #b9801a,inset 0 6px 0 0 #ffd878 }
+.pg-done .btn.ghost { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9 }
+.pg-done .row { display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 16px }
+
+/* ===== overlay (Overlay.dc.html) · .pg-overlay ===== */
+.pg-overlay .h { font-family:'Press Start 2P',monospace;line-height:1.5;font-weight:400 }
+.pg-overlay .card { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9,8px 8px 0 0 #0d0709 }
+.pg-overlay .card2 { background:#3a2328;box-shadow:0 -4px 0 0 #5a3a41,0 4px 0 0 #5a3a41,-4px 0 0 0 #5a3a41,4px 0 0 0 #5a3a41 }
+.pg-overlay .btn { display:inline-block;border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.4;color:#f5ecd9;background:#c41e1e;padding:16px 22px;text-decoration:none;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #7a0000,inset 0 6px 0 0 #e0504f }
+.pg-overlay .btn:active { transform:translateY(2px) }
+.pg-overlay .btn.gold { background:#f2b632;color:#1a1214;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #b9801a,inset 0 6px 0 0 #ffd878 }
+.pg-overlay .btn.ghost { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9 }
+.pg-overlay .btn.off { background:#4a3a3d;color:#c9b8a6;cursor:not-allowed;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709 }
+
+/* ===== dashboard (Dashboard.dc.html) · .pg-dashboard ===== */
+.pg-dashboard .h { font-family:'Press Start 2P',monospace;line-height:1.5;font-weight:400 }
+.pg-dashboard .card { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9,8px 8px 0 0 #0d0709 }
+.pg-dashboard .card2 { background:#3a2328;box-shadow:0 -4px 0 0 #5a3a41,0 4px 0 0 #5a3a41,-4px 0 0 0 #5a3a41,4px 0 0 0 #5a3a41 }
+.pg-dashboard .btn { display:inline-block;border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.4;color:#f5ecd9;background:#c41e1e;padding:16px 22px;text-decoration:none;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #7a0000,inset 0 6px 0 0 #e0504f }
+.pg-dashboard .btn:active { transform:translateY(2px) }
+.pg-dashboard .btn.gold { background:#f2b632;color:#1a1214;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #b9801a,inset 0 6px 0 0 #ffd878 }
+.pg-dashboard .nav { display:flex;align-items:center;gap:12px;width:100%;border:0;background:transparent;color:#e0d2c2;font-family:'Press Start 2P',monospace;font-size:10px;padding:14px 12px;cursor:pointer;text-align:left }
+.pg-dashboard .nav.on { background:#990000;color:#f5ecd9 }
+.pg-dashboard .nav i { width:12px;height:12px;background:#5a3a41;flex:none }
+.pg-dashboard .nav.on i { background:#f2b632 }
+.pg-dashboard .xp { font-family:'Press Start 2P',monospace;font-size:9px;background:#f2b632;color:#1a1214;padding:6px 8px;flex:none }
+.pg-dashboard .src { font-family:'Press Start 2P',monospace;font-size:8px;padding:5px 6px;flex:none;background:#0d0709;color:#c9b8a6 }
+.pg-dashboard .seg { display:flex;gap:3px }
+.pg-dashboard .seg span { flex:1;height:12px;background:#5a3a41 }
+.pg-dashboard .seg span.f { background:#c41e1e }
+.pg-dashboard .seg.g span.f { background:#f2b632 }
+.pg-dashboard .seg.b span.f { background:#6fd27a }
+
+/* ===== quests (Quests.dc.html) · .pg-quests ===== */
+.pg-quests .h { font-family:'Press Start 2P',monospace;line-height:1.5;font-weight:400 }
+.pg-quests .card { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9,8px 8px 0 0 #0d0709 }
+.pg-quests .card2 { background:#3a2328;box-shadow:0 -4px 0 0 #5a3a41,0 4px 0 0 #5a3a41,-4px 0 0 0 #5a3a41,4px 0 0 0 #5a3a41 }
+.pg-quests .btn { display:inline-block;border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.4;color:#f5ecd9;background:#c41e1e;padding:16px 22px;text-decoration:none;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #7a0000,inset 0 6px 0 0 #e0504f }
+.pg-quests .btn:active { transform:translateY(2px) }
+.pg-quests .btn.gold { background:#f2b632;color:#1a1214;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #b9801a,inset 0 6px 0 0 #ffd878 }
+.pg-quests .nav { display:flex;align-items:center;gap:12px;width:100%;border:0;background:transparent;color:#e0d2c2;font-family:'Press Start 2P',monospace;font-size:10px;padding:14px 12px;cursor:pointer;text-align:left }
+.pg-quests .nav.on { background:#990000;color:#f5ecd9 }
+.pg-quests .nav i { width:12px;height:12px;background:#5a3a41;flex:none }
+.pg-quests .nav.on i { background:#f2b632 }
+.pg-quests .xp { font-family:'Press Start 2P',monospace;font-size:9px;background:#f2b632;color:#1a1214;padding:6px 8px;flex:none }
+.pg-quests .src { font-family:'Press Start 2P',monospace;font-size:8px;padding:5px 6px;flex:none;background:#0d0709;color:#c9b8a6 }
+.pg-quests .seg { display:flex;gap:3px }
+.pg-quests .seg span { flex:1;height:12px;background:#5a3a41 }
+.pg-quests .seg span.f { background:#f2b632 }
+.pg-quests .q { padding:14px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap }
+.pg-quests .chk { width:22px;height:22px;flex:none;background:#1a1214;box-shadow:0 0 0 3px #f5ecd9 }
+.pg-quests .chk.d { background:#6fd27a;box-shadow:none }
+.pg-quests .badge { display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 10px;text-align:center }
+.pg-quests .bt { width:56px;height:56px;background:#f2b632;box-shadow:inset 0 0 0 8px #b9801a,inset 0 0 0 16px #f2b632 }
+.pg-quests .bt.l { background:#4a3a3d;box-shadow:inset 0 0 0 8px #3a2328 }
+
+/* ===== todo (Todo.dc.html) · .pg-todo ===== */
+.pg-todo .h { font-family:'Press Start 2P',monospace;line-height:1.5;font-weight:400 }
+.pg-todo .card { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9,8px 8px 0 0 #0d0709 }
+.pg-todo .card2 { background:#3a2328;box-shadow:0 -4px 0 0 #5a3a41,0 4px 0 0 #5a3a41,-4px 0 0 0 #5a3a41,4px 0 0 0 #5a3a41 }
+.pg-todo .sel { background:#3a2328;box-shadow:0 -4px 0 0 #f2b632,0 4px 0 0 #f2b632,-4px 0 0 0 #f2b632,4px 0 0 0 #f2b632 }
+.pg-todo .btn { display:inline-block;border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.4;color:#f5ecd9;background:#c41e1e;padding:16px 22px;text-decoration:none;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #7a0000,inset 0 6px 0 0 #e0504f }
+.pg-todo .btn:active { transform:translateY(2px) }
+.pg-todo .btn.gold { background:#f2b632;color:#1a1214;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #b9801a,inset 0 6px 0 0 #ffd878 }
+.pg-todo .nav { display:flex;align-items:center;gap:12px;width:100%;border:0;background:transparent;color:#e0d2c2;font-family:'Press Start 2P',monospace;font-size:10px;padding:14px 12px;cursor:pointer;text-align:left }
+.pg-todo .nav.on { background:#990000;color:#f5ecd9 }
+.pg-todo .nav i { width:12px;height:12px;background:#5a3a41;flex:none }
+.pg-todo .nav.on i { background:#f2b632 }
+.pg-todo .xp { font-family:'Press Start 2P',monospace;font-size:9px;background:#f2b632;color:#1a1214;padding:6px 8px;flex:none }
+.pg-todo .src { font-family:'Press Start 2P',monospace;font-size:8px;padding:5px 6px;flex:none;background:#0d0709;color:#c9b8a6 }
+.pg-todo .chip { border:0;cursor:pointer;font-family:'Pixelify Sans',monospace;font-size:16px;padding:6px 14px;background:#3a2328;color:#f5ecd9;box-shadow:0 -3px 0 0 #5a3a41,0 3px 0 0 #5a3a41,-3px 0 0 0 #5a3a41,3px 0 0 0 #5a3a41 }
+.pg-todo .chip.on { background:#f2b632;color:#1a1214;box-shadow:0 -3px 0 0 #b9801a,0 3px 0 0 #b9801a,-3px 0 0 0 #b9801a,3px 0 0 0 #b9801a }
+.pg-todo .r { padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap }
+.pg-todo .chk { width:22px;height:22px;flex:none;background:#1a1214;box-shadow:0 0 0 3px #f5ecd9 }
+.pg-todo .grp { font-family:'Press Start 2P',monospace;font-size:10px;color:#c9b8a6;margin:6px 0 0 }
+
+/* ===== goaltree (GoalTree.dc.html) · .pg-goaltree ===== */
+.pg-goaltree .h { font-family:'Press Start 2P',monospace;line-height:1.5;font-weight:400 }
+.pg-goaltree .card { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9,8px 8px 0 0 #0d0709 }
+.pg-goaltree .card2 { background:#3a2328;box-shadow:0 -4px 0 0 #5a3a41,0 4px 0 0 #5a3a41,-4px 0 0 0 #5a3a41,4px 0 0 0 #5a3a41 }
+.pg-goaltree .sel { background:#3a2328;box-shadow:0 -4px 0 0 #f2b632,0 4px 0 0 #f2b632,-4px 0 0 0 #f2b632,4px 0 0 0 #f2b632 }
+.pg-goaltree .btn { display:inline-block;border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.4;color:#f5ecd9;background:#c41e1e;padding:16px 22px;text-decoration:none;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #7a0000,inset 0 6px 0 0 #e0504f }
+.pg-goaltree .btn:active { transform:translateY(2px) }
+.pg-goaltree .btn.gold { background:#f2b632;color:#1a1214;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #b9801a,inset 0 6px 0 0 #ffd878 }
+.pg-goaltree .btn.ghost { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9 }
+.pg-goaltree .nav { display:flex;align-items:center;gap:12px;width:100%;border:0;background:transparent;color:#e0d2c2;font-family:'Press Start 2P',monospace;font-size:10px;padding:14px 12px;cursor:pointer;text-align:left }
+.pg-goaltree .nav.on { background:#990000;color:#f5ecd9 }
+.pg-goaltree .nav i { width:12px;height:12px;background:#5a3a41;flex:none }
+.pg-goaltree .nav.on i { background:#f2b632 }
+.pg-goaltree .xp { font-family:'Press Start 2P',monospace;font-size:9px;background:#f2b632;color:#1a1214;padding:6px 8px;flex:none }
+.pg-goaltree .chip { display:inline-block;font-size:15px;padding:4px 10px;background:#0d0709;color:#f5ecd9 }
+.pg-goaltree .tab { border:0;cursor:pointer;font-family:'Pixelify Sans',monospace;font-size:16px;padding:8px 16px;background:#3a2328;color:#f5ecd9;box-shadow:0 -3px 0 0 #5a3a41,0 3px 0 0 #5a3a41,-3px 0 0 0 #5a3a41,3px 0 0 0 #5a3a41 }
+.pg-goaltree .tab.on { background:#f2b632;color:#1a1214;box-shadow:0 -3px 0 0 #b9801a,0 3px 0 0 #b9801a,-3px 0 0 0 #b9801a,3px 0 0 0 #b9801a }
+.pg-goaltree .a { padding:12px 14px;display:flex;align-items:center;gap:12px }
+.pg-goaltree .chk { width:20px;height:20px;flex:none;background:#1a1214;box-shadow:0 0 0 3px #f5ecd9 }
+.pg-goaltree .chk.d { background:#6fd27a;box-shadow:none }
+.pg-goaltree .ms { display:flex;flex-direction:column;gap:12px;padding-left:20px;border-left:4px dashed #5a3a41 }
+.pg-goaltree .seg { display:flex;gap:4px }
+.pg-goaltree .seg span { flex:1;height:14px;background:#5a3a41 }
+.pg-goaltree .seg span.f { background:#c41e1e }
+
+/* ===== focus (Focus.dc.html) · .pg-focus ===== */
+.pg-focus .h { font-family:'Press Start 2P',monospace;line-height:1.5;font-weight:400 }
+.pg-focus .card { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9,8px 8px 0 0 #0d0709 }
+.pg-focus .card2 { background:#3a2328;box-shadow:0 -4px 0 0 #5a3a41,0 4px 0 0 #5a3a41,-4px 0 0 0 #5a3a41,4px 0 0 0 #5a3a41 }
+.pg-focus .btn { display:inline-block;border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.4;color:#f5ecd9;background:#c41e1e;padding:16px 22px;text-decoration:none;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #7a0000,inset 0 6px 0 0 #e0504f }
+.pg-focus .btn:active { transform:translateY(2px) }
+.pg-focus .btn.gold { background:#f2b632;color:#1a1214;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #b9801a,inset 0 6px 0 0 #ffd878 }
+.pg-focus .btn.ghost { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9 }
+.pg-focus .nav { display:flex;align-items:center;gap:12px;width:100%;border:0;background:transparent;color:#e0d2c2;font-family:'Press Start 2P',monospace;font-size:10px;padding:14px 12px;cursor:pointer;text-align:left }
+.pg-focus .nav.on { background:#990000;color:#f5ecd9 }
+.pg-focus .nav i { width:12px;height:12px;background:#5a3a41;flex:none }
+.pg-focus .nav.on i { background:#f2b632 }
+.pg-focus .xp { font-family:'Press Start 2P',monospace;font-size:9px;background:#f2b632;color:#1a1214;padding:6px 8px;flex:none }
+.pg-focus .tag { font-family:'Press Start 2P',monospace;font-size:8px;padding:5px 6px;flex:none;color:#1a1214 }
+.pg-focus .seg { display:flex;gap:3px }
+.pg-focus .seg span { flex:1;height:14px;background:#5a3a41 }
+.pg-focus .seg span.f { background:#f2b632 }
+.pg-focus .tog { width:56px;height:28px;border:0;padding:0;position:relative;cursor:pointer;background:#4a3a3d;flex:none }
+.pg-focus .tog::after { content:'';position:absolute;top:4px;left:4px;width:20px;height:20px;background:#c9b8a6 }
+.pg-focus .tog.on { background:#6fd27a }
+.pg-focus .tog.on::after { left:32px;background:#1a1214 }
+.pg-focus .tog.lock { opacity:.55;cursor:not-allowed }
+.pg-focus .rr { padding:14px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap }
+
+/* ===== shields (Shields.dc.html) · .pg-shields ===== */
+.pg-shields .h { font-family:'Press Start 2P',monospace;line-height:1.5;font-weight:400 }
+.pg-shields .card { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9,8px 8px 0 0 #0d0709 }
+.pg-shields .card2 { background:#3a2328;box-shadow:0 -4px 0 0 #5a3a41,0 4px 0 0 #5a3a41,-4px 0 0 0 #5a3a41,4px 0 0 0 #5a3a41 }
+.pg-shields .btn { display:inline-block;border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.4;color:#f5ecd9;background:#c41e1e;padding:16px 22px;text-decoration:none;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #7a0000,inset 0 6px 0 0 #e0504f }
+.pg-shields .btn:active { transform:translateY(2px) }
+.pg-shields .btn.gold { background:#f2b632;color:#1a1214;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #b9801a,inset 0 6px 0 0 #ffd878 }
+.pg-shields .btn.ghost { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9 }
+.pg-shields .nav { display:flex;align-items:center;gap:12px;width:100%;border:0;background:transparent;color:#e0d2c2;font-family:'Press Start 2P',monospace;font-size:10px;padding:14px 12px;cursor:pointer;text-align:left }
+.pg-shields .nav.on { background:#990000;color:#f5ecd9 }
+.pg-shields .nav i { width:12px;height:12px;background:#5a3a41;flex:none }
+.pg-shields .nav.on i { background:#f2b632 }
+.pg-shields .seg { display:flex;gap:4px;flex:none }
+.pg-shields .seg button { border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:9px;padding:10px;background:#1a1214;color:#c9b8a6 }
+.pg-shields .seg button.warn { background:#f2a03a;color:#1a1214 }
+.pg-shields .seg button.gate { background:#f2b632;color:#1a1214 }
+.pg-shields .seg button.block { background:#e5484d;color:#1a1214 }
+.pg-shields .tile { width:40px;height:40px;background:#0d0709;display:flex;align-items:center;justify-content:center;font-family:'Press Start 2P',monospace;font-size:14px;color:#f2b632;flex:none }
+.pg-shields .tag { font-family:'Press Start 2P',monospace;font-size:8px;background:#990000;color:#f5ecd9;padding:4px 6px }
+.pg-shields .pill { font-size:15px;padding:4px 10px;background:#0d0709;color:#e0d2c2 }
+.pg-shields .stp { display:flex;align-items:center;gap:10px }
+.pg-shields .stp button { width:36px;height:36px;border:0;cursor:pointer;background:#1a1214;color:#f5ecd9;font-family:'Press Start 2P',monospace;font-size:14px;box-shadow:0 0 0 3px #5a3a41 }
+.pg-shields .ev { padding:12px 14px;display:flex;flex-direction:column;gap:2px }
+
+/* ===== settings (Settings.dc.html) · .pg-settings ===== */
+.pg-settings .h { font-family:'Press Start 2P',monospace;line-height:1.5;font-weight:400 }
+.pg-settings .card { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9,8px 8px 0 0 #0d0709 }
+.pg-settings .card2 { background:#3a2328;box-shadow:0 -4px 0 0 #5a3a41,0 4px 0 0 #5a3a41,-4px 0 0 0 #5a3a41,4px 0 0 0 #5a3a41 }
+.pg-settings .btn { display:inline-block;border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:10px;line-height:1.4;color:#f5ecd9;background:#c41e1e;padding:12px 14px;text-decoration:none;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #7a0000,inset 0 6px 0 0 #e0504f }
+.pg-settings .btn:active { transform:translateY(2px) }
+.pg-settings .btn.gold { background:#f2b632;color:#1a1214;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #b9801a,inset 0 6px 0 0 #ffd878 }
+.pg-settings .btn.ghost { background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9 }
+.pg-settings .btn.danger { background:#2a1a1e;color:#ff8a8d;box-shadow:0 -4px 0 0 #e5484d,0 4px 0 0 #e5484d,-4px 0 0 0 #e5484d,4px 0 0 0 #e5484d }
+.pg-settings .nav { display:flex;align-items:center;gap:12px;width:100%;border:0;background:transparent;color:#e0d2c2;font-family:'Press Start 2P',monospace;font-size:10px;padding:14px 12px;cursor:pointer;text-align:left }
+.pg-settings .nav.on { background:#990000;color:#f5ecd9 }
+.pg-settings .nav i { width:12px;height:12px;background:#5a3a41;flex:none }
+.pg-settings .nav.on i { background:#f2b632 }
+.pg-settings .st { font-family:'Press Start 2P',monospace;font-size:8px;padding:6px 8px;flex:none;color:#0d0709 }
+.pg-settings .tog { width:56px;height:28px;border:0;padding:0;position:relative;cursor:pointer;background:#4a3a3d;flex:none }
+.pg-settings .tog::after { content:'';position:absolute;top:4px;left:4px;width:20px;height:20px;background:#c9b8a6 }
+.pg-settings .tog.on { background:#6fd27a }
+.pg-settings .tog.on::after { left:32px;background:#1a1214 }
+.pg-settings .rr { padding:14px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap }
+.pg-settings .seg { display:flex;gap:4px;flex:none }
+.pg-settings .seg button { border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:10px;padding:10px 14px;background:#1a1214;color:#c9b8a6 }
+.pg-settings .seg button.on { background:#f2b632;color:#1a1214 }
