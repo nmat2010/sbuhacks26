@@ -3,6 +3,7 @@ import { useDashboard } from './hooks/useDashboard';
 import { useSession } from './hooks/useSession';
 import { useSettings } from './hooks/useSettings';
 import { AppShell, type PageView } from './pixel-components/AppShell';
+import { MascotTransitionProvider } from './pixel-components/MascotTransition';
 import { DashboardPage } from './views/DashboardPage';
 import { ReportPage } from './views/ReportPage';
 import { StrengthWeaknessPage } from './views/StrengthWeaknessPage';
@@ -82,6 +83,7 @@ function App() {
   }
 
   return (
+    <MascotTransitionProvider sound={settings?.appearance.soundEffects ?? true}>
     <AppShell
       currentView={currentView}
       onNavigate={setCurrentView}
@@ -93,6 +95,7 @@ function App() {
         {renderView()}
       </div>
     </AppShell>
+    </MascotTransitionProvider>
   );
 }
 

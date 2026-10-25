@@ -15,3 +15,4 @@ export { Stepper, type StepperProps } from './Stepper';
 export { SampleNotice } from './SampleNotice';
 export { SourceTag, type SourceKind } from './SourceTag';
 export { CountUp } from './CountUp';
+export { MascotTransitionProvider, useMascotTransition, type MascotPlayOptions } from './MascotTransition';

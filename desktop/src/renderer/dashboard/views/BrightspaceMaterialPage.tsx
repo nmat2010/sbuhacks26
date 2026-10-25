@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { PixelCard, PixelButton, OptionButton, Badge, Chip, SampleNotice, SourceTag } from '../pixel-components';
+import { PixelCard, PixelButton, OptionButton, Badge, Chip, SampleNotice, SourceTag, useMascotTransition } from '../pixel-components';
 import type { DashMaterial } from '../../../common/ipc-dashboard';
 import { sampleMaterials } from '../fixtures/sample';
 import { useBrightspaceMaterial, type MaterialFilter } from '../hooks/useBrightspaceMaterial';
@@ -22,6 +22,7 @@ export function BrightspaceMaterialPage() {
     courseFilter === 'all' ? undefined : courseFilter
   );
   const { courses, semester } = useBrightspace();
+  const mascot = useMascotTransition();
 
   // Nothing stored and no filter applied: show an example so the page is not blank
   const isSample = !loading && materials.length === 0 && filter === 'all' && courseFilter === 'all' && courses.length === 0;
@@ -47,14 +48,30 @@ export function BrightspaceMaterialPage() {
   const weakCount = display.filter((m) => m.matchesWeakSpot).length;
   const lastSynced = prefsSynced(courses.length);
 
-  const handleMaterialClick = async (material: DashMaterial) => {
-    if (isSample) return setNotice({ text: 'Sample item. Sync Brightspace to get your own.' });
+  const siteOf = (m: DashMaterial) => {
     try {
-      const r = await openMaterial(material.id);
-      setNotice(r.success ? null : { text: r.error ?? 'Could not open that item.', error: true });
-    } catch (err) {
-      setNotice({ text: err instanceof Error ? err.message : 'Could not open that item.', error: true });
+      return m.url ? new URL(m.url).hostname.replace(/^www\./, '') : 'brightspace';
+    } catch {
+      return 'brightspace';
     }
+  };
+
+  const handleMaterialClick = async (material: DashMaterial, origin: DOMRect) => {
+    // Wolfie carries you there: the page is covered, then the link opens in your browser
+    await mascot.play({
+      label: siteOf(material),
+      sub: isSample ? 'sample item, nothing opens' : 'opening in your browser',
+      origin,
+      onCover: async () => {
+        if (isSample) return setNotice({ text: 'Sample item. Sync Brightspace to get your own.' });
+        try {
+          const r = await openMaterial(material.id);
+          setNotice(r.success ? null : { text: r.error ?? 'Could not open that item.', error: true });
+        } catch (err) {
+          setNotice({ text: err instanceof Error ? err.message : 'Could not open that item.', error: true });
+        }
+      }
+    });
   };
 
   const handleSync = async () => {
@@ -165,7 +182,7 @@ export function BrightspaceMaterialPage() {
                 </div>
                 {material.isNew && <Badge tone="green">NEW</Badge>}
                 {material.matchesWeakSpot && <Badge tone="gold">WEAK SPOT</Badge>}
-                <PixelButton size="sm" onClick={() => handleMaterialClick(material)} aria-label={`Study ${material.title}`}>
+                <PixelButton size="sm" onClick={(e) => void handleMaterialClick(material, e.currentTarget.getBoundingClientRect())} aria-label={`Study ${material.title}`}>
                   STUDY
                 </PixelButton>
               </PixelCard>
