@@ -3,6 +3,7 @@ import type { LlmCall } from '../llm/client.js';
 import { renderPrompt } from '../llm/prompts/index.js';
 import { LLMError } from '../llm/provider.js';
 import type { ReportStore, StoredReport } from './store.js';
+import { isRealQuestion, mergeProblemFacts } from './tracker.js';
 import { ReportProseSchema, type ProblemFact, type SessionFacts, type SourceFact } from './types.js';
 
 // Writes the report for a finished study session: the app gathers the facts (time, sources,
@@ -60,8 +61,15 @@ export class ReportService {
     return existing ? this.write(existing.facts) : null;
   }
 
-  private async write(facts: SessionFacts): Promise<StoredReport> {
+  private async write(raw: SessionFacts): Promise<StoredReport> {
     const { deps } = this;
+    // Tidy saved facts too (a report regenerated from before names were stable): one entry per
+    // problem, and real questions only
+    const facts: SessionFacts = {
+      ...raw,
+      problems: mergeProblemFacts(raw.problems),
+      questionsAsked: raw.questionsAsked.filter(isRealQuestion)
+    };
     const base = { sessionId: facts.sessionId, createdAt: deps.now(), facts };
     // Nothing studied that Wolfie could see: the numbers are the report
     if (!hasContent(facts)) {

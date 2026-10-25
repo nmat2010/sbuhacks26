@@ -56,7 +56,7 @@ export function ReportView() {
                   <Stat label="Hints asked" value={`${session.hintCount}`} />
                   <Stat label="Deepest hint" value={session.deepestHintLevel ? `${session.deepestHintLevel} / 5` : '–'} />
                 </div>
-                <FocusBars sessions={[session]} />
+                <FocusBars sessions={[session]} bare />
                 <div style={{ marginTop: 20 }}>
                   <SessionReport sessionId={session.id} />
                 </div>

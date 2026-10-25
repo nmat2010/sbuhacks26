@@ -10,6 +10,8 @@ const MAX_QUESTIONS = 20;
 
 interface Problem {
   question: string;
+  /** Other wordings it was seen under (the first is `question`). */
+  aliases: string[];
   firstSeen: number;
   wrongAnswers: Set<string>;
   issues: string[];
@@ -21,6 +23,86 @@ interface Problem {
 
 export function problemKey(question: string): string {
   return question.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+const STOPWORDS = new Set(
+  'a an the to of for in on at by with from and or is are be was were it its this that these those you your we our i me my what how which find return given make up get'.split(' ')
+);
+
+/** Meaningful words of a problem name ("coins"/"coin", "needed"/"need" are the same; "ii" and "13" count). */
+function words(question: string): Set<string> {
+  const stem = (w: string) =>
+    w.length > 5 && w.endsWith('ing') ? w.slice(0, -3) : w.length > 4 && w.endsWith('ed') ? w.slice(0, -2) : w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : w;
+  return new Set(
+    problemKey(question)
+      .split(' ')
+      .filter((w) => w && !STOPWORDS.has(w))
+      .map(stem)
+  );
+}
+
+/**
+ * The same problem under two names: the watcher sometimes re-words a problem between looks
+ * ("Implement coinChange to find the minimum number of coins..." / "...to return the minimum
+ * number of coins..."). Same if most words are shared, or a short title is contained in the other.
+ */
+export function sameProblem(a: string, b: string): boolean {
+  if (problemKey(a) === problemKey(b)) return true;
+  const wa = words(a);
+  const wb = words(b);
+  // Numbers, roman numerals and single letters tell problems apart ("= 13" vs "= 12", "Q2" vs
+  // "Q3", "datasets i and ii" vs "iii and iv"): when both names have them, they must match
+  const ids = (w: Set<string>) => [...w].filter(isIdentifier).sort().join(' ');
+  if (ids(wa) && ids(wb) && ids(wa) !== ids(wb)) return false;
+  const shared = [...wa].filter((w) => wb.has(w)).length;
+  const smaller = Math.min(wa.size, wb.size);
+  if (smaller >= 2 && smaller <= 3 && shared === smaller) return true;
+  return shared >= 3 && shared / smaller >= 0.7;
+}
+
+function isIdentifier(word: string): boolean {
+  return /\d/.test(word) || /^(ii|iii|iv|v|vi|vii|viii|ix|x)$/.test(word) || word.length === 1;
+}
+
+/** A real question to Wolfie, not chat ("how about now?", "thanks, I'm good"). */
+export function isRealQuestion(text: string): boolean {
+  const t = text.trim();
+  const count = t.split(/\s+/).length;
+  if (t.includes('?')) return count >= 4;
+  return (
+    /^(how|what|why|when|where|which|who|can|could|should|would|is|are|does|do|explain|tell me)\b/i.test(t) ||
+    /\b(how|why|what)\b.*\b(should|do|does|is|are|can|would|to)\b/i.test(t)
+  );
+}
+
+/** Problems that turned out to be one (saved before names were stable): merged, outcomes combined. */
+export function mergeProblemFacts(problems: ProblemFact[]): ProblemFact[] {
+  const out: ProblemFact[] = [];
+  // Every name a merged problem was seen under: a new wording may match any of them
+  const names = new Map<ProblemFact, string[]>();
+  for (const p of problems) {
+    const same = out.find((q) => names.get(q)!.some((n) => sameProblem(n, p.question)));
+    if (!same) {
+      const first = { ...p, issues: [...p.issues] };
+      out.push(first);
+      names.set(first, [p.question]);
+      continue;
+    }
+    names.get(same)!.push(p.question);
+    const outcomes = [same.outcome, p.outcome];
+    same.wrongAttempts += p.wrongAttempts;
+    same.hintLevel = Math.max(same.hintLevel, p.hintLevel);
+    same.stalled ||= p.stalled;
+    for (const issue of p.issues) if (!same.issues.includes(issue) && same.issues.length < 3) same.issues.push(issue);
+    same.outcome = outcomes.includes('answer_shown')
+      ? 'answer_shown'
+      : outcomes.some((o) => o === 'solved_alone' || o === 'solved_with_help')
+        ? same.hintLevel === 0 && same.wrongAttempts === 0 && outcomes.every((o) => o !== 'solved_with_help')
+          ? 'solved_alone'
+          : 'solved_with_help'
+        : 'unresolved';
+  }
+  return out;
 }
 
 export class SessionTracker {
@@ -62,9 +144,15 @@ export class SessionTracker {
     if (deepestLevel >= 5) p.answerShown = true;
   }
 
+  /** A question asked in the chat or by voice (chat like "thanks, all good" is left out). */
   asked(question: string): void {
     const q = question.trim();
-    if (q && this.questions.length < MAX_QUESTIONS) this.questions.push(q.slice(0, 200));
+    if (q && isRealQuestion(q) && this.questions.length < MAX_QUESTIONS) this.questions.push(q.slice(0, 200));
+  }
+
+  /** Names of the problems seen so far (oldest first), so the watcher keeps using them. */
+  names(): string[] {
+    return [...this.problems.values()].sort((a, b) => a.firstSeen - b.firstSeen).map((p) => p.question);
   }
 
   snapshot(): { problems: ProblemFact[]; questionsAsked: string[]; generalHelp: number } {
@@ -90,10 +178,12 @@ export class SessionTracker {
   private problem(question: string, now: number): Problem | null {
     const key = problemKey(question);
     if (!key) return null;
-    let p = this.problems.get(key);
+    // The same problem under another wording keeps its first name
+    let p = this.problems.get(key) ?? [...this.problems.values()].find((x) => [x.question, ...x.aliases].some((n) => sameProblem(n, question)));
+    if (p && problemKey(p.question) !== key && !p.aliases.some((a) => problemKey(a) === key) && p.aliases.length < 10) p.aliases.push(question.trim());
     if (!p) {
       if (this.problems.size >= MAX_PROBLEMS) return null;
-      p = { question: question.trim().slice(0, 200), firstSeen: now, wrongAnswers: new Set(), issues: [], correct: false, hintLevel: 0, answerShown: false, stalled: false };
+      p = { question: question.trim().slice(0, 200), aliases: [], firstSeen: now, wrongAnswers: new Set(), issues: [], correct: false, hintLevel: 0, answerShown: false, stalled: false };
       this.problems.set(key, p);
     }
     return p;

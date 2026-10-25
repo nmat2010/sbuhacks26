@@ -297,6 +297,7 @@ function registerWatch(): void {
       stuckBus.emit('signal', signal);
     },
     onObservation: (obs, now) => tracker.observe(obs, now),
+    knownProblems: () => tracker.names(),
     onContentUrl: (url) => watchController?.onContentUrl(url),
     onState: (state) => watchController?.onWatcherState(state),
     onLook: () => watchController?.onLook(),

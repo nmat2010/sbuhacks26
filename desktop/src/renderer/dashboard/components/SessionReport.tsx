@@ -14,6 +14,14 @@ const OUTCOME: Record<Problem['outcome'], { label: string; className: string }> 
   unresolved: { label: 'Still open', className: 'chip-weak' }
 };
 
+/** A problem with nothing more to say about it. */
+const NO_DETAILS: Record<Problem['outcome'], string> = {
+  solved_alone: 'Right the first time',
+  solved_with_help: '',
+  answer_shown: '',
+  unresolved: 'No answer checked yet'
+};
+
 const VERDICT: Record<Topic['verdict'], { label: string; className: string }> = {
   strength: { label: 'Strength', className: 'chip-strong' },
   weakness: { label: 'To work on', className: 'chip-weak' },
@@ -67,7 +75,8 @@ export function SessionReport({ sessionId, short = false }: { sessionId: string;
         <>
           <h3 className="report-headline">{prose.headline}</h3>
           <p className="report-summary">{prose.summary}</p>
-          {prose.topics.length > 0 && (
+          {/* The short card shows topics as chips; the full report lists them below */}
+          {short && prose.topics.length > 0 && (
             <div className="chips" style={{ marginBottom: 12 }}>
               {prose.topics.map((t) => (
                 <span key={t.name} className={`chip ${VERDICT[t.verdict].className}`} title={t.evidence}>
@@ -131,7 +140,7 @@ export function SessionReport({ sessionId, short = false }: { sessionId: string;
                         ...p.issues
                       ]
                         .filter(Boolean)
-                        .join(' · ') || 'Right the first time'}
+                        .join(' · ') || NO_DETAILS[p.outcome]}
                     </p>
                   </div>
                 </div>
@@ -147,7 +156,8 @@ export function SessionReport({ sessionId, short = false }: { sessionId: string;
                   <div>
                     <strong>{s.title}</strong>
                     <p className="list-item-subtitle">
-                      ~{Math.max(1, s.minutes)} min{s.locators.length ? ` · ${s.locators.join(', ')}` : ''}
+                      {/* Where they got to (the latest place; earlier ones repeat it) */}
+                      ~{Math.max(1, s.minutes)} min{s.locators.length ? ` · ${s.locators[s.locators.length - 1]}` : ''}
                     </p>
                   </div>
                 </div>
@@ -173,6 +183,15 @@ export function SessionReport({ sessionId, short = false }: { sessionId: string;
                 ))}
               </ul>
             </ReportSection>
+          )}
+
+          {/* Written again from the saved facts (tidied: one entry per problem, real questions) */}
+          {report.status === 'ready' && prose && (
+            <p className="planned-source" style={{ marginTop: 16 }}>
+              <button className="link-btn" disabled={retrying} onClick={() => void retry()}>
+                {retrying ? 'Rewriting...' : 'Rewrite report'}
+              </button>
+            </p>
           )}
         </>
       )}

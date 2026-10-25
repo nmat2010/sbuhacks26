@@ -48,3 +48,21 @@ Before, Watch mode kept a session's content only in memory and discarded it when
 
 ## Next
 The strengths & weaknesses record: combine report topics across sessions (evidence and trend), and a plan per weakness, for the Strengths & Weaknesses page and the Dashboard card.
+
+## Update: less repetition (from Tuan's first real report: Coin Change listed 6 times)
+| Seen | Cause | Fix |
+|---|---|---|
+| The same problem 6 times under different wordings, plus "Fix the compilation error" as its own problem | The watcher re-worded the problem on every look | **Prompt `watch-observe.v5`:** name each problem by its own title or number ("Coin Change", "Q3"), never re-word it, never name a step inside it, and reuse `known_problems` (the tracker's names, passed in each look) |
+| Any wordings that still slip through | — | **`sameProblem`:** matches at least 3 meaningful words making up 70% of the shorter name (plural, -ed and -ing endings ignored), or a short title fully contained in the other. Numbers, roman numerals and single letters must match ("= 13" ≠ "= 12", "i and ii" ≠ "iii and iv"). A problem keeps all its wordings and a new one may match any of them. **`mergeProblemFacts`:** does the same for saved facts when a report is written or rewritten. |
+| Everything "Still open" although the code was accepted | Code results weren't judged | **v5:** "Accepted" or all tests passing counts as correct; a compile error, runtime error or failing test counts as wrong, with the issue saying which |
+| "Still open · Right the first time" | A UI default | Text now depends on the outcome ("No answer checked yet" for open problems) |
+| Topics twice | Chips under the summary plus the list below | Chips only on the short card |
+| Date and length twice | The focus bar repeated them | `FocusBars bare` on the report |
+| A long list of places | Every look's place was listed | Only the latest place |
+| Chit-chat under "Questions you asked" | Every message was recorded | **`isRealQuestion`:** at least 4 words with a "?", or question wording. Applied when recording and when writing. |
+
+- **New: "Rewrite report"** on a written report, which rewrites it from its saved facts with all of the above applied (for reports from before the fix).
+- **Verified:**
+  - **Live watch model with v5:** an accepted Coin Change was named exactly "Coin Change" and judged correct; a compile error was judged wrong with the reason.
+  - **Read-only on Tuan's saved report:** 8 problems become 3 (Coin Change, the compile-error step, Triangle state), and 9 questions become 2 real ones.
+  - Tests: 690 pass. Typecheck and lint are clean.

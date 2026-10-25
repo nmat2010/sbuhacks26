@@ -102,6 +102,8 @@ export interface WatcherDeps {
   onState?: (state: WatcherState) => void;
   /** Something new to show: the window being looked at changed, or a look was recorded. */
   onLook?: () => void;
+  /** Names of the problems seen this session (most recent last), for stable naming. */
+  knownProblems?: () => string[];
   /** Every recorded look (the session report follows the problems in it). */
   onObservation?: (obs: Observation, now: number) => void;
   log: (type: EventType, payload: Record<string, unknown>) => void;
@@ -518,11 +520,13 @@ export class Watcher {
       previous: latest ? { subject: latest.obs.subject, summary: latest.obs.summary, mode: latest.obs.mode } : null,
       // Earlier sources and their key points (e.g. the original problem), so a mis-copied problem
       // or a mixed-up concept can be noticed in another window
-      session_notes: deps.memory.toPromptText(1500, now) || undefined
+      session_notes: deps.memory.toPromptText(1500, now) || undefined,
+      // Problem names used so far, so the same problem keeps its name across looks (reports)
+      known_problems: deps.knownProblems?.().slice(-12)
     };
     return deps.llm().generate({
       task: 'watch_observe',
-      system: renderPrompt('watch-observe.v4'),
+      system: renderPrompt('watch-observe.v5'),
       messages: [{ role: 'user', content: JSON.stringify(input) }],
       images: [parseImageDataUrl(dataUrl)],
       schema: ObservationSchema,

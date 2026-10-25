@@ -4,10 +4,10 @@ import { openDatabase } from '../../db/index.js';
 import type { LlmCall } from '../../llm/client.js';
 import { LLMError } from '../../llm/provider.js';
 import { obs } from '../../watch/__tests__/helpers.js';
-import { SessionTracker } from '../tracker.js';
+import { isRealQuestion, mergeProblemFacts, sameProblem, SessionTracker } from '../tracker.js';
 import { ReportService, type SessionSnapshot } from '../service.js';
 import { ReportStore } from '../store.js';
-import type { ReportProse } from '../types.js';
+import type { ProblemFact, ReportProse } from '../types.js';
 
 const check = (question: string, looks_correct: boolean | null, visible_answer: string | null = 'x', issue: string | null = null) => ({
   question,
@@ -128,5 +128,68 @@ describe('ReportService', () => {
 
   it('an unknown session gets no report', async () => {
     expect(await make().sessionEnded('nope', snapshot)).toBeNull();
+  });
+});
+
+describe('one entry per problem (from a real report with 6 copies of Coin Change)', () => {
+  const coin = [
+    'Return the fewest number of coins that you need to make up that amount.',
+    'Implement the coinChange function to find the minimum number of coins needed to make up the given amount.',
+    'Implement the coinChange function to return the minimum number of coins needed for the given amount.',
+    'Implement the coinChange function to find the minimum number of coins for a given amount.',
+    'Implement the coinChange function to find the minimum number of coins to make up a given amount.',
+    'Implement the coinChange function to return the minimum number of coins to make up the given amount.'
+  ];
+
+  it('re-worded names of the same problem are the same problem; different problems stay apart', () => {
+    for (const q of coin.slice(1)) expect(sameProblem(coin[1], q), q).toBe(true);
+    expect(sameProblem('Coin Change', 'Coin Change - minimum coins for an amount')).toBe(true);
+    expect(sameProblem('What is underfitting?', 'What is overfitting?')).toBe(false);
+    expect(sameProblem('Solve 2x + 5 = 13', 'Solve 2x + 5 = 12')).toBe(false);
+    expect(sameProblem('Compare the mean for datasets i and ii', 'Compare the mean for datasets iii and iv')).toBe(false);
+    expect(sameProblem(coin[1], 'How to define the DP state for the minimum path sum in a triangle?')).toBe(false);
+  });
+
+  it('merges saved facts: outcomes and details combined', () => {
+    const fact = (question: string, over: Partial<ProblemFact> = {}): ProblemFact => ({
+      question,
+      outcome: 'unresolved',
+      wrongAttempts: 0,
+      issues: [],
+      hintLevel: 0,
+      stalled: false,
+      ...over
+    });
+    const merged = mergeProblemFacts([
+      fact(coin[1], { hintLevel: 3, stalled: true }),
+      fact(coin[2], { outcome: 'solved_with_help', wrongAttempts: 1, issues: ['Compile error on line 4.'] }),
+      fact(coin[4]),
+      fact('How to define the DP state for the minimum path sum in a triangle?')
+    ]);
+    expect(merged).toEqual([
+      { question: coin[1], outcome: 'solved_with_help', wrongAttempts: 1, issues: ['Compile error on line 4.'], hintLevel: 3, stalled: true },
+      fact('How to define the DP state for the minimum path sum in a triangle?')
+    ]);
+  });
+
+  it('the tracker keeps one problem under its first name', () => {
+    const t = new SessionTracker();
+    // All six wordings, starting with the problem statement (later ones match earlier wordings)
+    coin.forEach((q, i) => t.observe(obs({ unanswered_question: q }), i));
+    expect(t.names()).toEqual([coin[0]]);
+    expect(mergeProblemFacts(coin.map((question) => ({ question, outcome: 'unresolved' as const, wrongAttempts: 0, issues: [], hintLevel: 0, stalled: false })))).toHaveLength(1);
+  });
+
+  it('keeps real questions, not chat', () => {
+    const asked = [
+      'can you read me implementation?',
+      'how about now?',
+      'you know what, the solution passed all test cases',
+      'still uneasy in some way',
+      'state, how should i define state for dp',
+      'dp[i] represent the least coins to form to value i from the given coins',
+      'i am all good now, thanks'
+    ];
+    expect(asked.filter(isRealQuestion)).toEqual(['can you read me implementation?', 'state, how should i define state for dp']);
   });
 });
