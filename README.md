@@ -1,4 +1,4 @@
-# Wolfie Sensei 🐺
+# Wolfie Sensei
 
 An AI-powered study companion for Stony Brook University students. Wolfie Sensei helps you stay focused, tracks your study sessions, and provides smart hints when you get stuck.
 
@@ -8,23 +8,23 @@ Built for SBU Hacks 2026.
 
 ## Features
 
-### 🎯 Smart Study Tracking
+### Smart Study Tracking
 - **Session Monitoring**: Automatically tracks your study time and breaks
 - **Brightspace Integration**: Syncs with your courses and assignments
 - **Streak System**: Build study habits with daily streak tracking
 - **Analytics**: Visualize your study patterns and progress
 
-### 💬 AI Study Assistant
+### AI Study Assistant
 - **Push-to-Talk Voice**: Talk to Wolfie for help and guidance
 - **Context-Aware Hints**: Get help based on what you're working on
 - **Graduated Assistance**: From gentle nudges to detailed explanations
 
-### 🎨 Retro Pixel Interface
+### Retro Pixel Interface
 - **Retro Dashboard**: Pixel-art themed UI inspired by classic games
 - **Mascot Overlay**: Wolfie floats on your screen to keep you company
 - **Browser Extension**: Monitors your browsing for distractions
 
-### 🔒 Privacy-First
+### Privacy-First
 - **Local Data**: All your data stays on your computer
 - **No Cloud Sync**: Everything is stored in a local SQLite database
 - **Optional Features**: Choose which permissions to enable
