@@ -367,3 +367,14 @@
   - **Restart:** the window started at (794,228).
   - **Screen edge:** a drag past the top was stopped below the menu bar.
 - Tests: 671 pass. Typecheck and lint are clean.
+
+## Merged into main (2026-10-25)
+- `tuan/watch-mode` was merged into `main` with `--no-ff` (merge commit 4803e45) and pushed; the branch is pushed too.
+- `main` already contained Thu's sprite commit, which had been merged into the branch earlier, so there were no conflicts.
+- Checks on `main`: 671 tests pass (48 + 547 + 76); typecheck and lint are clean (existing warnings only).
+- **For Thu:**
+  - The overlay now uses her sprites (thinking while Wolfie works on a reply, talking for help, angry for distractions).
+  - The chat is Tuan's version (history kept across restarts, resource cards).
+  - Wolfie is dragged by moving the overlay window, not by her in-window drag.
+  - The "I'm stuck" button sits at Wolfie's lower left.
+- **Next (planned):** ElevenLabs reads chat replies aloud, with the talking sprite while the voice plays.
