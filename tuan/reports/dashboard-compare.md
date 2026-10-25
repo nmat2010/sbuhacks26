@@ -104,3 +104,8 @@ For Tuan to decide later what to keep.
     - the launch hides the mascot element directly in the click handler, with its transition off for the whole launch (visibility hidden, opacity 0);
     - it restores him instantly at the end, and his transition comes back two frames later.
   - **Verified on the mascot element itself:** hidden at the very moment of the click (0 ms), hidden throughout, visible right when the launch ends.
+
+## Merged into main (2026-10-25)
+- `tuan/dashboard-merge` (with `tuan/session-report` and `tuan/skills` inside it) was merged into `main` with `--no-ff` (merge commit ef662fe) and pushed; all three branches are pushed too.
+- Checks on `main`: 707 tests pass (50 + 581 + 76); typecheck is clean; lint has no errors.
+- The note for Thu is at the top of `NEXT_STEPS.md`.
