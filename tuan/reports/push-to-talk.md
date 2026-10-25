@@ -35,3 +35,7 @@ Nothing in the app captured the microphone. The main process has `voice-audio-in
 ## Notes
 - **Cost:** ElevenLabs bills speech-to-text by audio length; each press is one short request.
 - Voice mode's always-on mic (realtime STT) still has no audio capture; that's separate work if wanted.
+
+## Merged into main (2026-10-25)
+- `tuan/push-to-talk` was merged into `main` with `--no-ff` (merge commit 3a47f2a); `main` and the branch are pushed.
+- Checks on `main`: 680 tests pass (48 + 556 + 76); typecheck and lint are clean (existing warnings only).
