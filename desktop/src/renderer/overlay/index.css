@@ -120,3 +120,15 @@ body {
     transform: translateY(0);
   }
 }
+
+/* Wolfie's launch (components/LaunchTransition.tsx): above the chat, never takes the mouse.
+   The colors Thu's spark classes use (dashboard tokens, not loaded in the overlay). */
+.launch-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  pointer-events: none;
+  overflow: hidden;
+  --ws-text: #f5ecd9;
+  --ws-gold: #f2b632;
+}

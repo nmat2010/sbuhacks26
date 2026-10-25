@@ -3,8 +3,14 @@ import type { HistoryData, HistorySession, SessionInfo } from '../../../common/i
 import type { StreakSnapshotType } from '@wolfie/shared';
 import type { ViewType } from '../App';
 import { StreakCalendar } from '../components/StreakCalendar';
-import { ExampleBadge, Planned } from '../components/Planned';
+import { Planned } from '../components/Planned';
+import { useSkills } from './SkillsView';
+import type { SkillView } from '../../../common/ipc-intelligence';
+import { Chip } from '../pixel-components/Chip';
+import { useAppStatus, useBrightspace } from '../hooks';
 import { FocusBars } from '../components/FocusBars';
+import { FocusCurve } from '../components/FocusCurve';
+import { SessionReport } from '../components/SessionReport';
 import { duration, minutes, sessionDate, totalSeconds } from '../format';
 
 // Main page: start a session, the latest session report, strengths and weaknesses, the streak with
@@ -65,6 +71,11 @@ export function HomeView({ onNavigate }: { onNavigate: (view: ViewType) => void 
   };
 
   const latest: HistorySession | undefined = week?.sessions.find((s) => s.endedAt !== null);
+  const skills = useSkills() ?? [];
+  const { semester, courses, isSynced } = useBrightspace();
+  const { status } = useAppStatus();
+  const strong = skills.filter((s) => s.status === 'strength');
+  const weak = skills.filter((s) => s.status === 'weakness' || s.status === 'improving');
 
   return (
     <div className="view-container">
@@ -73,6 +84,17 @@ export function HomeView({ onNavigate }: { onNavigate: (view: ViewType) => void 
         <p className="view-subtitle">
           {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
+        {/* Thu's header chips: semester, courses, Brightspace and extension status */}
+        <div className="chips" style={{ marginTop: 14 }}>
+          <Chip>{semester || 'No semester yet'}</Chip>
+          <Chip>
+            {courses.length} {courses.length === 1 ? 'course' : 'courses'}
+          </Chip>
+          <Chip style={{ color: isSynced ? 'var(--ws-green)' : 'var(--ws-text-muted)' }}>
+            {isSynced ? 'Brightspace synced' : 'Brightspace not synced'}
+          </Chip>
+          {status.extensionConnected && <Chip style={{ color: 'var(--ws-green)' }}>Extension connected</Chip>}
+        </div>
       </div>
 
       {/* 1. Start session */}
@@ -83,7 +105,7 @@ export function HomeView({ onNavigate }: { onNavigate: (view: ViewType) => void 
         <div className="card-content">
           {active ? (
             <div>
-              <p style={{ fontSize: '16px', color: '#27ae60', marginBottom: '16px' }}>
+              <p className="session-active">
                 ✅ Session active since {new Date(active.startedAt).toLocaleTimeString()}
               </p>
               <button className="btn btn-secondary" onClick={handleStop}>
@@ -92,7 +114,7 @@ export function HomeView({ onNavigate }: { onNavigate: (view: ViewType) => void 
             </div>
           ) : (
             <div>
-              <p style={{ fontSize: '16px', color: '#6e6e73', marginBottom: '16px' }}>No active session</p>
+              <p className="session-idle">No active session</p>
               <button className="btn btn-primary" onClick={handleStart}>
                 Start Session
               </button>
@@ -122,53 +144,65 @@ export function HomeView({ onNavigate }: { onNavigate: (view: ViewType) => void 
               No finished session this week yet.
             </p>
           )}
-          <Planned
-            owner="Tuan"
-            shows={[
-              'What you studied in the session (papers, videos, problems)',
-              'The problems you worked on and how each went',
-              'Strengths and weaknesses that showed up, and what to do next'
-            ]}
-            source="Watch mode's session memory (saved per session), answer checks, hints"
-          />
+          {latest && <SessionReport sessionId={latest.id} short />}
         </div>
       </div>
 
       {/* 3. Strengths and weaknesses now */}
       <div className="card">
         <div className="card-header card-header-row">
-          <h2 className="card-title">
-            Strengths & Weaknesses
-            <ExampleBadge />
-          </h2>
+          <h2 className="card-title">Strengths & Weaknesses</h2>
           <button className="link-btn" onClick={() => onNavigate('skills')}>
             How to improve →
           </button>
         </div>
         <div className="card-content">
-          <div className="two-col">
-            <div>
-              <h3 className="list-item-title">💪 Strong</h3>
-              <div className="chips">
-                {['Graphs', 'MST (Prim, Kruskal)', 'Shortest paths (Dijkstra, Bellman-Ford)', 'C++ implementation'].map((s) => (
-                  <span key={s} className="chip chip-strong">
-                    {s}
-                  </span>
-                ))}
+          {strong.length || weak.length ? (
+            <div className="two-col">
+              <div>
+                <h3 className="list-item-title">💪 Strong</h3>
+                <div className="chips">
+                  {strong.slice(0, 6).map((s) => (
+                    <span key={s.id} className="chip chip-strong" title={s.history[0]?.evidence}>
+                      {s.name}
+                    </span>
+                  ))}
+                  {!strong.length && <p className="list-item-subtitle">Nothing shown as strong yet.</p>}
+                </div>
+              </div>
+              <div>
+                <h3 className="list-item-title">🎯 To work on</h3>
+                <div className="chips">
+                  {weak.slice(0, 6).map((s) => (
+                    <span key={s.id} className={`chip ${s.status === 'improving' ? 'chip-help' : 'chip-weak'}`} title={s.history[0]?.evidence}>
+                      {s.name}
+                      {s.status === 'improving' ? ' · improving' : ''}
+                    </span>
+                  ))}
+                  {!weak.length && <p className="list-item-subtitle">No weak spots found yet.</p>}
+                </div>
               </div>
             </div>
-            <div>
-              <h3 className="list-item-title">🎯 To work on</h3>
-              <div className="chips">
-                {['Dynamic programming', 'ML concepts: SVM'].map((s) => (
-                  <span key={s} className="chip chip-weak">
-                    {s}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-          <p className="planned-source">Real topics come from your sessions once the skills record is built (Tuan, next).</p>
+          ) : (
+            <p className="list-item-subtitle">
+              Study with Watch mode on and stop the session: your strengths and weak spots show up here.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Sensei says (Thu's card): the top weak spot from the skills record, or encouragement */}
+      <div className="card">
+        <div className="card-header">
+          <h2 className="card-title">Sensei says</h2>
+        </div>
+        <div className="card-content">
+          <p className="sensei-says">{senseiSays(skills)}</p>
+          {weak.length > 0 && (
+            <button className="btn btn-secondary" onClick={() => onNavigate('skills')}>
+              See weak spots
+            </button>
+          )}
         </div>
       </div>
 
@@ -199,28 +233,35 @@ export function HomeView({ onNavigate }: { onNavigate: (view: ViewType) => void 
         </div>
       </div>
 
-      {/* 5. Productivity curve (optional) */}
+      {/* 5. Productivity curve: focus across a session and when you usually drift */}
       <div className="card">
         <div className="card-header">
-          <h2 className="card-title">Focus</h2>
+          <h2 className="card-title">Productivity curve</h2>
         </div>
         <div className="card-content">
+          <FocusCurve />
+          <h3 className="report-section-title" style={{ marginTop: 8 }}>
+            Recent sessions
+          </h3>
           {week && week.sessions.length > 0 ? (
             <FocusBars sessions={week.sessions.slice(0, 5)} />
           ) : (
             <p className="list-item-subtitle">No sessions this week yet.</p>
           )}
-          <div style={{ marginTop: 16 }}>
-            <Planned
-              owner="optional"
-              shows={['A focus curve inside each session: when your focus drops and you start side-tracking']}
-              source="Watch mode's looks (studying vs browsing), idle time, distraction warnings"
-            />
-          </div>
         </div>
       </div>
     </div>
   );
+}
+
+/** What Sensei says on the Dashboard: the latest weak spot first, then progress, then a start. */
+function senseiSays(skills: SkillView[]): string {
+  const weak = skills.find((s) => s.status === 'weakness');
+  if (weak) return `${weak.name} keeps tripping you up. Try the next problem on your own before you open any AI. I'll be right here with a hint.`;
+  const improving = skills.find((s) => s.status === 'improving');
+  if (improving) return `You're getting better at ${improving.name}. Show it once more without help and it becomes a strength.`;
+  if (skills.some((s) => s.status === 'strength')) return 'Nice work so far. Keep trying each problem yourself first and the streak grows itself.';
+  return 'Start a session with Watch mode on. I will learn where you shine and where you stall.';
 }
 
 function Stat({ label, value, unit }: { label: string; value: string; unit?: string }) {

@@ -1,5 +1,17 @@
 # Next steps: who does what
 
+> **Update for Thu (Tuan, 2026-10-25): your retro dashboard and transitions are merged, with Tuan's data inside.**
+> - **Your look on every page:** `AppShell`, pixel styles, onboarding, page transitions, and level / XP.
+>   - **Dashboard, Report, Strength/Weakness and Settings** show **Tuan's** pages and data: Watch-mode session reports, the skills record, the productivity curve, and real settings. They're restyled in your look by `styles/retro-views.css`.
+>   - **Brightspace Material** is your page.
+>   - Your `DashboardPage`, `ReportPage`, `StrengthWeaknessPage` and `SettingsPage` are still in the tree, unused (`tuan/reports/dashboard-compare.md` compares both).
+> - **Kept from yours:** "Sensei says" (now fed by the skills record), the header chips (semester, courses, Brightspace, extension), your pixel Wolfie as the chat avatar, and **your mascot launch**. It also plays in the overlay **where Wolfie stands** when a suggested link is opened from the chat (`overlay/components/LaunchTransition.tsx`, using your sheets and timings, no iris).
+> - **Small fixes to your code, so typecheck, lint and tests pass. Please keep them:**
+>   - contract fixtures for `ext.brightspace_data` and `desk.request_brightspace` (`shared/src/fixtures/messages.json`);
+>   - two type annotations and one `let`→`const` in `extension/src/content/brightspace.ts`;
+>   - an unused import in `extension/src/content/index.ts`.
+> - Please run `npm run typecheck && npm run lint && npm test` before pushing.
+
 > **Dashboard redesign (Tuan, 2026-10-25): skeleton is on `main`, Thu please beautify it.**
 > The dashboard now shows the student's performance the way a teacher would see it, plus what to do next to improve. The sidebar has five pages:
 >

@@ -319,6 +319,65 @@ app.whenReady().then(() => {
           await new Promise((r) => setTimeout(r, 400));
           console.log(`[smoke] click-after-drag: chat-open=${await ui("!!document.querySelector('.hint-messages')")}`);
         }
+        // WOLFIE_SMOKE_REPORT=<png path>: a session with one question in the chat, stopped; wait for
+        // its report, then a picture of the Reports page
+        if (process.env.WOLFIE_SMOKE_REPORT && dashboardWindow && overlayWindow) {
+          const dash = dashboardWindow;
+          const d = (js: string) => dash.webContents.executeJavaScript(js);
+          const o = (js: string) => overlayWindow!.webContents.executeJavaScript(js);
+          await d("localStorage.setItem('wolfie_onboarded', 'true'); window.electronAPI.invoke('settings-set', 'voice.read_replies', false).then(() => 0)");
+          const id = await d("window.electronAPI.invoke('session-start').then((s) => s.active.id)");
+          const reply = await o(`window.electronAPI.invoke('chat-send', "What's the difference between Prim's and Kruskal's algorithms?").then((r) => r.kind)`);
+          await new Promise((r) => setTimeout(r, 1000));
+          await d("window.electronAPI.invoke('session-stop').then(() => 0)");
+          let report: { status?: string; prose?: unknown; error?: string } | null = null;
+          for (let i = 0; i < 40 && (!report || report.status === 'pending'); i++) {
+            await new Promise((r) => setTimeout(r, 750));
+            report = await d(`window.electronAPI.invoke('report-get', ${JSON.stringify(id)})`);
+          }
+          console.log(`[smoke] report: chat=${reply} status=${report?.status} error=${report?.error ?? 'none'}`);
+          console.log(`[smoke] report: prose=${JSON.stringify(report?.prose)}`);
+          dash.webContents.reload();
+          await new Promise<void>((r) => dash.webContents.once('did-finish-load', () => r()));
+          await d("document.querySelectorAll('.app-shell__nav-item, .nav-item')[1].click(); 0");
+          await new Promise((r) => setTimeout(r, 1200));
+          writeFileSync(process.env.WOLFIE_SMOKE_REPORT, (await dash.webContents.capturePage()).toPNG());
+        }
+        // WOLFIE_SMOKE_LAUNCH=<png prefix>: a suggested link in the chat is clicked; pictures of
+        // Wolfie's launch where he stands, and whether the usual Wolfie hides and comes back
+        if (process.env.WOLFIE_SMOKE_LAUNCH && overlayWindow) {
+          const win = overlayWindow;
+          const ui = (js: string) => win.webContents.executeJavaScript(js);
+          await new Promise((r) => setTimeout(r, 1500));
+          await ui("document.querySelector('.mascot').click(); 0");
+          await new Promise((r) => setTimeout(r, 500));
+          await ui(`(() => {
+            const input = document.querySelector('.hint-input');
+            const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+            set.call(input, 'recommend videos to learn factor analysis');
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            document.querySelector('.send-btn').click();
+          })()`);
+          for (let i = 0; i < 40 && !(await ui("!!document.querySelector('.resource-link')")); i++) await new Promise((r) => setTimeout(r, 250));
+          // The mascot element itself (its own transition could keep it showing after its wrapper hides)
+          const mascotVisible = () => ui("(() => { const m = getComputedStyle(document.querySelector('.mascot')); return m.visibility === 'hidden' || m.opacity === '0' ? 'hidden' : 'visible'; })()");
+          console.log(`[smoke] launch: card=${await ui("document.querySelector('.resource-link')?.title")} mascot=${await mascotVisible()}`);
+          // The same moment as the click: the usual Wolfie is already hidden
+          const atClick = await ui("(() => { document.querySelector('.resource-link').click(); const m = getComputedStyle(document.querySelector('.mascot')); return m.visibility + '/' + m.opacity; })()");
+          // Right after the click: the usual Wolfie must stay hidden, with the launch Wolfie drawn
+          const early: string[] = [`0ms:${atClick}`];
+          for (let t = 50; t <= 250; t += 50) {
+            await new Promise((r) => setTimeout(r, 50));
+            early.push(`${t}ms:${await mascotVisible()}/${(await ui("!!document.querySelector('.launch-layer .mascot-wolfie')")) ? 'launch' : '-'}`);
+          }
+          console.log(`[smoke] launch: early ${early.join(' ')}`);
+          for (let i = 0; i < 18; i++) {
+            await new Promise((r) => setTimeout(r, 300));
+            const stage = await ui("document.querySelector('.launch-layer .mascot-wolfie')?.className.replace('mascot-wolfie ', '') ?? (document.querySelector('.launch-layer') ? 'underground' : 'done')");
+            console.log(`[smoke] launch: t=${(i + 1) * 300}ms ${stage} mascot=${await mascotVisible()}`);
+            writeFileSync(`${process.env.WOLFIE_SMOKE_LAUNCH}-${String(i).padStart(2, '0')}.png`, (await win.webContents.capturePage()).toPNG());
+          }
+        }
         // WOLFIE_SMOKE_DASH=<png prefix>: a picture of every dashboard page (after one short session)
         if (process.env.WOLFIE_SMOKE_DASH && dashboardWindow) {
           const dash = dashboardWindow;
@@ -329,13 +388,21 @@ app.whenReady().then(() => {
           await ui("window.electronAPI.invoke('session-start').then(() => new Promise((r) => setTimeout(r, 1500))).then(() => window.electronAPI.invoke('session-stop')).then(() => 0)");
           dash.webContents.reload();
           await new Promise<void>((r) => dash.webContents.once('did-finish-load', () => r()));
-          const pages = (await ui("[...document.querySelectorAll('.nav-item .nav-label')].map((e) => e.textContent)")) as string[];
+          const NAV = "'.app-shell__nav-item, .nav-item'";
+          const pages = (await ui(`[...document.querySelectorAll(${NAV})].map((e) => e.textContent.trim())`)) as string[];
           for (const [i, label] of pages.entries()) {
-            await ui(`document.querySelectorAll('.nav-item')[${i}].click(); 0`);
+            await ui(`document.querySelectorAll(${NAV})[${i}].click(); 0`);
             await new Promise((r) => setTimeout(r, 800));
-            const height = await ui('document.querySelector(".main-content").scrollHeight');
+            const height = await ui('document.querySelector(".app-shell__main, .main-content")?.scrollHeight');
             console.log(`[smoke] dash: ${label} title=${await ui("document.querySelector('.view-title')?.textContent")} height=${height}`);
             writeFileSync(`${process.env.WOLFIE_SMOKE_DASH}-${i}.png`, (await dash.webContents.capturePage()).toPNG());
+            // The Dashboard's productivity curve is further down: a picture of it too
+            if (i === 0 && (await ui("!!document.querySelector('.focus-curve')"))) {
+              await ui("document.querySelector('.focus-curve').closest('.card').scrollIntoView(); 0");
+              await new Promise((r) => setTimeout(r, 300));
+              console.log(`[smoke] dash: focus-curve ${await ui("document.querySelector('.focus-curve__summary')?.textContent")}`);
+              writeFileSync(`${process.env.WOLFIE_SMOKE_DASH}-focus.png`, (await dash.webContents.capturePage()).toPNG());
+            }
           }
           // Settings (the last page): add a distracting site, switch it off, then remove it; each saved
           const saved = () => ui("window.electronAPI.invoke('settings-get').then((s) => JSON.stringify(s['monitored.distractions'].filter((r) => r.name === 'Discord')))");

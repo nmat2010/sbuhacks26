@@ -104,6 +104,8 @@ export interface HintFlowDeps {
   log: (type: EventType, payload: Record<string, unknown>) => void;
   /** Delay before "Let me take a look..." appears; slow model calls only. */
   thinkingDelayMs?: number;
+  /** A hint ladder closed: on which problem (if Watch mode named one), how deep it went (report). */
+  onHelpClosed?: (help: { question: string | null; deepest: number }) => void;
   /** The flow started (true) or finished (false) working on a reply: Wolfie's thinking sprite. */
   thinking?: (on: boolean) => void;
   watch?: WatchHooks;
@@ -112,6 +114,8 @@ export interface HintFlowDeps {
 interface Ladder {
   /** The flagged wrong answer this ladder is about (Watch mode), if any. */
   focusKey: string | null;
+  /** The problem's question (for the session report), if Watch mode named one. */
+  focusQuestion: string | null;
   context: HintContext;
   source: HintSourceType;
   assessment: boolean;
@@ -259,6 +263,7 @@ export class HintFlow {
 
       this.ladder = {
         focusKey: issue?.key ?? null,
+        focusQuestion: issue?.question ?? null,
         context,
         source,
         assessment,
@@ -342,12 +347,12 @@ export class HintFlow {
   // ---- Responses ----------------------------------------------------------------------------
 
   /** The first flagged wrong answer not worked through yet, as hint focus. */
-  private nextIssue(): { key: string; focus: string; issue: string } | null {
+  private nextIssue(): { key: string; focus: string; issue: string; question: string | null } | null {
     for (const i of this.deps.watch?.openIssues?.() ?? []) {
       const key = `${i.question ?? ''}|${i.issue}`.toLowerCase();
       if (this.handledIssues.has(key)) continue;
       const focus = i.question ? `Problem: ${i.question}\nWhat looks off: ${i.issue}` : `What looks off: ${i.issue}`;
-      return { key, focus, issue: i.issue };
+      return { key, focus, issue: i.issue, question: i.question };
     }
     // No wrong answer: a thinking pause on an unanswered question gets "help me get started"
     const stalled = this.deps.watch?.stalledQuestion?.();
@@ -357,7 +362,8 @@ export class HintFlow {
         return {
           key,
           focus: `Problem: ${stalled}\nThe student hasn't written an answer yet and has paused; help them get started (no answer).`,
-          issue: `getting started on "${stalled}"`
+          issue: `getting started on "${stalled}"`,
+          question: stalled
         };
       }
     }
@@ -594,5 +600,6 @@ export class HintFlow {
     this.ladder = null;
     this.deps.setLadderOpen(false);
     this.deps.log('hint.closed', { reason, deepest: ladder.deepest, source: ladder.source });
+    this.deps.onHelpClosed?.({ question: ladder.focusQuestion, deepest: ladder.deepest });
   }
 }

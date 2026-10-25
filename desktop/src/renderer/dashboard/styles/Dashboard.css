@@ -499,3 +499,87 @@ input:checked + .slider:before {
 .session-row.selected {
   background: #fff5f5;
 }
+
+/* Session report (Reports page and the Dashboard's latest-report card) */
+.report-headline {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1d1d1f;
+  margin: 0 0 6px;
+}
+
+.report-summary {
+  font-size: 15px;
+  line-height: 1.5;
+  color: #3a3a3c;
+  margin: 0 0 12px;
+}
+
+.report-error {
+  font-size: 14px;
+  color: #a30000;
+}
+
+.report-section {
+  margin-top: 18px;
+}
+
+.report-section-title {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6e6e73;
+  margin: 0 0 8px;
+}
+
+.report-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f2;
+}
+
+.report-row:last-child { border-bottom: none; }
+.report-row .chip { flex-shrink: 0; font-size: 12px; }
+.report-row strong { font-size: 14px; color: #1d1d1f; }
+.report-row .list-item-subtitle { margin-top: 2px; }
+
+.chip-help {
+  background: #fff3cd;
+  color: #8a6d00;
+}
+
+/* Strengths & weaknesses record */
+.skill-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.skill-dots {
+  display: inline-flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.skill-dots i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.dot-strong { background: #2e9e57; }
+.dot-weak { background: #CC0000; }
+.dot-touched { background: #c7c7cc; }
+
+.skill-plan-title {
+  margin: 10px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6e6e73;
+}

@@ -285,6 +285,77 @@ export interface WatchAnswer {
   resources: WatchResource[];
 }
 
+/** A study session's report (main: report/store.ts StoredReport). */
+export interface SessionReportView {
+  sessionId: string;
+  createdAt: number;
+  status: 'pending' | 'ready' | 'failed';
+  facts: {
+    sessionId: string;
+    startedAt: number;
+    endedAt: number | null;
+    watched: boolean;
+    seconds: { work: number; ai_tool: number; distraction: number; idle: number };
+    hintCount: number;
+    deepestHintLevel: number;
+    sources: Array<{ kind: string; title: string; url: string | null; minutes: number; locators: string[]; points: string[] }>;
+    timeline: Array<{ from: number; to: number; activity: string; summary: string }>;
+    problems: Array<{
+      question: string;
+      outcome: 'solved_alone' | 'solved_with_help' | 'answer_shown' | 'unresolved';
+      wrongAttempts: number;
+      issues: string[];
+      hintLevel: number;
+      stalled: boolean;
+    }>;
+    questionsAsked: string[];
+    generalHelp: number;
+  };
+  prose: {
+    headline: string;
+    summary: string;
+    topics: Array<{ name: string; verdict: 'strength' | 'weakness' | 'practiced'; evidence: string; plan?: string[] }>;
+    next_steps: string[];
+  } | null;
+  error?: string;
+}
+
+/** A time a session left for a distracting or AI site (main: history/focus-curve.ts). */
+export interface DriftView {
+  /** Minutes into the session. */
+  minute: number;
+  site: string;
+  kind: 'distraction' | 'ai_tool';
+  minutes: number;
+}
+
+/** The focus curve (main: history/focus-curve.ts). */
+export interface FocusCurveView {
+  sample: boolean;
+  sessions: number;
+  avgSessionMinutes: number;
+  bucketMinutes: number;
+  points: Array<{ minute: number; focus: number; distraction: number }>;
+  /** The 5-minute stretch of a session with the most drifting to distracting or AI sites. */
+  usualDrift: { minute: number; sessionsWithDrift: number; topSites: string[] } | null;
+  peak: { fromMinute: number; toMinute: number; focus: number } | null;
+  dropAfterDrift: number | null;
+}
+
+/** A skill in the strengths & weaknesses record (main: skills/record.ts). */
+export interface SkillView {
+  id: string;
+  name: string;
+  /** improving: was a weakness, the latest evidence shows it as a strength. */
+  status: 'strength' | 'weakness' | 'improving' | 'touched';
+  firstSeen: number;
+  lastSeen: number;
+  /** What each session showed, newest first. */
+  history: Array<{ sessionId: string; ts: number; verdict: 'strength' | 'weakness' | 'practiced'; evidence: string }>;
+  /** Steps to improve it (weaknesses). */
+  plan: string[];
+}
+
 /** One message in Wolfie's chat history (overlay chat panel). */
 export interface ChatMessageView {
   id: string;
@@ -354,6 +425,16 @@ export interface IntelligenceInvoke {
   /** A question about what the student is studying, answered from the whole session. */
   'watch-ask': { args: [input: { question: string; inputMode: 'text' | 'voice' }]; result: BResult<WatchAnswer> };
   'voice-status': { args: []; result: VoiceStatus };
+  /** The report for a study session (null until the session ended; status pending while written). */
+  'report-get': { args: [sessionId: string]; result: SessionReportView | null };
+  /** Write a session's report again from its saved facts (e.g. after the AI limit reset). */
+  'report-regenerate': { args: [sessionId: string]; result: { success: boolean } };
+  /** How focus moves through a session, from the recorded sessions (sample until there are enough). */
+  'focus-curve-get': { args: []; result: FocusCurveView };
+  /** When one session left for distracting or AI sites. */
+  'session-drifts-get': { args: [sessionId: string]; result: DriftView[] };
+  /** The strengths & weaknesses record, newest first. */
+  'skills-get': { args: []; result: SkillView[] };
   /** Push-to-talk: may the mic be used? Asks macOS the first time; false if denied (opens settings). */
   'voice-mic-ready': { args: []; result: { granted: boolean; error?: string } };
   /** Push-to-talk: the recorded clip, transcribed (then sent with chat-send like typed text). */
@@ -436,4 +517,8 @@ export interface IntelligenceEvents {
   'chat-history-changed': ChatMessageView[];
   /** Wolfie is working on a reply the student asked for (true) or is done (false): thinking sprite. */
   'wolfie-thinking': boolean;
+  /** The strengths & weaknesses record changed. */
+  'skills-updated': Record<string, never>;
+  /** A session report was saved or changed (pending, ready, failed). */
+  'report-updated': { sessionId: string };
 }

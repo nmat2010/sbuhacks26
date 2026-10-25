@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChatMessageView, WatchStatus } from '../../../common/ipc-intelligence';
 import { usePushToTalk } from '../hooks/usePushToTalk';
+import { useLaunch } from './LaunchTransition';
+// Thu's pixel Wolfie (the dashboard's sidebar sprite) as Wolfie's chat avatar
+import { WolfieSprite } from '../../dashboard/pixel-components/WolfieSprite';
 import './HintConversation.css';
 
 // Wolfie's chat panel (opened by clicking Wolfie). Thu's design, wired to the backend by Tuan:
@@ -53,6 +56,7 @@ export function HintConversation({ onClose, voiceMode = false }: HintConversatio
   // Wolfie reads his replies aloud (ElevenLabs) unless muted here
   const [readAloud, setReadAloud] = useState(true);
   const listRef = useRef<HTMLDivElement>(null);
+  const { launch } = useLaunch();
   const firstLoad = useRef(true);
 
   const wolfieCount = (list: ConversationMessage[]) => list.filter((m) => m.role === 'wolfie').length;
@@ -170,7 +174,7 @@ export function HintConversation({ onClose, voiceMode = false }: HintConversatio
         {/* Header */}
         <div className="hint-header">
           <div className="hint-header-left">
-            <div className="wolfie-avatar">🐺</div>
+            <div className="wolfie-avatar"><WolfieSprite size={40} /></div>
             <div>
               <h3 className="hint-title">Wolfie Sensei</h3>
               <p className="hint-subtitle">
@@ -212,7 +216,7 @@ export function HintConversation({ onClose, voiceMode = false }: HintConversatio
         <div className="hint-messages" ref={listRef}>
           {shown.map((message) => (
             <div key={message.id} className={`message ${message.role === 'user' ? 'message-user' : 'message-wolfie'}`}>
-              {message.role === 'wolfie' && <div className="message-avatar">🐺</div>}
+              {message.role === 'wolfie' && <div className="message-avatar"><WolfieSprite size={30} /></div>}
               <div className="message-content">
                 {message.label && <div className="hint-level-badge">{message.label}</div>}
                 <p className="message-text" style={{ whiteSpace: 'pre-wrap' }}>{message.text}</p>
@@ -230,7 +234,8 @@ export function HintConversation({ onClose, voiceMode = false }: HintConversatio
                         key={r.url}
                         className="resource-link"
                         title={r.url}
-                        onClick={() => void window.electronAPI.invoke('open-link', r.url)}
+                        // Wolfie dives into a hole where he stands; the link opens while he's underground
+                        onClick={() => void launch(() => window.electronAPI.invoke('open-link', r.url))}
                       >
                         <span className="resource-title">
                           {RESOURCE_ICONS[r.kind] ?? '🔗'} {r.title}
@@ -262,7 +267,7 @@ export function HintConversation({ onClose, voiceMode = false }: HintConversatio
           ))}
           {busy && (
             <div className="message message-wolfie">
-              <div className="message-avatar">🐺</div>
+              <div className="message-avatar"><WolfieSprite size={30} /></div>
               <div className="message-content">
                 <p className="message-text">Thinking...</p>
               </div>

@@ -370,6 +370,51 @@
       "payload": {
         "requestId": "r-1"
       }
+    },
+    {
+      "id": "e9",
+      "type": "ext.brightspace_data",
+      "ts": 9,
+      "payload": {
+        "data": {
+          "semester": "Fall 2026",
+          "courses": [
+            {
+              "id": "1234",
+              "code": "CSE 373",
+              "name": "Analysis of Algorithms",
+              "semester": "Fall 2026",
+              "url": "/d2l/home/1234",
+              "assignments": [
+                {
+                  "id": "a1",
+                  "title": "Homework 3",
+                  "courseId": "1234",
+                  "dueDate": "2026-10-30T23:59:00Z",
+                  "isCompleted": false
+                }
+              ],
+              "resources": [
+                {
+                  "id": "r1",
+                  "title": "Lecture 9: Dynamic programming",
+                  "type": "file",
+                  "url": "/d2l/le/content/1234/viewContent/9"
+                }
+              ]
+            }
+          ],
+          "lastFetched": 1792900000000
+        }
+      }
+    },
+    {
+      "id": "e10",
+      "type": "desk.request_brightspace",
+      "ts": 10,
+      "payload": {
+        "requestId": "b1"
+      }
     }
   ],
   "invalid": {
