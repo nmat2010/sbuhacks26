@@ -33,10 +33,13 @@ export interface FocusCurve {
   bucketMinutes: number;
   /** One point per bucket, up to the average session length. Shares are 0-100. */
   points: Array<{ minute: number; focus: number; distraction: number }>;
-  /** When you usually first leave for a distracting or AI site (median), and where to. */
-  firstDrift: { minute: number; sessionsWithDrift: number; topSites: string[] } | null;
+  /**
+   * When in a session you usually leave for distracting or AI sites: the 5-minute stretch with
+   * the most drifting across sessions, how many sessions drifted then, and where to.
+   */
+  usualDrift: { minute: number; sessionsWithDrift: number; topSites: string[] } | null;
   peak: { fromMinute: number; toMinute: number; focus: number } | null;
-  /** Focus lost (points) from the peak to the stretch where the first drift usually happens. */
+  /** Focus lost (points) from the peak to the stretch where you usually drift. */
   dropAfterDrift: number | null;
 }
 
@@ -89,11 +92,6 @@ export function sessionDrifts(db: Database.Database, sessionId: string, lists: R
   return out;
 }
 
-const median = (xs: number[]) => {
-  const s = [...xs].sort((a, b) => a - b);
-  const m = Math.floor(s.length / 2);
-  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
-};
 
 export function getFocusCurve(db: Database.Database, lists: RuleLists, now = Date.now()): FocusCurve {
   const rows = db
@@ -110,18 +108,11 @@ export function getFocusCurve(db: Database.Database, lists: RuleLists, now = Dat
 
   const avg = studied.reduce((n, s) => n + s.length, 0) / studied.length;
   const buckets = Math.max(1, Math.ceil(avg / BUCKET_MINUTES));
-  const acc = Array.from({ length: buckets }, () => ({ work: 0, drift: 0, total: 0 }));
-  const firstDrifts: number[] = [];
-  const siteCount = new Map<string, number>();
+  const acc = Array.from({ length: buckets }, () => ({ work: 0, drift: 0, total: 0, sessions: new Set<number>(), sites: new Map<string, number>() }));
 
-  for (const s of studied) {
-    let first: Slice | undefined;
+  for (const [index, s] of studied.entries()) {
     for (const sl of s.slices) {
       const isDrift = sl.category === 'distraction' || sl.category === 'ai_tool';
-      if (isDrift) {
-        first ??= sl;
-        siteCount.set(sl.site, (siteCount.get(sl.site) ?? 0) + (sl.end - sl.start));
-      }
       // Spread the slice over the minute buckets it covers (session time, not clock time)
       let t = sl.start;
       while (t < sl.end) {
@@ -130,11 +121,14 @@ export function getFocusCurve(db: Database.Database, lists: RuleLists, now = Dat
         const next = Math.min(sl.end, s.start + (b + 1) * BUCKET_MINUTES * 60_000);
         acc[b].total += next - t;
         if (sl.category === 'work') acc[b].work += next - t;
-        if (isDrift) acc[b].drift += next - t;
+        if (isDrift) {
+          acc[b].drift += next - t;
+          acc[b].sessions.add(index);
+          acc[b].sites.set(sl.site, (acc[b].sites.get(sl.site) ?? 0) + (next - t));
+        }
         t = next;
       }
     }
-    if (first) firstDrifts.push((first.start - s.start) / 60_000);
   }
 
   const points = acc.map((a, i) => ({
@@ -143,15 +137,18 @@ export function getFocusCurve(db: Database.Database, lists: RuleLists, now = Dat
     distraction: a.total ? Math.round((a.drift / a.total) * 100) : 0
   }));
   const peakIndex = points.reduce((best, p, i) => (p.focus > points[best].focus ? i : best), 0);
-  const firstDrift = firstDrifts.length
+  // When you usually drift: the stretch of session time with the most drifting across sessions
+  // (a median of first drifts can land between two habits, at a time nobody drifts)
+  const driftIndex = acc.reduce((best, a, i) => (a.drift > acc[best].drift ? i : best), 0);
+  const d = acc[driftIndex];
+  const usualDrift = d.drift
     ? {
-        minute: Math.round(median(firstDrifts)),
-        sessionsWithDrift: firstDrifts.length,
-        topSites: [...siteCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([site]) => site)
+        minute: driftIndex * BUCKET_MINUTES,
+        sessionsWithDrift: d.sessions.size,
+        topSites: [...d.sites.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([site]) => site)
       }
     : null;
-  // Focus in the stretch where the first drift usually happens
-  const atDrift = firstDrift ? points[Math.min(points.length - 1, Math.floor(firstDrift.minute / BUCKET_MINUTES))] : null;
+  const atDrift = usualDrift ? points[driftIndex] : null;
 
   return {
     sample: false,
@@ -159,7 +156,7 @@ export function getFocusCurve(db: Database.Database, lists: RuleLists, now = Dat
     avgSessionMinutes: Math.round(avg),
     bucketMinutes: BUCKET_MINUTES,
     points,
-    firstDrift,
+    usualDrift,
     peak: { fromMinute: points[peakIndex].minute, toMinute: points[peakIndex].minute + BUCKET_MINUTES, focus: points[peakIndex].focus },
     dropAfterDrift: atDrift ? Math.max(0, points[peakIndex].focus - atDrift.focus) : null
   };
@@ -179,7 +176,7 @@ export const SAMPLE_CURVE: FocusCurve = {
     focus,
     distraction: [4, 2, 1, 3, 9, 31, 24, 13, 19, 30][i]
   })),
-  firstDrift: { minute: 27, sessionsWithDrift: 6, topSites: ['youtube.com', 'reddit.com'] },
+  usualDrift: { minute: 25, sessionsWithDrift: 6, topSites: ['youtube.com', 'reddit.com'] },
   peak: { fromMinute: 10, toMinute: 15, focus: 91 },
   dropAfterDrift: 34
 };

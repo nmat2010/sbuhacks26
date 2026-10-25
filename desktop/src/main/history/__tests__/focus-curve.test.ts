@@ -41,13 +41,21 @@ describe('focus curve', () => {
     const curve = getFocusCurve(db, lists, NOW);
     expect(curve).toMatchObject({ sample: false, sessions: 3, avgSessionMinutes: 40, bucketMinutes: 5 });
     expect(curve.points).toHaveLength(8);
-    expect(curve.firstDrift).toEqual({ minute: 22, sessionsWithDrift: 3, topSites: ['youtube.com', 'reddit.com'] });
+    // Most drifting happens 20-25 min in (sessions a and c), YouTube more than Reddit
+    expect(curve.usualDrift).toEqual({ minute: 20, sessionsWithDrift: 2, topSites: ['youtube.com', 'reddit.com'] });
     // Full focus early, the dip where the drifts happen
     expect(curve.points[0]).toMatchObject({ minute: 0, focus: 100, distraction: 0 });
     expect(curve.points[4].focus).toBeLessThan(100);
     expect(curve.points[4].distraction).toBeGreaterThan(0);
     expect(curve.peak).toEqual({ fromMinute: 0, toMinute: 5, focus: 100 });
     expect(curve.dropAfterDrift).toBe(100 - curve.points[4].focus);
+  });
+
+  it('two drift habits (early Reddit, YouTube half an hour in): the stretch with the most drifting, not a median between them', () => {
+    session('e', 0, 40, [[0, 'Google Chrome', 'reddit.com'], [1, 'Code', null], [30, 'Google Chrome', 'youtube.com'], [35, 'Code', null]]);
+    session('f', 1000, 40, [[0, 'Code', null], [30, 'Google Chrome', 'youtube.com'], [34, 'Code', null]]);
+    session('g', 2000, 40, [[0, 'Google Chrome', 'reddit.com'], [1, 'Code', null], [31, 'Google Chrome', 'youtube.com'], [35, 'Code', null]]);
+    expect(getFocusCurve(db, lists, NOW).usualDrift).toEqual({ minute: 30, sessionsWithDrift: 3, topSites: ['youtube.com'] });
   });
 
   it("a session's drifts: when, where, how long (one site's back-to-back rows merged)", () => {

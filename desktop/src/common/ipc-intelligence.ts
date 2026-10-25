@@ -336,7 +336,8 @@ export interface FocusCurveView {
   avgSessionMinutes: number;
   bucketMinutes: number;
   points: Array<{ minute: number; focus: number; distraction: number }>;
-  firstDrift: { minute: number; sessionsWithDrift: number; topSites: string[] } | null;
+  /** The 5-minute stretch of a session with the most drifting to distracting or AI sites. */
+  usualDrift: { minute: number; sessionsWithDrift: number; topSites: string[] } | null;
   peak: { fromMinute: number; toMinute: number; focus: number } | null;
   dropAfterDrift: number | null;
 }

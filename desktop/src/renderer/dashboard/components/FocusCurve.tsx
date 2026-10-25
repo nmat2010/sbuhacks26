@@ -24,7 +24,7 @@ export function FocusCurve() {
   }, []);
 
   if (!curve || !curve.points.length) return null;
-  const { points, firstDrift, peak } = curve;
+  const { points, usualDrift, peak } = curve;
   const span = Math.max(curve.avgSessionMinutes, points.length * curve.bucketMinutes);
   const x = (minute: number) => (minute / span) * W;
   const y = (focus: number) => TOP + (1 - focus / 100) * (H - TOP);
@@ -36,8 +36,8 @@ export function FocusCurve() {
     if (i === points.length - 1) line += ` H${x(p.minute + curve.bucketMinutes)}`;
   });
   const area = `${line} V${H} H0 Z`;
-  const driftX = firstDrift ? x(firstDrift.minute) : null;
-  const site = firstDrift?.topSites[0];
+  const driftX = usualDrift ? x(usualDrift.minute) : null;
+  const site = usualDrift?.topSites[0];
 
   return (
     <div className="focus-curve">
@@ -49,7 +49,7 @@ export function FocusCurve() {
       <div className="stats-grid">
         <Tile label="Average session" value={`${curve.avgSessionMinutes} min`} />
         <Tile label="Sessions recorded" value={`${curve.sessions}`} />
-        <Tile label="You usually drift at" value={firstDrift ? `${firstDrift.minute} min` : '–'} />
+        <Tile label="You usually drift at" value={usualDrift ? `${usualDrift.minute}-${usualDrift.minute + curve.bucketMinutes} min` : '–'} />
         <Tile label="Focus drop at drift" value={curve.dropAfterDrift !== null ? `-${curve.dropAfterDrift}` : '–'} />
       </div>
 
@@ -70,7 +70,7 @@ export function FocusCurve() {
             <line x1={driftX} x2={driftX} y1={TOP} y2={H} className="focus-curve__drift" />
             {/* At the bottom, clear of the curve (focus is usually high) */}
             <text x={Math.min(driftX + 6, W - 200)} y={H - 10} className="focus-curve__drift-label">
-              drift ~{firstDrift!.minute} min{site ? ` · ${site}` : ''}
+              drift ~{usualDrift!.minute} min{site ? ` · ${site}` : ''}
             </text>
           </g>
         )}
@@ -90,10 +90,10 @@ export function FocusCurve() {
 function summary(c: FocusCurveView): string {
   const parts: string[] = [];
   if (c.peak) parts.push(`You focus best ${c.peak.fromMinute}-${c.peak.toMinute} minutes into a session (${c.peak.focus}% on task).`);
-  if (c.firstDrift) {
-    const where = c.firstDrift.topSites.length ? ` to ${c.firstDrift.topSites.join(' or ')}` : '';
+  if (c.usualDrift) {
+    const where = c.usualDrift.topSites.length ? ` to ${c.usualDrift.topSites.join(' or ')}` : '';
     parts.push(
-      `Around minute ${c.firstDrift.minute} you usually drift${where} (${c.firstDrift.sessionsWithDrift} of ${c.sessions} sessions), and focus drops${c.dropAfterDrift !== null ? ` by ${c.dropAfterDrift} points` : ''}. A short planned break just before then may help.`
+      `Around ${c.usualDrift.minute}-${c.usualDrift.minute + c.bucketMinutes} minutes in you usually drift${where} (${c.usualDrift.sessionsWithDrift} of ${c.sessions} sessions), and focus drops${c.dropAfterDrift !== null ? ` by ${c.dropAfterDrift} points` : ''}. A short planned break just before then may help.`
     );
   } else {
     parts.push('No drifts to distracting sites recorded. Nice.');
