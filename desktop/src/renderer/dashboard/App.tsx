@@ -10,6 +10,7 @@ import { BrightspaceMaterialPage } from './views/BrightspaceMaterialPage';
 import { SettingsPage } from './views/SettingsPage';
 import { RetroOnboarding } from './components/RetroOnboarding';
 import './styles/tokens.css';
+import './styles/motion.css';
 
 // The dashboard skeleton (tuan/reports/dashboard-skeleton.md): the student's performance seen the
 // way a teacher would, and what to do next to grow. Five pages; Thu styles them.
@@ -88,7 +89,9 @@ function App() {
       xp={summary?.xp}
       mood={isPaused ? 'PAUSED' : isActive ? 'WATCHING' : 'READY'}
     >
-      {renderView()}
+      <div key={currentView} className="page-enter">
+        {renderView()}
+      </div>
     </AppShell>
   );
 }

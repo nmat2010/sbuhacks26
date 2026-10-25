@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { PixelCard, PixelButton, OptionButton, Chip, OutcomeTag, SegBar, SampleNotice } from '../pixel-components';
+import { PixelCard, PixelButton, OptionButton, Chip, OutcomeTag, SegBar, SampleNotice, CountUp } from '../pixel-components';
 import type { PageView } from '../pixel-components';
 import type { DashProblem, DashSession } from '../../../common/ipc-dashboard';
 import { sampleSessions, sampleProblems, sampleTopics } from '../fixtures/sample';
@@ -65,7 +65,7 @@ export function ReportPage({ isSample, onNavigate }: ReportPageProps) {
       sessions: displaySessions.length,
       time: `${Math.floor(minutes / 60)}H ${String(minutes % 60).padStart(2, '0')}M`,
       problems,
-      unaidedPct: problems > 0 ? `${Math.round((unaided / problems) * 100)}%` : '--'
+      unaidedPct: problems > 0 ? Math.round((unaided / problems) * 100) : null
     };
   }, [displaySessions]);
 
@@ -129,7 +129,7 @@ export function ReportPage({ isSample, onNavigate }: ReportPageProps) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '32px' }}>
         <PixelCard style={{ flex: '1 1 150px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <span className="ws-heading" style={{ fontSize: '10px', color: 'var(--ws-text-muted)' }}>SESSIONS</span>
-          <span className="ws-heading" style={{ fontSize: '24px', color: 'var(--ws-gold)' }}>{totals.sessions}</span>
+          <span className="ws-heading" style={{ fontSize: '24px', color: 'var(--ws-gold)' }}><CountUp value={totals.sessions} /></span>
         </PixelCard>
         <PixelCard style={{ flex: '1 1 150px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <span className="ws-heading" style={{ fontSize: '10px', color: 'var(--ws-text-muted)' }}>STUDY TIME</span>
@@ -137,11 +137,11 @@ export function ReportPage({ isSample, onNavigate }: ReportPageProps) {
         </PixelCard>
         <PixelCard style={{ flex: '1 1 150px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <span className="ws-heading" style={{ fontSize: '10px', color: 'var(--ws-text-muted)' }}>PROBLEMS WORKED</span>
-          <span className="ws-heading" style={{ fontSize: '24px', color: 'var(--ws-gold)' }}>{totals.problems}</span>
+          <span className="ws-heading" style={{ fontSize: '24px', color: 'var(--ws-gold)' }}><CountUp value={totals.problems} /></span>
         </PixelCard>
         <PixelCard style={{ flex: '1 1 150px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <span className="ws-heading" style={{ fontSize: '10px', color: 'var(--ws-text-muted)' }}>SOLVED UNAIDED</span>
-          <span className="ws-heading" style={{ fontSize: '24px', color: 'var(--ws-green)' }}>{totals.unaidedPct}</span>
+          <span className="ws-heading" style={{ fontSize: '24px', color: 'var(--ws-green)' }}>{totals.unaidedPct === null ? '--' : <CountUp value={totals.unaidedPct} suffix="%" />}</span>
         </PixelCard>
       </div>
 

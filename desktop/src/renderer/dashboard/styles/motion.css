@@ -1,0 +1,125 @@
+/* Motion for the dashboard. Pixel rules: stepped easing (steps()), no blur, no soft fades-in-place,
+   nothing that moves more than a few "pixels". Switched off by Settings > Reduce motion (the
+   data attribute, also blanket-handled in tokens.css) and by the OS reduced-motion setting. */
+
+@keyframes ws-rise {
+  from { transform: translateY(12px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@keyframes ws-pop {
+  from { transform: scale(0); }
+  to   { transform: scale(1); }
+}
+@keyframes ws-seg-in {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+@keyframes ws-reveal {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0 0 0); }
+}
+@keyframes ws-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+@keyframes ws-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.25; }
+}
+@keyframes ws-nudge {
+  0%, 100% { transform: translateX(0); }
+  50%      { transform: translateX(4px); }
+}
+
+/* Page enter: each top-level block of a page rises in, one after another */
+.page-enter > * > * {
+  animation: ws-rise 0.32s steps(4, end) both;
+}
+.page-enter > * > *:nth-child(1) { animation-delay: 0ms; }
+.page-enter > * > *:nth-child(2) { animation-delay: 60ms; }
+.page-enter > * > *:nth-child(3) { animation-delay: 120ms; }
+.page-enter > * > *:nth-child(4) { animation-delay: 180ms; }
+.page-enter > * > *:nth-child(5) { animation-delay: 240ms; }
+.page-enter > * > *:nth-child(6) { animation-delay: 300ms; }
+.page-enter > * > *:nth-child(n+7) { animation-delay: 360ms; }
+
+/* Lists inside cards rise in too (rows, topics, materials, problems) */
+.material-row, .topic-card, .session-row {
+  animation: ws-rise 0.28s steps(4, end) both;
+}
+
+/* Meters fill block by block */
+.seg-bar__segment--filled {
+  transform-origin: bottom;
+  animation: ws-seg-in 0.16s steps(2, end) both;
+  animation-delay: calc(var(--i, 0) * 45ms + 250ms);
+}
+
+/* Streak squares pop in; today blinks gently */
+.streak-grid__day {
+  animation: ws-pop 0.2s steps(3, end) both;
+  animation-delay: calc(var(--i, 0) * 30ms + 200ms);
+}
+.streak-grid__day--open {
+  animation: ws-pop 0.2s steps(3, end) both, ws-blink 1.6s steps(2, end) 1s infinite;
+  animation-delay: calc(var(--i, 0) * 30ms + 200ms), 1s;
+}
+
+/* Productivity curve draws left to right */
+.step-chart svg {
+  animation: ws-reveal 0.9s steps(24, end) 0.3s both;
+}
+
+/* Wolfie idles with a slow bob */
+.wolfie-sprite {
+  animation: ws-bob 1.6s steps(2, end) infinite;
+}
+
+/* Hover and press feedback: a pixel lift, then a pixel press */
+.pixel-btn:not(:disabled):hover,
+.option-btn:not(:disabled):hover {
+  transform: translateY(-2px);
+}
+.pixel-btn:not(:disabled):active,
+.option-btn:not(:disabled):active {
+  transform: translateY(2px);
+}
+.material-row:hover,
+.topic-card:hover,
+.session-row:hover {
+  transform: translateY(-2px);
+}
+.app-shell__nav-item:hover:not(.app-shell__nav-item--active) .app-shell__nav-icon {
+  animation: ws-nudge 0.4s steps(2, end) infinite;
+}
+.app-shell__nav-item,
+.material-row,
+.topic-card,
+.session-row {
+  transition: transform 0.08s steps(2, end);
+}
+.switch::after {
+  transition: left 0.12s steps(3, end);
+}
+
+/* Small things that appear (status lines, notices) */
+[role='status'] > *, .sample-notice {
+  animation: ws-rise 0.2s steps(3, end) both;
+}
+
+/* A running session shows a live blinking square */
+.live-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  background: var(--ws-weak);
+  margin-right: 10px;
+  animation: ws-blink 1s steps(2, end) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

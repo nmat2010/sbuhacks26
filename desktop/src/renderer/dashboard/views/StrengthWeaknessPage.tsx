@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { PixelCard, PixelButton, OptionButton, Badge, SegBar, SampleNotice } from '../pixel-components';
+import { PixelCard, PixelButton, OptionButton, Badge, SegBar, SampleNotice, CountUp } from '../pixel-components';
 import type { PageView, SegBarTone, BadgeTone } from '../pixel-components';
 import type { DashPracticeItem, DashTopicScore } from '../../../common/ipc-dashboard';
 import { sampleTopics, samplePracticePlan } from '../fixtures/sample';
@@ -117,7 +117,7 @@ export function StrengthWeaknessPage({ isSample, onNavigate }: StrengthWeaknessP
               className="ws-heading"
               style={{ fontSize: '24px', color: b.band === 'weak' ? 'var(--ws-weak-text)' : b.band === 'strong' ? 'var(--ws-green)' : 'var(--ws-gold)' }}
             >
-              {counts[b.band]}
+              <CountUp value={counts[b.band]} />
             </span>
           </PixelCard>
         ))}
