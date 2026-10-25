@@ -348,3 +348,22 @@
   - **Chat:** the panel's bottom is 220 px above the bottom of the window (was 190).
 - **Verified:** real app on a scratch profile. Screenshots show the bubble above the whole talking sprite and a gap between the chat and Wolfie's cap. Wheel scroll, the thinking events and the button size are unchanged.
 - Tests: 671 pass. Lint is clean.
+
+## Update: drag Wolfie anywhere on screen
+- **Agreed for later:** chat replies read aloud with ElevenLabs, with the talking sprite while the voice plays. Not built yet.
+- **Built:** dragging Wolfie moves the whole overlay window, so the chat, bubbles and "I'm stuck" come along. Thu's in-window drag was left out because it clashed with that layout.
+  - **Renderer (`App.tsx`):**
+    - a mouse-down on `.mascot` starts `overlay-drag 'start'`; mouse-up anywhere on the page ends it;
+    - it counts as a drag (not a click, so the chat doesn't toggle) if the pointer moved more than 4 px or the window itself moved;
+    - the hover menu hides while dragging; bubbles, the hover menu and buttons never start a drag.
+  - **Main (`main.ts`, which owns the overlay window):**
+    - while the button is held, the window follows `screen.getCursorScreenPoint()` every 16 ms, with a 60 s safety stop;
+    - on release it's kept inside the screen's work area and saved to `userData/overlay-position.json` (`x` and the bottom edge);
+    - on start, the saved position is restored if it's still on a connected screen.
+  - **`overlay-expand`:** when Wolfie sits high on the screen, the chat takes only the room above him, so Wolfie never moves when the chat opens (before, the window was clamped to the top and its bottom shifted).
+- **Verified** with the real app and the real cursor (a small `CGWarpMouseCursorPosition` helper, `WOLFIE_SMOKE_DRAG`) on a scratch profile:
+  - **Drag:** the window went from (1094,428) to (794,228), exactly the cursor's −300/−200; the position was saved; the chat didn't open.
+  - **Click:** a plain click afterwards opens the chat.
+  - **Restart:** the window started at (794,228).
+  - **Screen edge:** a drag past the top was stopped below the menu bar.
+- Tests: 671 pass. Typecheck and lint are clean.

@@ -157,17 +157,44 @@ function App() {
     releaseMouse();
   };
 
-  const handleMouseDown = () => {
-    setIsDragging(true);
-  };
+  // Dragging Wolfie moves the whole overlay window (main follows the cursor while the button is
+  // held). A press that moves more than a few pixels is a drag, not a click on Wolfie.
+  const dragRef = React.useRef<{ x: number; y: number; winX: number; winY: number; moved: boolean } | null>(null);
+  const draggedRef = React.useRef(false);
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    if (!chatOpenRef.current) window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0 || !(e.target as HTMLElement).closest('.mascot')) return;
+    setIsDragging(true);
+    dragRef.current = { x: e.screenX, y: e.screenY, winX: window.screenX, winY: window.screenY, moved: false };
+    void window.electronAPI.invoke('overlay-drag', 'start');
+    const onMove = (ev: MouseEvent) => {
+      const d = dragRef.current;
+      if (d && !d.moved && Math.hypot(ev.screenX - d.x, ev.screenY - d.y) > 4) {
+        d.moved = true;
+        setShowHoverMenu(false);
+      }
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      void window.electronAPI.invoke('overlay-drag', 'end');
+      // A drag if the pointer or the window itself moved (the click event comes right after this)
+      const d = dragRef.current;
+      draggedRef.current = !!d && (d.moved || Math.hypot(window.screenX - d.winX, window.screenY - d.winY) > 4);
+      dragRef.current = null;
+      setIsDragging(false);
+      if (!chatOpenRef.current) window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
   };
 
   // Clicking Wolfie opens (or closes) the chat; help starts from its "Help me with this" button
   const handleMascotClick = () => {
+    if (draggedRef.current) {
+      draggedRef.current = false; // the end of a drag, not a click
+      return;
+    }
     setShowHintConversation((open) => !open);
   };
 
@@ -217,7 +244,6 @@ function App() {
     >
       <div
         onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
         onContextMenu={(e) => {
           e.preventDefault();
           // Context menu handled by main process
