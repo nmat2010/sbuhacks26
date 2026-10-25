@@ -38,6 +38,8 @@ export interface CoreInvoke {
   'open-test-panel': { args: []; result: Result };
   /** Clicking Wolfie starts the hint flow (SPEC 4d). */
   'mascot-click': { args: []; result: Result };
+  /** Open URL in default external browser (not Electron window). */
+  'open-external': { args: [url: string]; result: Result };
 }
 
 /** renderer -> main, fire-and-forget (ipcRenderer.send / ipcMain.on) */
