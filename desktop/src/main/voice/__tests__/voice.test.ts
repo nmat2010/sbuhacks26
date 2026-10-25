@@ -393,6 +393,26 @@ describe('attachNudgeSpeech', () => {
   });
 });
 
+describe('attachNudgeSpeech: skip', () => {
+  it('does not speak nudges that are read another way (chat replies read aloud)', async () => {
+    const { EventEmitter } = await import('events');
+    const { attachNudgeSpeech } = await import('../nudge-speech.js');
+    const queue = new EventEmitter();
+    const spoken: string[] = [];
+    attachNudgeSpeech(
+      queue,
+      (t) => {
+        spoken.push(t);
+        return true;
+      },
+      (n) => n.kind === 'stuck'
+    );
+    queue.emit('show', { kind: 'stuck', level: 3, text: 'Hint', spokenText: 'Hint' });
+    queue.emit('show', { kind: 'distraction', level: 3, text: 'Back to work?', spokenText: 'Back to work?' });
+    expect(spoken).toEqual(['Back to work?']);
+  });
+});
+
 describe('VoiceRouter free speech (reading view)', () => {
   it('hands non-command speech to onFreeSpeech when no ladder is open, and still prefers commands and ladders', async () => {
     const taken: string[] = [];

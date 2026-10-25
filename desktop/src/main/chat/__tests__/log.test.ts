@@ -90,3 +90,16 @@ describe('attachChatLog', () => {
     expect(log.list().map((m) => m.text)).toEqual(['Hint 1', 'Another hint', 'Hint 2']);
   });
 });
+
+describe('attachChatLog: replies read aloud', () => {
+  it('hands help steps to onReply, but not the automatic offer', () => {
+    const queue = new NudgeQueue();
+    const read: string[] = [];
+    attachChatLog(queue, log, () => {}, (text) => void read.push(text));
+    queue.emit('show', { id: 'o1', kind: 'stuck', level: 3, text: 'Want a hint?', buttons: [{ label: 'Yes, give me a hint', action: 'accept_hint' }] });
+    queue.emit('show', { id: 'h1', kind: 'stuck', level: 3, text: 'Look at the last number.', buttons: [{ label: 'Another hint', action: 'another_hint' }] });
+    queue.emit('show', { id: 't1', kind: 'stuck', level: 3, text: 'Let me take a look...' });
+    expect(read).toEqual(['Look at the last number.']);
+    expect(log.list().map((m) => m.text)).toEqual(['Want a hint?', 'Look at the last number.']);
+  });
+});

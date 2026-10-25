@@ -354,6 +354,8 @@ export interface IntelligenceInvoke {
   /** A question about what the student is studying, answered from the whole session. */
   'watch-ask': { args: [input: { question: string; inputMode: 'text' | 'voice' }]; result: BResult<WatchAnswer> };
   'voice-status': { args: []; result: VoiceStatus };
+  /** Stop Wolfie talking now (the chat closed, or reading replies was turned off). */
+  'voice-stop-speaking': { args: []; result: { success: boolean } };
   /**
    * Mic frames from the hidden capture renderer: 16 kHz, 16-bit LE mono PCM. This is an invoke
    * (not a send) because the preload only exposes a generic invoke; the result is ignored.

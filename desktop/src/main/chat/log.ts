@@ -3,6 +3,7 @@ import type { EventEmitter } from 'events';
 import type Database from 'better-sqlite3';
 import type { ChatTurnType, Nudge, NudgeButtonType, NudgeResponse } from '@wolfie/shared';
 import type { ChatMessageView, WatchCitation, WatchResource } from '../../common/ipc-intelligence.js';
+import { isUnaskedOffer } from '../voice/read-aloud.js';
 
 // Wolfie's chat history (the overlay chat panel). Kept in SQLite so it survives closing the chat
 // and restarting the app, like an ongoing conversation; the recent turns are also sent with each
@@ -112,13 +113,20 @@ export function isTransient(text: string): boolean {
 
 /**
  * Records help-flow steps and offers as they are shown, and the student's button presses, from the
- * nudge queue. Returns the unsubscribe.
+ * nudge queue. `onReply` gets each help step (not the automatic offer), to be read aloud.
+ * Returns the unsubscribe.
  */
-export function attachChatLog(queue: EventEmitter, log: ChatLog, notify: () => void): () => void {
+export function attachChatLog(
+  queue: EventEmitter,
+  log: ChatLog,
+  notify: () => void,
+  onReply?: (text: string) => void
+): () => void {
   const onShow = (nudge: Nudge) => {
     if (nudge.kind !== 'stuck' || isTransient(nudge.text)) return;
     log.add({ role: 'wolfie', text: nudge.text, nudgeId: nudge.id, buttons: nudge.buttons });
     notify();
+    if (!isUnaskedOffer(nudge)) onReply?.(nudge.text);
   };
   const onResponse = (response: NudgeResponse) => {
     const label = log.buttonLabel(response.id, response.action);
