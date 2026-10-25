@@ -1,4 +1,4 @@
-import type { PageSummary, StruggleSignal } from '@wolfie/shared';
+import type { PageSummary, StruggleSignal, BrightspaceCourse } from '@wolfie/shared';
 import type { ExtensionPairingInfo } from '../../common/ipc-sensing.js';
 import type { Monitor } from '../monitor/monitor.js';
 import { TypedEmitter } from '../typed-emitter.js';
@@ -48,6 +48,12 @@ export interface ExtensionLink {
   getExtensionPairingInfo(): ExtensionPairingInfo;
   /** New token, and forget the trusted extension id (needed after reinstalling the extension). */
   regenerateToken(): ExtensionPairingInfo;
+  /** Ask the extension to re-scrape Brightspace; false when it is not connected. */
+  requestBrightspace(): boolean;
+  /** Get all Brightspace courses cached from the extension. */
+  getBrightspaceCourses(): BrightspaceCourse[];
+  /** Get the current semester name from cached Brightspace data. */
+  getBrightspaceSemester(): string | null;
   stop(): Promise<void>;
 }
 
@@ -133,6 +139,15 @@ export async function startExtensionLink(deps: ExtensionLinkDeps): Promise<Exten
       // Existing sockets were authenticated with the old token: drop them.
       server.dropClients();
       return info();
+    },
+    requestBrightspace: () => server.requestBrightspace(),
+    getBrightspaceCourses() {
+      const data = bridge.getBrightspaceData();
+      return data?.courses ?? [];
+    },
+    getBrightspaceSemester() {
+      const data = bridge.getBrightspaceData();
+      return data?.semester ?? null;
     },
     async stop() {
       offs.forEach((off) => off());

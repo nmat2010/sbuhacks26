@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Set your shields</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#1a1214}
+.h{font-family:'Press Start 2P',monospace;line-height:1.5;font-weight:400}
+.card{background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9,8px 8px 0 0 #0d0709}
+.card2{background:#3a2328;box-shadow:0 -4px 0 0 #5a3a41,0 4px 0 0 #5a3a41,-4px 0 0 0 #5a3a41,4px 0 0 0 #5a3a41}
+.btn{display:inline-block;border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.4;color:#f5ecd9;background:#c41e1e;padding:16px 22px;text-decoration:none;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #7a0000,inset 0 6px 0 0 #e0504f}
+.btn:active{transform:translateY(2px)}
+.btn.gold{background:#f2b632;color:#1a1214;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #b9801a,inset 0 6px 0 0 #ffd878}
+.btn.ghost{background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9}
+.seg{display:flex;gap:4px;flex:none}
+.seg button{border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:9px;padding:10px 10px;background:#1a1214;color:#c9b8a6}
+.seg button.warn{background:#f2a03a;color:#1a1214}
+.seg button.gate{background:#f2b632;color:#1a1214}
+.seg button.block{background:#e5484d;color:#1a1214}
+.tile{width:40px;height:40px;background:#0d0709;display:flex;align-items:center;justify-content:center;font-family:'Press Start 2P',monospace;font-size:14px;color:#f2b632;flex:none}
+.tag{font-family:'Press Start 2P',monospace;font-size:8px;background:#990000;color:#f5ecd9;padding:4px 6px}
+</style>
+</head>
+<body>
+<div style="width:100%;min-height:860px;display:flex;flex-direction:column;background:#1a1214;color:#f5ecd9;font-family:'Pixelify Sans',monospace;font-size:18px">
+
+<div style="height:44px;background:#0d0709;border-bottom:4px solid #990000;display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex:none">
+<span class="h" style="font-size:11px">WOLFIE SENSEI</span>
+<span class="h" style="font-size:10px;color:#c9b8a6">SETUP · 6 OF 7</span>
+<div style="display:flex;gap:8px" aria-hidden="true"><span style="width:14px;height:14px;background:#f2b632"></span><span style="width:14px;height:14px;background:#6fd27a"></span><span style="width:14px;height:14px;background:#e5484d"></span></div>
+</div>
+
+<div style="flex:1;display:flex;flex-wrap:wrap;gap:44px;align-items:flex-start;justify-content:center;padding:44px 32px;max-width:1220px;width:100%;box-sizing:border-box;margin:0 auto">
+
+<div class="card" style="flex:2 1 520px;max-width:720px;padding:30px;display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;flex-direction:column;gap:10px">
+<h1 class="h" style="margin:0;font-size:16px;color:#f2b632">SET YOUR SHIELDS</h1>
+<p style="margin:0;color:#e0d2c2;line-height:1.35">List the sites and apps that pull you off track. For each one, pick how Wolfie should react.</p>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:14px">
+
+<div class="card2" style="padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+<span class="tile" aria-hidden="true">C</span>
+<div style="flex:1 1 150px;display:flex;flex-direction:column;gap:2px"><span style="font-weight:600;display:flex;gap:8px;align-items:center">claude.ai <span class="tag">AI</span></span><span style="font-size:15px;color:#c9b8a6">website</span></div>
+<div class="seg" role="group" aria-label="claude.ai mode"><button type="button">WARN</button><button type="button" class="gate" aria-pressed="true">GATE</button><button type="button">BLOCK</button></div>
+</div>
+
+<div class="card2" style="padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+<span class="tile" aria-hidden="true">G</span>
+<div style="flex:1 1 150px;display:flex;flex-direction:column;gap:2px"><span style="font-weight:600;display:flex;gap:8px;align-items:center">chatgpt.com <span class="tag">AI</span></span><span style="font-size:15px;color:#c9b8a6">website</span></div>
+<div class="seg" role="group" aria-label="chatgpt.com mode"><button type="button">WARN</button><button type="button" class="gate" aria-pressed="true">GATE</button><button type="button">BLOCK</button></div>
+</div>
+
+<div class="card2" style="padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+<span class="tile" aria-hidden="true">T</span>
+<div style="flex:1 1 150px;display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">tiktok.com</span><span style="font-size:15px;color:#c9b8a6">website</span></div>
+<div class="seg" role="group" aria-label="tiktok.com mode"><button type="button">WARN</button><button type="button">GATE</button><button type="button" class="block" aria-pressed="true">BLOCK</button></div>
+</div>
+
+<div class="card2" style="padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+<span class="tile" aria-hidden="true">Y</span>
+<div style="flex:1 1 150px;display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">youtube.com</span><span style="font-size:15px;color:#c9b8a6">website</span></div>
+<div class="seg" role="group" aria-label="youtube.com mode"><button type="button" class="warn" aria-pressed="true">WARN</button><button type="button">GATE</button><button type="button">BLOCK</button></div>
+</div>
+
+<div class="card2" style="padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+<span class="tile" aria-hidden="true">I</span>
+<div style="flex:1 1 150px;display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">instagram.com</span><span style="font-size:15px;color:#c9b8a6">website</span></div>
+<div class="seg" role="group" aria-label="instagram.com mode"><button type="button" class="warn" aria-pressed="true">WARN</button><button type="button">GATE</button><button type="button">BLOCK</button></div>
+</div>
+
+<div class="card2" style="padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+<span class="tile" aria-hidden="true">D</span>
+<div style="flex:1 1 150px;display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">Discord</span><span style="font-size:15px;color:#c9b8a6">desktop app</span></div>
+<div class="seg" role="group" aria-label="Discord mode"><button type="button" class="warn" aria-pressed="true">WARN</button><button type="button">GATE</button><button type="button">BLOCK</button></div>
+</div>
+
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<button type="button" class="btn gold" style="align-self:flex-start">+ ADD SITE OR APP</button>
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span style="color:#c9b8a6;font-size:16px">Quick add:</span><button type="button" class="card2" style="border:0;padding:6px 12px;color:#f5ecd9;font-family:'Pixelify Sans',monospace;font-size:16px;cursor:pointer">Reddit</button><button type="button" class="card2" style="border:0;padding:6px 12px;color:#f5ecd9;font-family:'Pixelify Sans',monospace;font-size:16px;cursor:pointer">Netflix</button><button type="button" class="card2" style="border:0;padding:6px 12px;color:#f5ecd9;font-family:'Pixelify Sans',monospace;font-size:16px;cursor:pointer">Twitch</button><button type="button" class="card2" style="border:0;padding:6px 12px;color:#f5ecd9;font-family:'Pixelify Sans',monospace;font-size:16px;cursor:pointer">X</button></div>
+</div>
+
+<div style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:4px">
+<button type="button" class="btn ghost">BACK</button>
+<button type="button" class="btn">FINISH SETUP</button>
+</div>
+</div>
+
+<div style="flex:1 1 320px;max-width:400px;display:flex;flex-direction:column;gap:28px">
+
+<div class="card" style="padding:26px;display:flex;flex-direction:column;gap:18px">
+<h2 class="h" style="margin:0;font-size:13px;color:#f2b632">WHAT EACH MODE DOES</h2>
+<div style="display:flex;flex-direction:column;gap:6px"><span class="h" style="font-size:10px;color:#f2a03a">WARN</span><span style="line-height:1.35;color:#e0d2c2">Wolfie pops up in the overlay. You can keep going, and I'll note it.</span></div>
+<div style="display:flex;flex-direction:column;gap:6px"><span class="h" style="font-size:10px;color:#f2b632">GATE</span><span style="line-height:1.35;color:#e0d2c2">Tell me what you've tried first, or run a 5-minute attempt timer. Then the site unlocks.</span></div>
+<div style="display:flex;flex-direction:column;gap:6px"><span class="h" style="font-size:10px;color:#e5484d">BLOCK</span><span style="line-height:1.35;color:#e0d2c2">Closed during focus sessions. No pop-up, no bargaining.</span></div>
+</div>
+
+<div class="card2" style="padding:20px 22px;display:flex;gap:16px;align-items:flex-start">
+<span style="width:22px;height:22px;background:#f2b632;flex:none;margin-top:2px" aria-hidden="true"></span>
+<div style="display:flex;flex-direction:column;gap:8px"><span style="font-weight:600">AI sites start on GATE</span><span style="font-size:16px;line-height:1.35;color:#e0d2c2">The goal isn't zero AI. It's trying first, so the skill stays yours. Switch any site to BLOCK if you'd rather.</span></div>
+</div>
+
+</div>
+
+</div>
+
+<div style="background:#0d0709;padding:20px 32px 28px;overflow-x:auto;flex:none">
+<div style="display:flex;align-items:flex-start;min-width:860px;max-width:1100px;margin:0 auto">
+<div style="width:88px;display:flex;flex-direction:column;align-items:center;gap:12px"><div style="width:24px;height:24px;background:#f2b632;box-shadow:0 0 0 4px #5a3a41"></div><span style="font-size:14px;color:#f2b632">Hello</span></div>
+<div style="flex:1;height:4px;margin-top:10px;background:repeating-linear-gradient(90deg,#f2b632 0 8px,transparent 8px 16px)"></div>
+<div style="width:88px;display:flex;flex-direction:column;align-items:center;gap:12px"><div style="width:24px;height:24px;background:#f2b632;box-shadow:0 0 0 4px #5a3a41"></div><span style="font-size:14px;color:#f2b632">Extension</span></div>
+<div style="flex:1;height:4px;margin-top:10px;background:repeating-linear-gradient(90deg,#f2b632 0 8px,transparent 8px 16px)"></div>
+<div style="width:88px;display:flex;flex-direction:column;align-items:center;gap:12px"><div style="width:24px;height:24px;background:#f2b632;box-shadow:0 0 0 4px #5a3a41"></div><span style="font-size:14px;color:#f2b632">Brightspace</span></div>
+<div style="flex:1;height:4px;margin-top:10px;background:repeating-linear-gradient(90deg,#f2b632 0 8px,transparent 8px 16px)"></div>
+<div style="width:88px;display:flex;flex-direction:column;align-items:center;gap:12px"><div style="width:24px;height:24px;background:#f2b632;box-shadow:0 0 0 4px #5a3a41"></div><span style="font-size:14px;color:#f2b632">Powers</span></div>
+<div style="flex:1;height:4px;margin-top:10px;background:repeating-linear-gradient(90deg,#f2b632 0 8px,transparent 8px 16px)"></div>
+<div style="width:88px;display:flex;flex-direction:column;align-items:center;gap:12px"><div style="width:24px;height:24px;background:#f2b632;box-shadow:0 0 0 4px #5a3a41"></div><span style="font-size:14px;color:#f2b632">Goals</span></div>
+<div style="flex:1;height:4px;margin-top:10px;background:repeating-linear-gradient(90deg,#f2b632 0 8px,transparent 8px 16px)"></div>
+<div style="width:88px;display:flex;flex-direction:column;align-items:center;gap:12px"><div style="width:24px;height:24px;background:#c41e1e;box-shadow:0 0 0 4px #f5ecd9"></div><span style="font-size:14px;color:#f5ecd9;font-weight:600">Shields</span></div>
+<div style="flex:1;height:4px;margin-top:10px;background:repeating-linear-gradient(90deg,#5a3a41 0 8px,transparent 8px 16px)"></div>
+<div style="width:88px;display:flex;flex-direction:column;align-items:center;gap:12px"><div style="width:24px;height:24px;background:#3a2328;box-shadow:0 0 0 4px #5a3a41"></div><span style="font-size:14px;color:#b9a898">Train!</span></div>
+</div>
+</div>
+
+</div>
+</body>
+</html>

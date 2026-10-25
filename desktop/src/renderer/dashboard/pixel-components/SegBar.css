@@ -1,0 +1,26 @@
+.seg-bar {
+  display: flex;
+  gap: 3px;
+}
+
+.seg-bar__segment {
+  flex: 1;
+  height: 12px;
+  background: var(--ws-edge);
+}
+
+.seg-bar__segment--filled {
+  background: var(--ws-red);
+}
+
+.seg-bar--gold .seg-bar__segment--filled {
+  background: var(--ws-gold);
+}
+
+.seg-bar--green .seg-bar__segment--filled {
+  background: var(--ws-green);
+}
+
+.seg-bar--weak .seg-bar__segment--filled {
+  background: var(--ws-weak);
+}

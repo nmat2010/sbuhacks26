@@ -1,4 +1,4 @@
-import type { PageSummary, StruggleSignal } from '@wolfie/shared';
+import type { PageSummary, StruggleSignal, BrightspaceData } from '@wolfie/shared';
 
 // chrome.runtime messages between the content script, popup and background worker.
 
@@ -21,6 +21,7 @@ export type ContentState = { reporting: boolean; capturePageText: boolean };
 export type RuntimeMessage =
   | { type: 'PAGE_SUMMARY'; data: PageSummary }
   | { type: 'SIGNAL'; signal: StruggleSignal }
+  | { type: 'BRIGHTSPACE_DATA'; data: BrightspaceData }
   | { type: 'GET_CONTENT_STATE' }
   | { type: 'GET_STATUS' }
   | { type: 'SET_PAIRING_TOKEN'; token: string }

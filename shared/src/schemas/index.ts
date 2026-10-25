@@ -7,3 +7,4 @@ export * from './sync.js';
 export * from './extension.js';
 export * from './settings.js';
 export * from './escalation.js';
+export * from './brightspace.js';

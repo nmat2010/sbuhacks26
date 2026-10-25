@@ -1,0 +1,87 @@
+.pixel-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--ws-font-heading);
+  line-height: 1.4;
+  color: var(--ws-text);
+  text-decoration: none;
+  text-align: center;
+  transition: none;
+}
+
+/* Sizes */
+.pixel-btn--sm {
+  font-size: 10px;
+  padding: 12px 16px;
+  min-height: 44px;
+}
+
+.pixel-btn--md {
+  font-size: 12px;
+  padding: 16px 22px;
+  min-height: 48px;
+}
+
+.pixel-btn--lg {
+  font-size: 15px;
+  padding: 24px 28px;
+  min-height: 48px;
+}
+
+/* Red tone (default) */
+.pixel-btn--red {
+  background: var(--ws-red);
+  box-shadow:
+    0 -4px 0 0 var(--ws-bg-deep), 0 4px 0 0 var(--ws-bg-deep),
+    -4px 0 0 0 var(--ws-bg-deep), 4px 0 0 0 var(--ws-bg-deep),
+    inset 0 -6px 0 0 var(--ws-red-deep),
+    inset 0 6px 0 0 #e0504f;
+}
+
+.pixel-btn--red:hover {
+  background: #d42a2a;
+}
+
+.pixel-btn--red:active {
+  transform: translateY(2px);
+}
+
+/* Gold tone */
+.pixel-btn--gold {
+  background: var(--ws-gold);
+  color: var(--ws-bg);
+  box-shadow:
+    0 -4px 0 0 var(--ws-bg-deep), 0 4px 0 0 var(--ws-bg-deep),
+    -4px 0 0 0 var(--ws-bg-deep), 4px 0 0 0 var(--ws-bg-deep),
+    inset 0 -6px 0 0 var(--ws-gold-dark),
+    inset 0 6px 0 0 var(--ws-gold-light);
+}
+
+.pixel-btn--gold:hover {
+  background: #ffc94d;
+}
+
+.pixel-btn--gold:active {
+  transform: translateY(2px);
+}
+
+/* Disabled state */
+.pixel-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pixel-btn:disabled:hover {
+  background: var(--ws-red);
+}
+
+.pixel-btn--gold:disabled:hover {
+  background: var(--ws-gold);
+}
+
+.pixel-btn:disabled:active {
+  transform: none;
+}

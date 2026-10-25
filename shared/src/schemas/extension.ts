@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { PageSummarySchema } from './page-summary.js';
 import { StruggleSignalSchema } from './signals.js';
+import { BrightspaceDataSchema } from './brightspace.js';
 
 // Chrome extension <-> desktop over the loopback WebSocket (SPEC Phase 2, 4a).
 //
@@ -42,6 +43,7 @@ export const ExtensionMessageSchema = z.discriminatedUnion('type', [
   envelope('ext.tab_none', z.object({})),
   envelope('ext.page_summary', z.object({ summary: PageSummarySchema })),
   envelope('ext.signal', z.object({ signal: StruggleSignalSchema, domain: z.string() })),
+  envelope('ext.brightspace_data', z.object({ data: BrightspaceDataSchema })),
   // desktop -> extension
   envelope('desk.hello_result', z.object({ ok: z.boolean(), reason: z.string().optional() })),
   envelope(
@@ -53,7 +55,8 @@ export const ExtensionMessageSchema = z.discriminatedUnion('type', [
       excludedDomains: z.array(z.string())
     })
   ),
-  envelope('desk.request_summary', z.object({ requestId: z.string() }))
+  envelope('desk.request_summary', z.object({ requestId: z.string() })),
+  envelope('desk.request_brightspace', z.object({ requestId: z.string() }))
 ]);
 
 export type ExtensionMessage = z.infer<typeof ExtensionMessageSchema>;

@@ -1,0 +1,11 @@
+.dashboard-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-gap);
+}
+
+.dashboard-page__header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}

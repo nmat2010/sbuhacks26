@@ -1,28 +1,36 @@
 import { useState, useEffect } from 'react';
-import { HomeView } from './views/HomeView';
-import { ReportView } from './views/ReportView';
-import { SkillsView } from './views/SkillsView';
-import { MaterialsView } from './views/MaterialsView';
-import { SettingsView } from './views/SettingsView';
-import { Onboarding } from './components/Onboarding';
-import './styles/Dashboard.css';
+import { useDashboard } from './hooks/useDashboard';
+import { useSession } from './hooks/useSession';
+import { useSettings } from './hooks/useSettings';
+import { AppShell, type PageView } from './pixel-components/AppShell';
+import { DashboardPage } from './views/DashboardPage';
+import { ReportPage } from './views/ReportPage';
+import { StrengthWeaknessPage } from './views/StrengthWeaknessPage';
+import { BrightspaceMaterialPage } from './views/BrightspaceMaterialPage';
+import { SettingsPage } from './views/SettingsPage';
+import { RetroOnboarding } from './components/RetroOnboarding';
+import './styles/tokens.css';
 
 // The dashboard skeleton (tuan/reports/dashboard-skeleton.md): the student's performance seen the
 // way a teacher would, and what to do next to grow. Five pages; Thu styles them.
 
+// Legacy type export for backward compatibility
 export type ViewType = 'home' | 'report' | 'skills' | 'materials' | 'settings';
 
-const NAV: Array<{ view: ViewType; icon: string; label: string }> = [
-  { view: 'home', icon: '🏠', label: 'Dashboard' },
-  { view: 'report', icon: '📝', label: 'Reports' },
-  { view: 'skills', icon: '💪', label: 'Strengths & Weaknesses' },
-  { view: 'materials', icon: '📚', label: 'Brightspace Material' },
-  { view: 'settings', icon: '⚙️', label: 'Settings' }
-];
-
 function App() {
-  const [currentView, setCurrentView] = useState<ViewType>('home');
+  const [currentView, setCurrentView] = useState<PageView>('dashboard');
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const { summary } = useDashboard();
+  const { isActive, isPaused } = useSession();
+  const { settings } = useSettings();
+  const isSample = !!summary && !summary.latestSession;
+
+  // Appearance prefs apply to the whole window
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.pixelScale = String(settings?.appearance.pixelScale ?? 1);
+    root.dataset.reduceMotion = settings?.appearance.reduceMotion ? 'true' : 'false';
+  }, [settings?.appearance.pixelScale, settings?.appearance.reduceMotion]);
 
   useEffect(() => {
     // Check if user has completed onboarding
@@ -37,63 +45,51 @@ function App() {
 
   const handleOnboardingComplete = async (data: unknown) => {
     try {
-      // TODO: Save onboarding data via IPC (plan-onboarding-save)
-      console.log('Onboarding data:', data);
+      // Save onboarding data via IPC
+      await window.ipc.invoke('plan-onboarding-save', data as any);
+      console.log('Onboarding data saved:', data);
 
       // Mark as onboarded
       localStorage.setItem('wolfie_onboarded', 'true');
       setShowOnboarding(false);
     } catch (error) {
       console.error('Failed to save onboarding data:', error);
+      // Still mark as onboarded to avoid blocking the user
+      localStorage.setItem('wolfie_onboarded', 'true');
+      setShowOnboarding(false);
     }
   };
 
   const renderView = () => {
     switch (currentView) {
       case 'report':
-        return <ReportView />;
-      case 'skills':
-        return <SkillsView />;
-      case 'materials':
-        return <MaterialsView />;
+        return <ReportPage isSample={isSample} onNavigate={setCurrentView} />;
+      case 'strength-weakness':
+        return <StrengthWeaknessPage isSample={isSample} onNavigate={setCurrentView} />;
+      case 'brightspace-material':
+        return <BrightspaceMaterialPage />;
       case 'settings':
-        return <SettingsView />;
+        return <SettingsPage />;
+      case 'dashboard':
       default:
-        return <HomeView onNavigate={setCurrentView} />;
+        return <DashboardPage summary={summary} onNavigate={setCurrentView} />;
     }
   };
 
+  if (showOnboarding) {
+    return <RetroOnboarding onComplete={handleOnboardingComplete} />;
+  }
+
   return (
-    <div className="dashboard">
-      {/* Sidebar Navigation */}
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <h1 className="app-title">Wolfie Sensei</h1>
-          <p className="app-subtitle">Study Companion</p>
-        </div>
-
-        <nav className="nav-menu">
-          {NAV.map((item) => (
-            <button
-              key={item.view}
-              className={`nav-item ${currentView === item.view ? 'active' : ''}`}
-              onClick={() => setCurrentView(item.view)}
-            >
-              <span className="nav-icon">{item.icon}</span>
-              <span className="nav-label">{item.label}</span>
-            </button>
-          ))}
-        </nav>
-      </aside>
-
-      {/* Main Content Area */}
-      <main className="main-content">
-        {renderView()}
-      </main>
-
-      {/* Onboarding Modal */}
-      {showOnboarding && <Onboarding onComplete={handleOnboardingComplete} />}
-    </div>
+    <AppShell
+      currentView={currentView}
+      onNavigate={setCurrentView}
+      level={summary?.level}
+      xp={summary?.xp}
+      mood={isPaused ? 'PAUSED' : isActive ? 'WATCHING' : 'READY'}
+    >
+      {renderView()}
+    </AppShell>
   );
 }
 

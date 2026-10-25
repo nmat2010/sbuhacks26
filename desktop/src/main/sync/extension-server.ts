@@ -6,7 +6,8 @@ import {
   type ExtensionMessage,
   type ExtensionMessageOf,
   type PageSummary,
-  type StruggleSignal
+  type StruggleSignal,
+  type BrightspaceData
 } from '@wolfie/shared';
 import { TypedEmitter } from '../typed-emitter.js';
 import type { DeskState } from './desk-state.js';
@@ -27,6 +28,7 @@ export interface ExtensionHandlers {
   onTabNone?(): void;
   onPageSummary(summary: PageSummary): void;
   onSignal(signal: StruggleSignal, domain: string): void;
+  onBrightspaceData(data: BrightspaceData): void;
 }
 
 export interface ExtensionServerOptions {
@@ -139,6 +141,13 @@ export class ExtensionServer {
     });
   }
 
+  /** Asks every authenticated extension to scrape Brightspace; false when none is connected. */
+  requestBrightspace(): boolean {
+    const targets = [...this.clients].filter((c) => c.authed);
+    for (const c of targets) this.send(c.ws, 'desk.request_brightspace', { requestId: randomUUID() });
+    return targets.length > 0;
+  }
+
   // ---- internals ----------------------------------------------------------------------------
 
   private verifyOrigin(origin: string, done: (ok: boolean, code?: number, msg?: string) => void): void {
@@ -197,6 +206,9 @@ export class ExtensionServer {
       case 'ext.signal':
         this.opts.handlers.onSignal(msg.payload.signal, msg.payload.domain);
         break;
+      case 'ext.brightspace_data':
+        this.opts.handlers.onBrightspaceData(msg.payload.data);
+        break;
       default:
         break; // ext.hello again or desk.* from a client: ignore
     }
@@ -244,6 +256,7 @@ export class ExtensionServer {
 
   private setConnected(value: boolean): void {
     if (value === this.connected) return;
+    console.log(`[extension-server] connection status changed: ${value}`);
     this.connected = value;
     this.events.emit('connection', value);
   }

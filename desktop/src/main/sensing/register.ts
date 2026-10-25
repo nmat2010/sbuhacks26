@@ -31,6 +31,7 @@ import { InputPoller } from '../stuck/signals/input-poller.js';
 import { SignalSink } from '../stuck/signals/sink.js';
 import { logEvent } from '../events.js';
 import { getSetting, setSetting, settingsEvents } from '../settings.js';
+import { getCoursesWithAssignments, getCurrentSemester } from '../brightspace/index.js';
 import { stuckBus } from '../stuck/bus.js';
 import { DomainTracker } from '../sync/domain-tracker.js';
 import { startExtensionLink, type ExtensionLink } from '../sync/extension-link.js';
@@ -52,6 +53,11 @@ const execFileAsync = promisify(execFile);
 let stops: Array<() => void> = [];
 let monitor: Monitor | null = null;
 let extensionLink: ExtensionLink | null = null;
+
+/** The running extension link (null before it starts or when its port was busy). */
+export function getExtensionLink(): ExtensionLink | null {
+  return extensionLink;
+}
 let signalSink: SignalSink | null = null;
 let lanLink: LanLink | null = null;
 let streakEngine: StreakEngine | null = null;
@@ -265,6 +271,12 @@ export function registerSensing(): void {
     const m = monitor;
     handle('extension-pairing-get', async () => extensionLink?.getExtensionPairingInfo() ?? offlinePairing());
     handle('extension-pairing-regenerate', async () => extensionLink?.regenerateToken() ?? offlinePairing());
+    // Live extension cache first; after a restart fall back to what was saved to the database
+    handle('brightspace-get-courses', async () => {
+      const live = extensionLink?.getBrightspaceCourses() ?? [];
+      return live.length > 0 ? live : getCoursesWithAssignments();
+    });
+    handle('brightspace-get-semester', async () => extensionLink?.getBrightspaceSemester() ?? getCurrentSemester());
     void startExtensionLink({
       tracker: domainTracker,
       port: EXTENSION_WS_PORT,

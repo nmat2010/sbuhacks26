@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shields</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#1a1214}
+.h{font-family:'Press Start 2P',monospace;line-height:1.5;font-weight:400}
+.card{background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9,8px 8px 0 0 #0d0709}
+.card2{background:#3a2328;box-shadow:0 -4px 0 0 #5a3a41,0 4px 0 0 #5a3a41,-4px 0 0 0 #5a3a41,4px 0 0 0 #5a3a41}
+.btn{display:inline-block;border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.4;color:#f5ecd9;background:#c41e1e;padding:16px 22px;text-decoration:none;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #7a0000,inset 0 6px 0 0 #e0504f}
+.btn:active{transform:translateY(2px)}
+.btn.gold{background:#f2b632;color:#1a1214;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #b9801a,inset 0 6px 0 0 #ffd878}
+.btn.ghost{background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9}
+.nav{display:flex;align-items:center;gap:12px;width:100%;border:0;background:transparent;color:#e0d2c2;font-family:'Press Start 2P',monospace;font-size:10px;padding:14px 12px;cursor:pointer;text-align:left}
+.nav.on{background:#990000;color:#f5ecd9}
+.nav i{width:12px;height:12px;background:#5a3a41;flex:none}
+.nav.on i{background:#f2b632}
+.seg{display:flex;gap:4px;flex:none}
+.seg button{border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:9px;padding:10px;background:#1a1214;color:#c9b8a6}
+.seg button.warn{background:#f2a03a;color:#1a1214}
+.seg button.gate{background:#f2b632;color:#1a1214}
+.seg button.block{background:#e5484d;color:#1a1214}
+.tile{width:40px;height:40px;background:#0d0709;display:flex;align-items:center;justify-content:center;font-family:'Press Start 2P',monospace;font-size:14px;color:#f2b632;flex:none}
+.tag{font-family:'Press Start 2P',monospace;font-size:8px;background:#990000;color:#f5ecd9;padding:4px 6px}
+.pill{font-size:15px;padding:4px 10px;background:#0d0709;color:#e0d2c2}
+.stp{display:flex;align-items:center;gap:10px}
+.stp button{width:36px;height:36px;border:0;cursor:pointer;background:#1a1214;color:#f5ecd9;font-family:'Press Start 2P',monospace;font-size:14px;box-shadow:0 0 0 3px #5a3a41}
+.ev{padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+</style>
+</head>
+<body>
+<div style="width:100%;min-height:1040px;background:#1a1214;color:#f5ecd9;font-family:'Pixelify Sans',monospace;font-size:18px;display:flex;flex-direction:column">
+
+<div style="height:44px;background:#0d0709;border-bottom:4px solid #990000;display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex:none">
+<span class="h" style="font-size:11px">WOLFIE SENSEI</span>
+<span class="h" style="font-size:10px;color:#c9b8a6">SHIELDS</span>
+<div style="display:flex;gap:8px" aria-hidden="true"><span style="width:14px;height:14px;background:#f2b632"></span><span style="width:14px;height:14px;background:#6fd27a"></span><span style="width:14px;height:14px;background:#e5484d"></span></div>
+</div>
+
+<div style="flex:1;display:flex;flex-wrap:wrap;align-items:stretch">
+
+<nav aria-label="Main" style="flex:0 0 232px;width:232px;max-width:100%;background:#0d0709;padding:24px 16px;display:flex;flex-direction:column;gap:6px;box-sizing:border-box">
+<button type="button" class="nav"><i></i>HOME</button>
+<button type="button" class="nav"><i></i>QUESTS</button>
+<button type="button" class="nav"><i></i>TO-DO</button>
+<button type="button" class="nav"><i></i>GOAL TREE</button>
+<button type="button" class="nav"><i></i>FOCUS</button>
+<button type="button" class="nav on" aria-current="page"><i></i>SHIELDS</button>
+<button type="button" class="nav"><i></i>SETTINGS</button>
+<div style="margin-top:auto;padding-top:28px;display:flex;flex-direction:column;align-items:center;gap:12px">
+<svg aria-hidden="true" viewBox="0 0 16 16" width="88" height="88" shape-rendering="crispEdges" style="image-rendering:pixelated"><rect x="2" y="1" width="3" height="3" fill="#5d6270"/><rect x="11" y="1" width="3" height="3" fill="#5d6270"/><rect x="3" y="2" width="1" height="2" fill="#d9a3a3"/><rect x="12" y="2" width="1" height="2" fill="#d9a3a3"/><rect x="3" y="3" width="10" height="1" fill="#9aa0ac"/><rect x="2" y="4" width="12" height="6" fill="#9aa0ac"/><rect x="3" y="10" width="10" height="1" fill="#9aa0ac"/><rect x="4" y="11" width="8" height="1" fill="#9aa0ac"/><rect x="2" y="4" width="12" height="2" fill="#c41e1e"/><rect x="14" y="5" width="2" height="1" fill="#990000"/><rect x="14" y="6" width="1" height="2" fill="#990000"/><rect x="4" y="7" width="2" height="2" fill="#1a1214"/><rect x="10" y="7" width="2" height="2" fill="#1a1214"/><rect x="4" y="7" width="1" height="1" fill="#f5ecd9"/><rect x="10" y="7" width="1" height="1" fill="#f5ecd9"/><rect x="5" y="9" width="6" height="3" fill="#efe6d6"/><rect x="7" y="9" width="2" height="1" fill="#1a1214"/></svg>
+<span class="h" style="font-size:9px;color:#c9b8a6">SENSEI · IDLE</span>
+</div>
+</nav>
+
+<main style="flex:999 1 560px;min-width:0;padding:32px 36px 40px;display:flex;flex-direction:column;gap:28px;box-sizing:border-box">
+
+<div style="display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:10px">
+<h1 class="h" style="margin:0;font-size:20px;color:#f2b632">SHIELDS</h1>
+<span style="color:#c9b8a6">Sites and apps Wolfie watches, and how it reacts.</span>
+</div>
+<button type="button" class="btn gold" style="font-size:11px">+ ADD SITE OR APP</button>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
+
+<section class="card" style="flex:2 1 520px;padding:26px;display:flex;flex-direction:column;gap:14px">
+
+<div class="card2" style="padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+<span class="tile" aria-hidden="true">C</span>
+<div style="flex:1 1 140px;display:flex;flex-direction:column;gap:2px"><span style="font-weight:600;display:flex;gap:8px;align-items:center">claude.ai <span class="tag">AI</span></span><span style="font-size:15px;color:#c9b8a6">6 opens this week</span></div>
+<span class="pill">Always</span>
+<div class="seg" role="group" aria-label="claude.ai mode"><button type="button">WARN</button><button type="button" class="gate" aria-pressed="true">GATE</button><button type="button">BLOCK</button></div>
+</div>
+
+<div class="card2" style="padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+<span class="tile" aria-hidden="true">G</span>
+<div style="flex:1 1 140px;display:flex;flex-direction:column;gap:2px"><span style="font-weight:600;display:flex;gap:8px;align-items:center">chatgpt.com <span class="tag">AI</span></span><span style="font-size:15px;color:#c9b8a6">2 opens this week</span></div>
+<span class="pill">Always</span>
+<div class="seg" role="group" aria-label="chatgpt.com mode"><button type="button">WARN</button><button type="button" class="gate" aria-pressed="true">GATE</button><button type="button">BLOCK</button></div>
+</div>
+
+<div class="card2" style="padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+<span class="tile" aria-hidden="true">T</span>
+<div style="flex:1 1 140px;display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">tiktok.com</span><span style="font-size:15px;color:#c9b8a6">2 blocked this week</span></div>
+<span class="pill">Focus sessions</span>
+<div class="seg" role="group" aria-label="tiktok.com mode"><button type="button">WARN</button><button type="button">GATE</button><button type="button" class="block" aria-pressed="true">BLOCK</button></div>
+</div>
+
+<div class="card2" style="padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+<span class="tile" aria-hidden="true">Y</span>
+<div style="flex:1 1 140px;display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">youtube.com</span><span style="font-size:15px;color:#c9b8a6">5 opens this week</span></div>
+<span class="pill">Always</span>
+<div class="seg" role="group" aria-label="youtube.com mode"><button type="button" class="warn" aria-pressed="true">WARN</button><button type="button">GATE</button><button type="button">BLOCK</button></div>
+</div>
+
+<div class="card2" style="padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+<span class="tile" aria-hidden="true">I</span>
+<div style="flex:1 1 140px;display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">instagram.com</span><span style="font-size:15px;color:#c9b8a6">3 opens this week</span></div>
+<span class="pill">Always</span>
+<div class="seg" role="group" aria-label="instagram.com mode"><button type="button" class="warn" aria-pressed="true">WARN</button><button type="button">GATE</button><button type="button">BLOCK</button></div>
+</div>
+
+<div class="card2" style="padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+<span class="tile" aria-hidden="true">D</span>
+<div style="flex:1 1 140px;display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">Discord</span><span style="font-size:15px;color:#c9b8a6">4 opens this week · desktop app</span></div>
+<span class="pill">Always</span>
+<div class="seg" role="group" aria-label="Discord mode"><button type="button" class="warn" aria-pressed="true">WARN</button><button type="button">GATE</button><button type="button">BLOCK</button></div>
+</div>
+
+<span style="font-size:15px;color:#c9b8a6">Sample counts. Real ones come from the overlay.</span>
+</section>
+
+<aside style="flex:1 1 320px;display:flex;flex-direction:column;gap:32px">
+
+<div class="card" style="padding:24px;display:flex;flex-direction:column;gap:18px">
+<h2 class="h" style="margin:0;font-size:12px;color:#f2b632">GATE SETTINGS</h2>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><span>Attempt length</span><div class="stp"><button type="button" aria-label="Decrease attempt length">-</button><span style="min-width:96px;text-align:center">20 chars</span><button type="button" aria-label="Increase attempt length">+</button></div></div>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><span>Unlock for</span><div class="stp"><button type="button" aria-label="Decrease unlock time">-</button><span style="min-width:96px;text-align:center">15 min</span><button type="button" aria-label="Increase unlock time">+</button></div></div>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><span>Try timer</span><div class="stp"><button type="button" aria-label="Decrease try timer">-</button><span style="min-width:96px;text-align:center">5 min</span><button type="button" aria-label="Increase try timer">+</button></div></div>
+</div>
+
+<div class="card" style="padding:24px;display:flex;flex-direction:column;gap:12px">
+<h2 class="h" style="margin:0 0 4px;font-size:12px;color:#f2b632">RECENT EVENTS · SAMPLE</h2>
+<div class="card2 ev"><span>claude.ai gated</span><span style="font-size:15px;color:#c9b8a6">You wrote an attempt · unlocked 15 min</span></div>
+<div class="card2 ev"><span>tiktok.com blocked</span><span style="font-size:15px;color:#c9b8a6">During a focus session</span></div>
+<div class="card2 ev"><span>youtube.com warned</span><span style="font-size:15px;color:#c9b8a6">You went back to work</span></div>
+<div class="card2 ev"><span>chatgpt.com gated</span><span style="font-size:15px;color:#c9b8a6">Closed the tab</span></div>
+</div>
+
+</aside>
+
+</div>
+
+</main>
+</div>
+</div>
+</body>
+</html>

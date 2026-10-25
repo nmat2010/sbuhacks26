@@ -1,0 +1,43 @@
+.report-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-gap);
+}
+
+.report-page__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.session-row {
+  width: 100%;
+  box-sizing: border-box;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  color: var(--ws-text);
+  font-family: var(--ws-font-body);
+  font-size: 18px;
+  background: var(--ws-card-2);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow:
+    0 -4px 0 0 var(--ws-edge), 0 4px 0 0 var(--ws-edge),
+    -4px 0 0 0 var(--ws-edge), 4px 0 0 0 var(--ws-edge);
+}
+
+.session-row:hover {
+  background: var(--ws-card-2-hover);
+}
+
+.session-row--selected {
+  background: var(--ws-red-dark);
+  box-shadow:
+    0 -4px 0 0 var(--ws-text), 0 4px 0 0 var(--ws-text),
+    -4px 0 0 0 var(--ws-text), 4px 0 0 0 var(--ws-text);
+}

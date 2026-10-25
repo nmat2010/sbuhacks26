@@ -1,0 +1,23 @@
+.badge {
+  font-family: var(--ws-font-heading);
+  font-size: 9px;
+  line-height: 1.4;
+  padding: 7px 9px;
+  flex: none;
+  white-space: nowrap;
+}
+
+.badge--gold {
+  background: var(--ws-gold);
+  color: var(--ws-bg);
+}
+
+.badge--green {
+  background: var(--ws-green);
+  color: var(--ws-bg);
+}
+
+.badge--weak {
+  background: var(--ws-weak);
+  color: var(--ws-bg);
+}

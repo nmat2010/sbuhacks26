@@ -1,0 +1,13 @@
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+
+.stepper__value {
+  font-family: var(--ws-font-heading);
+  font-size: 10px;
+  width: 28px;
+  text-align: center;
+}

@@ -1,0 +1,46 @@
+/* Wolfie Sensei design tokens.
+   In pass 1 these are reference only: pixel.css uses the literal hex values from the mockups.
+   In pass 2, replace literals in pixel.css with these variables (no visual change allowed). */
+:root {
+  /* surfaces */
+  --ws-bg: #1a1214;          /* app background (warm charcoal) */
+  --ws-bg-deep: #0d0709;     /* title bar, sidebar, progress map, input wells */
+  --ws-panel: #2a1a1e;       /* .card background */
+  --ws-panel-2: #3a2328;     /* .card2 / inner rows */
+  --ws-edge: #5a3a41;        /* inner borders, empty meter segments, dashed lines */
+  --ws-off: #4a3a3d;         /* disabled buttons, OFF badges, locked toggles */
+
+  /* text */
+  --ws-cream: #f5ecd9;       /* primary text, outer card border */
+  --ws-text-soft: #e0d2c2;   /* body copy */
+  --ws-muted: #c9b8a6;       /* secondary text */
+  --ws-muted-dim: #b9a898;   /* upcoming progress-map labels */
+
+  /* brand */
+  --ws-red: #c41e1e;         /* primary button, step tiles, boss bar */
+  --ws-red-deep: #990000;    /* title-bar underline, active nav, GOAL tag */
+  --ws-red-dark: #7a0000;    /* button bevel (bottom) */
+  --ws-red-light: #e0504f;   /* button bevel (top) */
+  --ws-gold: #f2b632;        /* headings, XP, selected states, gold button */
+  --ws-gold-dark: #b9801a;   /* gold button bevel (bottom) */
+  --ws-gold-light: #ffd878;  /* gold button bevel (top) */
+
+  /* status */
+  --ws-green: #6fd27a;
+  --ws-amber: #f2a03a;
+  --ws-danger: #e5484d;
+
+  /* sprite */
+  --ws-wolf-fur: #9aa0ac;
+  --ws-wolf-ear: #5d6270;
+  --ws-wolf-ear-inner: #d9a3a3;
+  --ws-wolf-muzzle: #efe6d6;
+
+  /* fonts (install @fontsource/press-start-2p and @fontsource/pixelify-sans) */
+  --ws-font-pixel: 'Press Start 2P', monospace;   /* headings, buttons, numbers, tags only */
+  --ws-font-body: 'Pixelify Sans', monospace;     /* everything else, weights 400 and 600 */
+
+  /* pixel border recipe (used by .card, .card2, .sel, .btn):
+     four 4px box-shadows leave the corners empty, which gives the notched look.
+     .card also adds an 8px 8px hard drop shadow in --ws-bg-deep. */
+}

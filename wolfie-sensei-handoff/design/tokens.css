@@ -1,0 +1,59 @@
+/* Wolfie Sensei design tokens. Extracted from the original mockup and the redesigned pages. */
+@import url('https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=Press+Start+2P&display=swap');
+
+:root {
+  /* Surfaces */
+  --ws-bg: #1a1214;          /* page */
+  --ws-bg-deep: #0d0709;     /* top bar, sidebar, drop shadows */
+  --ws-card: #2a1a1e;        /* .card */
+  --ws-card-2: #3a2328;      /* .card2 (nested rows, inputs) */
+  --ws-card-2-hover: #4a2d33;
+  --ws-edge: #5a3a41;        /* card2 border, empty segments, dark tiles */
+
+  /* Text */
+  --ws-text: #f5ecd9;        /* cream; also the .card border */
+  --ws-text-muted: #c9b8a6;  /* secondary text (passes 4.5:1 on cards) */
+  --ws-text-nav: #e0d2c2;
+
+  /* Accents */
+  --ws-red: #c41e1e;         /* primary button */
+  --ws-red-dark: #990000;    /* selected nav / selected option, top-bar rule */
+  --ws-red-deep: #7a0000;    /* button inset shadow */
+  --ws-gold: #f2b632;        /* headings, primary CTA, streak */
+  --ws-gold-dark: #b9801a;
+  --ws-gold-light: #ffd878;
+  --ws-green: #6fd27a;       /* solved / strong / on */
+  --ws-green-deep: #2f6a37;  /* switch track when on */
+  --ws-weak: #e5484d;        /* weak fills and STUCK tag background */
+  --ws-weak-text: #ff7378;   /* weak TEXT (the fill red fails 4.5:1 as small text) */
+
+  /* Fonts */
+  --ws-font-heading: 'Press Start 2P', monospace;
+  --ws-font-body: 'Pixelify Sans', monospace;
+
+  /* Layout */
+  --ws-sidebar-w: 232px;
+  --ws-topbar-h: 44px;
+  --ws-main-pad: 32px 36px 40px;
+  --ws-gap: 32px;
+  --ws-px: 4px;              /* one "pixel" of border */
+}
+
+/* Notched pixel border: four 4px shadows with no blur, plus a hard drop shadow. */
+.ws-card {
+  background: var(--ws-card);
+  box-shadow:
+    0 -4px 0 0 var(--ws-text), 0 4px 0 0 var(--ws-text),
+    -4px 0 0 0 var(--ws-text), 4px 0 0 0 var(--ws-text),
+    8px 8px 0 0 var(--ws-bg-deep);
+}
+.ws-card-2 {
+  background: var(--ws-card-2);
+  box-shadow:
+    0 -4px 0 0 var(--ws-edge), 0 4px 0 0 var(--ws-edge),
+    -4px 0 0 0 var(--ws-edge), 4px 0 0 0 var(--ws-edge);
+}
+.ws-heading { font-family: var(--ws-font-heading); line-height: 1.5; font-weight: 400; }
+
+/* Hard rule: never use blur, border-radius, gradients or anti-aliased shadows.
+   Everything is square and made of 4px steps. SVG uses shape-rendering="crispEdges". */

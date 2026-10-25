@@ -1,0 +1,18 @@
+.pixel-input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 48px;
+  border: 0;
+  background: var(--ws-bg);
+  color: var(--ws-text);
+  font-family: var(--ws-font-body);
+  font-size: 20px;
+  padding: 10px 14px;
+  box-shadow:
+    0 -4px 0 0 var(--ws-edge), 0 4px 0 0 var(--ws-edge),
+    -4px 0 0 0 var(--ws-edge), 4px 0 0 0 var(--ws-edge);
+}
+
+.pixel-input::placeholder {
+  color: var(--ws-text-muted);
+}

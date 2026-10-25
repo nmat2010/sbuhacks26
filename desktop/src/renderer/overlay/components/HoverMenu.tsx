@@ -12,6 +12,7 @@ interface HoverMenuProps {
   onTestSleeping?: () => void;
   onTestThinking?: () => void;
   onTestHintModal?: () => void;
+  onHide?: () => void;
   isPaused?: boolean;
 }
 
@@ -27,6 +28,7 @@ export function HoverMenu({
   onTestSleeping,
   onTestThinking,
   onTestHintModal,
+  onHide,
   isPaused = false
 }: HoverMenuProps) {
   const [show, setShow] = useState(false);
@@ -44,13 +46,21 @@ export function HoverMenu({
   if (!visible && !show) return null;
 
   return (
-    <div style={{
-      minWidth: '180px',
-      opacity: show ? 1 : 0,
-      transition: 'opacity 0.2s ease-in-out',
-      pointerEvents: visible ? 'auto' : 'none',
-      marginBottom: '10px'
-    }}>
+    <div
+      onMouseEnter={(e) => e.stopPropagation()}
+      onMouseLeave={(e) => e.stopPropagation()}
+      style={{
+        position: 'absolute',
+        bottom: '100%',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        minWidth: '180px',
+        opacity: show ? 1 : 0,
+        transition: 'opacity 0.2s ease-in-out',
+        pointerEvents: visible ? 'auto' : 'none',
+        marginBottom: '10px',
+        zIndex: 10
+      }}>
       <div style={{
         backgroundColor: 'rgba(44, 62, 80, 0.95)',
         borderRadius: '8px',
@@ -282,7 +292,8 @@ export function HoverMenu({
               backgroundColor: 'transparent',
               color: '#27ae60',
               textAlign: 'left',
-              transition: 'background-color 0.2s'
+              transition: 'background-color 0.2s',
+              marginBottom: '4px'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = 'rgba(39, 174, 96, 0.2)';
@@ -306,7 +317,8 @@ export function HoverMenu({
               backgroundColor: 'transparent',
               color: '#e74c3c',
               textAlign: 'left',
-              transition: 'background-color 0.2s'
+              transition: 'background-color 0.2s',
+              marginBottom: '4px'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = 'rgba(231, 76, 60, 0.2)';
@@ -318,6 +330,35 @@ export function HoverMenu({
             ⏸️ Pause
           </button>
         )}
+
+        <div style={{
+          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+          margin: '4px 0'
+        }}></div>
+
+        <button
+          onClick={onHide}
+          style={{
+            width: '100%',
+            padding: '8px 12px',
+            border: 'none',
+            borderRadius: '4px',
+            fontSize: '13px',
+            cursor: 'pointer',
+            backgroundColor: 'transparent',
+            color: '#95a5a6',
+            textAlign: 'left',
+            transition: 'background-color 0.2s'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(149, 165, 166, 0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+        >
+          👁️ Hide Wolfie
+        </button>
       </div>
     </div>
   );
