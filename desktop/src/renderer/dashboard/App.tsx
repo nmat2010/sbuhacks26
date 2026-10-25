@@ -1,16 +1,27 @@
 import { useState, useEffect } from 'react';
-import { TodayView } from './views/TodayView';
-import { GoalsView } from './views/GoalsView';
-import { PapersView } from './views/PapersView';
-import { HistoryView } from './views/HistoryView';
+import { HomeView } from './views/HomeView';
+import { ReportView } from './views/ReportView';
+import { SkillsView } from './views/SkillsView';
+import { MaterialsView } from './views/MaterialsView';
 import { SettingsView } from './views/SettingsView';
 import { Onboarding } from './components/Onboarding';
 import './styles/Dashboard.css';
 
-type ViewType = 'today' | 'goals' | 'papers' | 'history' | 'settings';
+// The dashboard skeleton (tuan/reports/dashboard-skeleton.md): the student's performance seen the
+// way a teacher would, and what to do next to grow. Five pages; Thu styles them.
+
+export type ViewType = 'home' | 'report' | 'skills' | 'materials' | 'settings';
+
+const NAV: Array<{ view: ViewType; icon: string; label: string }> = [
+  { view: 'home', icon: '🏠', label: 'Dashboard' },
+  { view: 'report', icon: '📝', label: 'Reports' },
+  { view: 'skills', icon: '💪', label: 'Strengths & Weaknesses' },
+  { view: 'materials', icon: '📚', label: 'Brightspace Material' },
+  { view: 'settings', icon: '⚙️', label: 'Settings' }
+];
 
 function App() {
-  const [currentView, setCurrentView] = useState<ViewType>('today');
+  const [currentView, setCurrentView] = useState<ViewType>('home');
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
@@ -24,10 +35,9 @@ function App() {
     checkOnboarding();
   }, []);
 
-  const handleOnboardingComplete = async (data: any) => {
+  const handleOnboardingComplete = async (data: unknown) => {
     try {
-      // TODO: Save onboarding data via IPC
-      // await window.electronAPI.invoke('save-onboarding-data', data);
+      // TODO: Save onboarding data via IPC (plan-onboarding-save)
       console.log('Onboarding data:', data);
 
       // Mark as onboarded
@@ -40,18 +50,16 @@ function App() {
 
   const renderView = () => {
     switch (currentView) {
-      case 'today':
-        return <TodayView />;
-      case 'goals':
-        return <GoalsView />;
-      case 'papers':
-        return <PapersView />;
-      case 'history':
-        return <HistoryView />;
+      case 'report':
+        return <ReportView />;
+      case 'skills':
+        return <SkillsView />;
+      case 'materials':
+        return <MaterialsView />;
       case 'settings':
         return <SettingsView />;
       default:
-        return <TodayView />;
+        return <HomeView onNavigate={setCurrentView} />;
     }
   };
 
@@ -65,45 +73,16 @@ function App() {
         </div>
 
         <nav className="nav-menu">
-          <button
-            className={`nav-item ${currentView === 'today' ? 'active' : ''}`}
-            onClick={() => setCurrentView('today')}
-          >
-            <span className="nav-icon">📅</span>
-            <span className="nav-label">Today</span>
-          </button>
-
-          <button
-            className={`nav-item ${currentView === 'goals' ? 'active' : ''}`}
-            onClick={() => setCurrentView('goals')}
-          >
-            <span className="nav-icon">🎯</span>
-            <span className="nav-label">Goals & Plan</span>
-          </button>
-
-          <button
-            className={`nav-item ${currentView === 'papers' ? 'active' : ''}`}
-            onClick={() => setCurrentView('papers')}
-          >
-            <span className="nav-icon">📄</span>
-            <span className="nav-label">Papers</span>
-          </button>
-
-          <button
-            className={`nav-item ${currentView === 'history' ? 'active' : ''}`}
-            onClick={() => setCurrentView('history')}
-          >
-            <span className="nav-icon">📊</span>
-            <span className="nav-label">History</span>
-          </button>
-
-          <button
-            className={`nav-item ${currentView === 'settings' ? 'active' : ''}`}
-            onClick={() => setCurrentView('settings')}
-          >
-            <span className="nav-icon">⚙️</span>
-            <span className="nav-label">Settings</span>
-          </button>
+          {NAV.map((item) => (
+            <button
+              key={item.view}
+              className={`nav-item ${currentView === item.view ? 'active' : ''}`}
+              onClick={() => setCurrentView(item.view)}
+            >
+              <span className="nav-icon">{item.icon}</span>
+              <span className="nav-label">{item.label}</span>
+            </button>
+          ))}
         </nav>
       </aside>
 

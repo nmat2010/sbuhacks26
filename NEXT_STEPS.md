@@ -1,4 +1,23 @@
-# Next steps: who does what (draft from Tuan, 2026-10-24)
+# Next steps: who does what
+
+> **Dashboard redesign (Tuan, 2026-10-25): skeleton is on `main`, Thu please beautify it.**
+> The dashboard now shows the student's performance the way a teacher would see it, plus what to do next to improve. The sidebar has five pages:
+>
+> | Page | File | State |
+> |---|---|---|
+> | Dashboard (main) | `views/HomeView.tsx` | Start/stop session, latest-session numbers, self-reliance stats, streak and focus bars are **real**. The full report, real strengths/weaknesses and the in-session focus curve are placeholders. |
+> | Reports | `views/ReportView.tsx` | Session list and per-session numbers are **real** (`history-get`); the written report is a placeholder. |
+> | Strengths & Weaknesses | `views/SkillsView.tsx` | **Example data**, clearly labelled, to show the layout. |
+> | Brightspace Material | `views/MaterialsView.tsx` | **Placeholder: yours to design**, Thu (how students reach course material; optional search over it). |
+> | Settings | `views/SettingsView.tsx` | **Real**: add, remove or switch off AI and distracting websites (`settings-get/set` on `monitored.ai_tools` / `monitored.distractions`), the voice switches, and export or clear data. |
+>
+> - **Dropped:** Goals & Plan, Papers and History (`GoalsView`, `PapersView`, `HistoryView`, `PaperReading`, `TodayView`). Their backend still exists. Onboarding is unchanged.
+> - **Placeholders** use `components/Planned.tsx` (a "Coming next" box listing what the section will show and its data source) and `ExampleBadge` for sample content.
+> - **Styling:** the new classes are at the end of `styles/Dashboard.css`. The layout keeps the current style. Restyle freely, but please keep the IPC calls and the props.
+> - **Next for Tuan:** the session report and the strengths/weaknesses record (backend and data), which will fill those placeholders.
+> - **Details:** `tuan/reports/dashboard-skeleton.md`.
+
+## Earlier notes (2026-10-24)
 
 > **Update (later on 2026-10-24): direction change proposed, please read [`WATCH_MODE.md`](WATCH_MODE.md).**
 > Tuan wants Wolfie to follow the *content* of a study session with Gemini, not just which app is open:
