@@ -225,6 +225,18 @@ export class Watcher {
     });
   }
 
+  /**
+   * The student pressed "I'm stuck": the unanswered question of the latest look (if recent)
+   * becomes a thinking pause now, without waiting for watch.stall_seconds. Returns it, or null.
+   * No signal is raised (help starts directly), and the timed pause won't offer for it again.
+   */
+  stuckNow(): string | null {
+    const u = this.unanswered;
+    if (!u || this.deps.now() - u.at > STALL_LOOK_MAX_AGE_MS) return null;
+    this.stalledFlagged.add(questionKey(u.question));
+    return u.question;
+  }
+
   /** True when watching stopped on Gemini's daily quota rather than Wolfie's own cap. */
   isQuotaExhausted(): boolean {
     return this.state === 'limit_reached' && this.quotaExhausted;

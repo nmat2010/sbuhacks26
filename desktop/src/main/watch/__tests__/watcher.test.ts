@@ -608,6 +608,20 @@ describe('Watcher: open issues follow the page (deleted questions, other pages)'
 describe('Watcher: thinking pause on an unanswered question', () => {
   const onQuestion = obs({ activity: 'homework', mode: 'homework', unanswered_question: 'What is overfitting?' });
 
+  it('"I\'m stuck" makes it a thinking pause right away, and the timed pause does not offer again', async () => {
+    const w = make({ stallSeconds: () => 60 });
+    expect(w.stuckNow()).toBeNull(); // nothing seen yet
+    reply = onQuestion;
+    idle = 2;
+    await w.tick();
+    expect(w.stuckNow()).toBe('What is overfitting?');
+    expect(w.stalledQuestion()).toBe('What is overfitting?');
+    idle = 61;
+    now += 8000;
+    await w.tick();
+    expect(signals.filter((s) => s.metadata?.stall)).toHaveLength(0);
+  });
+
   it('raises one stall signal after 60 s without input, and names the question', async () => {
     const w = make({ stallSeconds: () => 60 });
     reply = onQuestion;

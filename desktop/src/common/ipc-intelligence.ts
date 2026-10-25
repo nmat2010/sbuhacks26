@@ -349,6 +349,8 @@ export interface IntelligenceInvoke {
   'open-link': { args: [url: string]; result: { success: boolean } };
   /** "Help me with this" from the chat: recorded, then the help flow starts. */
   'chat-help': { args: []; result: { success: boolean } };
+  /** "I'm stuck" beside Wolfie: help with the question on screen now (`question`: the one Wolfie saw, if any). */
+  'help-stuck': { args: []; result: { success: boolean; question: string | null } };
   /** A question about what the student is studying, answered from the whole session. */
   'watch-ask': { args: [input: { question: string; inputMode: 'text' | 'voice' }]; result: BResult<WatchAnswer> };
   'voice-status': { args: []; result: VoiceStatus };

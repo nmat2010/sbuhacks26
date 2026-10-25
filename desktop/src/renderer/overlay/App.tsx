@@ -3,6 +3,7 @@ import { Mascot, MascotState } from './components/Mascot';
 import { SpeechBubble } from './components/SpeechBubble';
 import { HoverMenu } from './components/HoverMenu';
 import { HintConversation } from './components/HintConversation';
+import { StuckButton } from './components/StuckButton';
 import { useNudge } from './hooks/useNudge';
 import { useVoiceIntents } from './hooks/useVoiceIntents';
 
@@ -226,6 +227,8 @@ function App() {
             onClick={handleMascotClick}
           />
         </div>
+
+        {!showHintConversation && <StuckButton onMouseEnter={handleBubbleEnter} onMouseLeave={handleBubbleLeave} />}
 
         {/* The window ignores the mouse outside hover areas; take clicks while over the bubble */}
         <div onMouseEnter={handleBubbleEnter} onMouseLeave={handleBubbleLeave}>

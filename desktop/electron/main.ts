@@ -264,6 +264,13 @@ app.whenReady().then(() => {
         // WOLFIE_SMOKE_SHOT=<png path>: open the chat, ask a question, save a picture of the overlay
         if (process.env.WOLFIE_SMOKE_SHOT && overlayWindow) {
           const ui = (js: string) => overlayWindow!.webContents.executeJavaScript(js);
+          // WOLFIE_SMOKE_STUCK: a picture of the "I'm stuck" button, then press it and see the chat
+          if (process.env.WOLFIE_SMOKE_STUCK) {
+            writeFileSync(process.env.WOLFIE_SMOKE_SHOT.replace(/\.png$/, '-button.png'), (await overlayWindow.webContents.capturePage()).toPNG());
+            await ui("document.querySelector('.stuck-button').click()");
+            await new Promise((r) => setTimeout(r, 6000));
+            console.log(`[smoke] stuck: chat-open=${await ui("!!document.querySelector('.hint-messages')")}`);
+          }
           await ui("document.querySelector('.mascot').click()");
           await new Promise((r) => setTimeout(r, 500));
           console.log(`[smoke] chat-open messages=${await ui("document.querySelectorAll('.message-text').length")} first=${await ui("document.querySelector('.message-text')?.textContent?.slice(0, 40)")}`);

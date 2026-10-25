@@ -401,6 +401,14 @@ function registerChat(): void {
     stuckBus.emit('help-requested', 'manual');
     return { success: true };
   });
+  // "I'm stuck" beside Wolfie: the question on screen gets help now, without the 60 s wait
+  handle('help-stuck', async () => {
+    const question = watchController?.isActive() ? (watcher?.stuckNow() ?? null) : null;
+    log.add({ role: 'user', text: "I'm stuck" });
+    notifyChat();
+    stuckBus.emit('help-requested', 'manual');
+    return { success: true, question };
+  });
 }
 
 function registerPlan(): void {

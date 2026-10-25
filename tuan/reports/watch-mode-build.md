@@ -278,3 +278,22 @@
 - **Fix:** the chat wiring moved to `attachChatLog()` (chat/log.ts) and records presses with `prependListener`, so it runs first.
   - A test with a synchronous "flow" listener fails with the old order and passes now.
 - Tests: 667 pass. Typecheck and lint are clean.
+
+## Update: "I'm stuck" button beside Wolfie
+- **Asked:** a button the student can press when stuck, instead of waiting for the 60 s thinking pause. Placement next to Wolfie, without merging Thu's sprite commit.
+- **Built:**
+  - **`StuckButton.tsx`:** its own component; one line in overlay `App.tsx`, to keep the later merge with Thu's App.tsx rewrite small.
+    - A red "🆘 I'm stuck" pill at Wolfie's lower left, always visible while the chat is closed.
+    - It shows "On it..." for 4 s after a press, and takes the mouse only while hovered.
+  - **IPC `help-stuck`:**
+    - records "I'm stuck" in the chat;
+    - when Watch mode is on, `Watcher.stuckNow()` turns the latest look's unanswered question (≤3 min old) into a thinking pause immediately;
+    - then starts the help flow (the same path as "Help me with this").
+  - **What the flow does with it:**
+    - hints focused on that question ("help them get started", no answer);
+    - flagged wrong answers still come first;
+    - a press while a ladder is open means "another hint";
+    - in learning mode with nothing on screen to work on, it explains instead.
+  - The timed pause won't offer again for a question already marked stuck.
+- **Verified:** a real app run on a scratch profile (`WOLFIE_USER_DATA`, new `WOLFIE_SMOKE_STUCK`) showed the button and recorded the press in the chat. The full help steps need a running session, as with "Help me with this".
+- Tests: 668 pass. Typecheck and lint are clean.
