@@ -25,7 +25,8 @@ const NO_DETAILS: Record<Problem['outcome'], string> = {
 const VERDICT: Record<Topic['verdict'], { label: string; className: string }> = {
   strength: { label: 'Strength', className: 'chip-strong' },
   weakness: { label: 'To work on', className: 'chip-weak' },
-  practiced: { label: 'Practiced', className: '' }
+  // It came up, with no evidence either way (reading alone doesn't show understanding)
+  practiced: { label: 'Touched on', className: '' }
 };
 
 /** The report for `sessionId`, kept current; undefined while loading, null if there is none. */

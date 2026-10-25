@@ -77,3 +77,7 @@ The strengths & weaknesses record: combine report topics across sessions (eviden
 - **Verified:**
   - **Read-only on Tuan's saved report:** 4 sources become 2 (Triangle, 3 min; Coin Change, 1 min).
   - Tests: 693 pass. Typecheck and lint are clean.
+
+## Update: "Practiced" shown as "Touched on"
+- Tuan found "Practiced" (and "Studied") claimed too much for a concept that barely came up. The grey topic label now reads **Touched on**: it came up, with no evidence either way.
+- Only the label in `SessionReport.tsx` changed. The stored verdict stays `practiced`, so existing reports show the new label without rewriting.
