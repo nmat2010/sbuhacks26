@@ -93,3 +93,7 @@ For Tuan to decide later what to keep.
   - 3.3 s: the usual Wolfie visible again.
   - Frames show it all at Wolfie's spot.
 - Tests: 707 pass. Typecheck and lint have no errors.
+- **Fix (Tuan saw the usual Wolfie stay about a second after clicking):**
+  - The launch waited for the sound setting (a round trip to the main process) before hiding Wolfie and drawing the first frame, and the sprite sheets only started loading on the first launch.
+  - Now the swap happens on the click, the setting is read in the background, and the six sheets are loaded and decoded when the overlay starts.
+  - **Verified:** sampled every 50 ms after the click, the usual Wolfie is already hidden and the launch Wolfie drawn at 50 ms.

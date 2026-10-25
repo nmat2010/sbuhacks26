@@ -362,6 +362,13 @@ app.whenReady().then(() => {
           const mascotVisible = () => ui("getComputedStyle(document.querySelector('.mascot').parentElement).visibility");
           console.log(`[smoke] launch: card=${await ui("document.querySelector('.resource-link')?.title")} mascot=${await mascotVisible()}`);
           await ui("document.querySelector('.resource-link').click(); 0");
+          // Right after the click: the usual Wolfie must hide at once, with the launch Wolfie drawn
+          const early: string[] = [];
+          for (let t = 50; t <= 250; t += 50) {
+            await new Promise((r) => setTimeout(r, 50));
+            early.push(`${t}ms:${await mascotVisible()}/${(await ui("!!document.querySelector('.launch-layer .mascot-wolfie')")) ? 'launch' : '-'}`);
+          }
+          console.log(`[smoke] launch: early ${early.join(' ')}`);
           for (let i = 0; i < 18; i++) {
             await new Promise((r) => setTimeout(r, 300));
             const stage = await ui("document.querySelector('.launch-layer .mascot-wolfie')?.className.replace('mascot-wolfie ', '') ?? (document.querySelector('.launch-layer') ? 'underground' : 'done')");

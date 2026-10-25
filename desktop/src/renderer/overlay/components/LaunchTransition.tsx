@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import chargeSheet from '../../dashboard/assets/wolfie_charge.png';
 import diveSheet from '../../dashboard/assets/wolfie_dive.png';
 import holeSheet from '../../dashboard/assets/wolfie_hole.png';
@@ -54,6 +54,18 @@ export function LaunchProvider({ children }: { children: ReactNode }) {
   const [scene, setScene] = useState<Scene | null>(null);
   const busy = useRef(false);
 
+  // Load and decode the sheets now (kept referenced), so the launch's first frames are drawn the
+  // moment Wolfie hides
+  const preloaded = useRef<HTMLImageElement[]>([]);
+  useEffect(() => {
+    preloaded.current = [chargeSheet, diveSheet, holeSheet, emergeSheet, landSheet, waveSheet].map((src) => {
+      const img = new Image();
+      img.src = src;
+      void img.decode().catch(() => undefined);
+      return img;
+    });
+  }, []);
+
   const launch = useCallback(async (underground: () => unknown) => {
     const spot = document.querySelector('.mascot')?.getBoundingClientRect();
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -62,9 +74,13 @@ export function LaunchProvider({ children }: { children: ReactNode }) {
       return;
     }
     busy.current = true;
-    // Sound follows the dashboard's Appearance setting (on unless turned off)
-    const prefs = await window.electronAPI.invoke('dash-prefs-get').catch(() => null);
-    const sound = prefs?.appearance.soundEffects ?? true;
+    // Sound follows the dashboard's Appearance setting (on unless turned off). Looked up in the
+    // background: the swap to the launch Wolfie happens on the click, not after a round trip
+    let sound = true;
+    void window.electronAPI
+      .invoke('dash-prefs-get')
+      .then((prefs) => (sound = prefs?.appearance.soundEffects ?? true))
+      .catch(() => undefined);
     const base = { x: spot.left + spot.width / 2, ground: spot.top + spot.height * FEET, scale: spot.width / FRAME_W };
     const step = async (stage: Stage, sheet: Sheet, frame: Scene['frame'], hole: Scene['hole'], ms: number) => {
       setScene({ ...base, stage, sheet, frame, hole });
