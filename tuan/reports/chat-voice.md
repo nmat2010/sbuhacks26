@@ -34,3 +34,7 @@ Nothing in the app played voice audio. The main process streamed ElevenLabs PCM 
 ## Notes
 - **Cost:** each spoken reply uses ElevenLabs characters (up to 900); the free tier is about 10k a month. Mute with 🔇.
 - `Mascot.tsx` (Thu) gained `data-state={state}`, so tests can see the sprite state.
+
+## Merged into main (2026-10-25)
+- `tuan/chat-voice` was merged into `main` with `--no-ff` (merge commit c2b4ca1); `main` and the branch are pushed.
+- Checks on `main`: 677 tests pass (48 + 553 + 76); typecheck and lint are clean (existing warnings only).
