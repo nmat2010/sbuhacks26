@@ -1,7 +1,13 @@
 import { useState, useEffect } from 'react';
-import wolfieMascotImage from '../assets/wolfie_mascot.png';
+import wolfieMascotImage from '../assets/wolfie_static.png';
+import wolfieIdleSprite from '../assets/wolfie_idle.png';
+import wolfieTalkingSprite from '../assets/wolfie_talking.png';
+import wolfieSleepingSprite from '../assets/wolfie_sleeping.png';
+import wolfieAngrySprite from '../assets/wolfie_angry.png';
+import wolfieThinkingSprite from '../assets/wolfie_thinking.png';
+import { SpriteAnimation } from './SpriteAnimation';
 
-export type MascotState = 'idle' | 'talking' | 'alert' | 'sleeping' | 'glance' | 'question-mark';
+export type MascotState = 'idle' | 'talking' | 'angry' | 'sleeping' | 'thinking';
 
 interface MascotProps {
   state: MascotState;
@@ -15,27 +21,15 @@ export function Mascot({ state, voiceActive, onClick, onMouseEnter, onMouseLeave
   const [bounce, setBounce] = useState(false);
 
   useEffect(() => {
-    if (state === 'talking' || state === 'alert') {
+    if (state === 'talking' || state === 'angry') {
       setBounce(true);
       const timer = setTimeout(() => setBounce(false), 500);
       return () => clearTimeout(timer);
     }
   }, [state]);
 
-  // Map states to animation
-  const getAnimation = () => {
-    switch (state) {
-      case 'idle': return 'idle';
-      case 'talking': return 'talking';
-      case 'alert': return 'alert';
-      case 'sleeping': return 'sleeping';
-      case 'glance': return 'glance';
-      case 'question-mark': return 'question';
-      default: return 'idle';
-    }
-  };
-
-  const animation = getAnimation();
+  // Use sprite animation for all states
+  const usesSpriteAnimation = ['idle', 'talking', 'angry', 'sleeping', 'thinking'].includes(state);
 
   return (
     <div
@@ -47,23 +41,75 @@ export function Mascot({ state, voiceActive, onClick, onMouseEnter, onMouseLeave
         cursor: 'pointer',
         userSelect: 'none',
         transform: bounce ? 'scale(1.1)' : 'scale(1)',
-        transition: 'all 0.3s ease',
-        animation: `${animation} 2s ease-in-out infinite`
+        transition: 'all 0.3s ease'
       }}
       className="mascot"
     >
-      {/* Wolfie Mascot */}
-      <img
-        src={wolfieMascotImage}
-        alt="Wolfie Mascot"
-        style={{
-          width: '220px',
-          height: 'auto',
-          userSelect: 'none',
-          pointerEvents: 'none',
-          opacity: state === 'sleeping' ? 0.7 : 1
-        }}
-      />
+      {/* Sprite Animations for all animated states */}
+      {state === 'idle' && (
+        <SpriteAnimation
+          src={wolfieIdleSprite}
+          frames={4}
+          fps={2}
+          loop={true}
+          size={220}
+        />
+      )}
+
+      {state === 'talking' && (
+        <SpriteAnimation
+          src={wolfieTalkingSprite}
+          frames={4}
+          fps={4}
+          loop={true}
+          size={220}
+        />
+      )}
+
+      {state === 'angry' && (
+        <SpriteAnimation
+          src={wolfieAngrySprite}
+          frames={4}
+          fps={6}
+          loop={true}
+          size={220}
+        />
+      )}
+
+      {state === 'sleeping' && (
+        <SpriteAnimation
+          src={wolfieSleepingSprite}
+          frames={4}
+          fps={2}
+          loop={true}
+          size={220}
+        />
+      )}
+
+      {state === 'thinking' && (
+        <SpriteAnimation
+          src={wolfieThinkingSprite}
+          frames={4}
+          fps={3}
+          loop={true}
+          size={220}
+        />
+      )}
+
+      {/* Static Wolfie Mascot for normal states */}
+      {!usesSpriteAnimation && (
+        <img
+          src={wolfieMascotImage}
+          alt="Wolfie Mascot"
+          style={{
+            width: '220px',
+            height: 'auto',
+            userSelect: 'none',
+            pointerEvents: 'none',
+            opacity: state === 'sleeping' ? 0.7 : 1
+          }}
+        />
+      )}
 
       {/* Voice active indicator */}
       {voiceActive && (
@@ -76,7 +122,6 @@ export function Mascot({ state, voiceActive, onClick, onMouseEnter, onMouseLeave
           backgroundColor: '#27ae60',
           borderRadius: '50%',
           border: '2px solid white',
-          animation: 'pulse 1s ease-in-out infinite',
           boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)'
         }} />
       )}

@@ -6,6 +6,23 @@ import { HintConversation } from './components/HintConversation';
 import { StuckButton } from './components/StuckButton';
 import { useNudge } from './hooks/useNudge';
 import { useVoiceIntents } from './hooks/useVoiceIntents';
+import type { MascotStateType } from '@wolfie/shared';
+
+/** Main's escalation states drawn with Thu's sprites (glance and "?" are thinking, alert is angry). */
+function spriteFor(state: MascotStateType): MascotState {
+  switch (state) {
+    case 'glance':
+    case 'question-mark':
+      return 'thinking';
+    case 'alert':
+      return 'angry';
+    case 'talking':
+    case 'sleeping':
+      return state;
+    default:
+      return 'idle';
+  }
+}
 
 function App() {
   const [isDragging, setIsDragging] = useState(false);
@@ -17,7 +34,7 @@ function App() {
 
   const { currentNudge, dismissNudge, handleButtonClick } = useNudge();
   // Sprite state pushed by main when no bubble is showing (escalation glance / "?", sleeping)
-  const [baseState, setBaseState] = useState<MascotState>('idle');
+  const [baseState, setBaseState] = useState<MascotStateType>('idle');
 
   useEffect(() => window.electronAPI.on('overlay-state', setBaseState), []);
 
@@ -92,17 +109,15 @@ function App() {
     if (currentNudge) {
       switch (currentNudge.kind) {
         case 'stuck':
-          if (currentNudge.level === 1) {
-            setMascotState('glance');
-          } else if (currentNudge.level === 2) {
-            setMascotState('question-mark');
+          if (currentNudge.level === 1 || currentNudge.level === 2) {
+            setMascotState('thinking');
           } else {
             setMascotState('talking');
           }
           break;
         case 'distraction':
         case 'ai_tool':
-          setMascotState('alert');
+          setMascotState('angry');
           break;
         case 'streak':
           setMascotState('talking');
@@ -111,7 +126,7 @@ function App() {
           setMascotState('talking');
       }
     } else {
-      setMascotState(baseState);
+      setMascotState(spriteFor(baseState));
     }
   }, [currentNudge, baseState]);
 
@@ -167,6 +182,13 @@ function App() {
     setShowHoverMenu(false);
   };
 
+  // Hover-menu buttons to try each sprite for 3 s (Thu)
+  const testSprite = (state: MascotState) => {
+    setMascotState(state);
+    setShowHoverMenu(false);
+    setTimeout(() => setMascotState('idle'), 3000);
+  };
+
   const handleResume = () => {
     window.electronAPI.invoke('nudge-resume');
     setIsPaused(false);
@@ -215,6 +237,15 @@ function App() {
           <HoverMenu
             visible={showHoverMenu}
             onOpenTestPanel={handleOpenTestPanel}
+            onTestIdle={() => testSprite('idle')}
+            onTestTalking={() => testSprite('talking')}
+            onTestAngry={() => testSprite('angry')}
+            onTestSleeping={() => testSprite('sleeping')}
+            onTestThinking={() => testSprite('thinking')}
+            onTestHintModal={() => {
+              setShowHintConversation(true);
+              setShowHoverMenu(false);
+            }}
             onSnooze={handleSnooze}
             onPause={handlePause}
             onResume={handleResume}

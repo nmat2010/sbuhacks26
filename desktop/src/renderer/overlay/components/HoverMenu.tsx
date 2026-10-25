@@ -6,6 +6,12 @@ interface HoverMenuProps {
   onSnooze?: () => void;
   onPause?: () => void;
   onResume?: () => void;
+  onTestIdle?: () => void;
+  onTestTalking?: () => void;
+  onTestAngry?: () => void;
+  onTestSleeping?: () => void;
+  onTestThinking?: () => void;
+  onTestHintModal?: () => void;
   isPaused?: boolean;
 }
 
@@ -15,6 +21,12 @@ export function HoverMenu({
   onSnooze,
   onPause,
   onResume,
+  onTestIdle,
+  onTestTalking,
+  onTestAngry,
+  onTestSleeping,
+  onTestThinking,
+  onTestHintModal,
   isPaused = false
 }: HoverMenuProps) {
   const [show, setShow] = useState(false);
@@ -69,6 +81,167 @@ export function HoverMenu({
           }}
         >
           🧪 Test Panel
+        </button>
+
+        <div style={{
+          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+          margin: '8px 0',
+          fontSize: '11px',
+          color: 'rgba(255, 255, 255, 0.5)',
+          textAlign: 'center',
+          padding: '4px 0'
+        }}>
+          Animations
+        </div>
+
+        <button
+          onClick={onTestIdle}
+          style={{
+            width: '100%',
+            padding: '8px 12px',
+            border: 'none',
+            borderRadius: '4px',
+            fontSize: '13px',
+            cursor: 'pointer',
+            backgroundColor: 'transparent',
+            color: '#95a5a6',
+            textAlign: 'left',
+            transition: 'background-color 0.2s',
+            marginBottom: '4px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(149, 165, 166, 0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+        >
+          😊 Idle
+        </button>
+
+        <button
+          onClick={onTestTalking}
+          style={{
+            width: '100%',
+            padding: '8px 12px',
+            border: 'none',
+            borderRadius: '4px',
+            fontSize: '13px',
+            cursor: 'pointer',
+            backgroundColor: 'transparent',
+            color: '#3498db',
+            textAlign: 'left',
+            transition: 'background-color 0.2s',
+            marginBottom: '4px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(52, 152, 219, 0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+        >
+          💬 Talking
+        </button>
+
+        <button
+          onClick={onTestAngry}
+          style={{
+            width: '100%',
+            padding: '8px 12px',
+            border: 'none',
+            borderRadius: '4px',
+            fontSize: '13px',
+            cursor: 'pointer',
+            backgroundColor: 'transparent',
+            color: '#e74c3c',
+            textAlign: 'left',
+            transition: 'background-color 0.2s',
+            marginBottom: '4px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(231, 76, 60, 0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+        >
+          😠 Angry
+        </button>
+
+        <button
+          onClick={onTestSleeping}
+          style={{
+            width: '100%',
+            padding: '8px 12px',
+            border: 'none',
+            borderRadius: '4px',
+            fontSize: '13px',
+            cursor: 'pointer',
+            backgroundColor: 'transparent',
+            color: '#7f8c8d',
+            textAlign: 'left',
+            transition: 'background-color 0.2s',
+            marginBottom: '4px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(127, 140, 141, 0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+        >
+          😴 Sleeping
+        </button>
+
+        <button
+          onClick={onTestThinking}
+          style={{
+            width: '100%',
+            padding: '8px 12px',
+            border: 'none',
+            borderRadius: '4px',
+            fontSize: '13px',
+            cursor: 'pointer',
+            backgroundColor: 'transparent',
+            color: '#9b59b6',
+            textAlign: 'left',
+            transition: 'background-color 0.2s',
+            marginBottom: '4px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(155, 89, 182, 0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+        >
+          🤔 Test Thinking
+        </button>
+
+        <button
+          onClick={onTestHintModal}
+          style={{
+            width: '100%',
+            padding: '8px 12px',
+            border: 'none',
+            borderRadius: '4px',
+            fontSize: '13px',
+            cursor: 'pointer',
+            backgroundColor: 'transparent',
+            color: '#3498db',
+            textAlign: 'left',
+            transition: 'background-color 0.2s',
+            marginBottom: '4px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(52, 152, 219, 0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+        >
+          💬 Test Hint Modal
         </button>
 
         <button

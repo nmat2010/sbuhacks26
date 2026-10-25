@@ -297,3 +297,25 @@
   - The timed pause won't offer again for a question already marked stuck.
 - **Verified:** a real app run on a scratch profile (`WOLFIE_USER_DATA`, new `WOLFIE_SMOKE_STUCK`) showed the button and recorded the press in the chat. The full help steps need a running session, as with "Help me with this".
 - Tests: 668 pass. Typecheck and lint are clean.
+
+## Merge: Thu's sprite animation (origin/main 8fe107c) into tuan/watch-mode
+- **Rule from Tuan:** take Thu's sprite work (the idle / talking / angry / sleeping / thinking states); keep Tuan's chat and everything about talking to Wolfie.
+- **Taken from Thu:**
+  - **Sprite code:** the sprite sheets (`assets/wolfie_*.png`, replacing `wolfie_mascot.png`), `SpriteAnimation.tsx`, the new `Mascot.tsx` with five animated states, and her `HoverMenu.tsx`.
+  - **Also taken:** `MascotEffects.tsx` and `mascot-animations.css`, which nothing uses yet, and her `.gitignore` line. Her copies of the PNGs at the repo root come along too.
+  - **In `App.tsx`:**
+    - her sprite choices: stuck levels 1–2 → thinking, help → talking, distraction / AI tool → angry;
+    - her hover-menu buttons that show each sprite for 3 s, plus "open chat".
+  - **New `spriteFor()`:** maps main's `overlay-state` values to her sprites (glance and question-mark → thinking, alert → angry).
+- **Kept from Tuan:**
+  - `HintConversation.tsx/.css` (the persistent chat, no-drag, resource cards);
+  - the `App.tsx` structure: the mascot click opens the chat; help answers open the chat; mouse handling; the "I'm stuck" button.
+  - Left out from Thu's App.tsx:
+    - dragging Wolfie inside the window (it conflicts with the chat, bubble and button layout);
+    - the click that no longer opened the chat;
+    - the chat rendered elsewhere on the page (a portal).
+- **Fix to Thu's code:** removed an unused `CSSProperties` import in `MascotEffects.tsx`, which failed typecheck.
+- **Verified:**
+  - 668 tests pass; typecheck and lint are clean.
+  - Real app on a scratch profile: Thu's idle sprite is drawn under the chat; the chat opens and answers; wheel scrolling moves the chat (925 → 325); "I'm stuck" reaches the chat.
+  - A screenshot taken right at startup shows no sprite yet: her canvas draws once the sheet image loads.
