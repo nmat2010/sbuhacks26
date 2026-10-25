@@ -104,6 +104,22 @@ export function migrations(db: Database.Database): Migration[] {
           ALTER TABLE paper_meta ADD COLUMN local_path TEXT;
         `);
       }
+    },
+    {
+      // Wolfie chat history (the overlay chat panel), kept across closing the chat and restarts
+      name: '205_b_chat_messages',
+      up: () => {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS chat_messages (
+            seq INTEGER PRIMARY KEY AUTOINCREMENT,
+            id TEXT NOT NULL UNIQUE,
+            ts INTEGER NOT NULL,
+            role TEXT NOT NULL CHECK(role IN ('user', 'wolfie')),
+            text TEXT NOT NULL,
+            meta_json TEXT
+          );
+        `);
+      }
     }
   ];
 }
@@ -118,5 +134,6 @@ export const tables: readonly string[] = [
   'paper_lookup_cache',
   'paper_meta',
   'paper_chunks',
-  'paper_answer_meta'
+  'paper_answer_meta',
+  'chat_messages'
 ];

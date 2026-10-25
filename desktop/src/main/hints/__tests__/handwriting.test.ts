@@ -139,3 +139,27 @@ describe('handwriting and camera sources (mock round trip)', () => {
     expect(existsSync(join(dir, 'images'))).toBe(false);
   });
 });
+
+describe('Watch-mode frames are never stored', () => {
+  it('skips writing the image when imageNoStore is set, even with image storage on', async () => {
+    const mock = new MockLLMProvider({ delayMs: 0 });
+    const client = new LLMClient({ provider: mock, log: () => {} });
+    const storageOn = <K extends SettingsKey>(key: K) =>
+      (key === 'image.storage_enabled' ? true : SettingsDefaults[key]) as SettingsValues[K];
+    const service = new HintService({
+      llm: () => client,
+      db: () => db,
+      now: () => 1,
+      getSetting: storageOn,
+      activeSession: () => null,
+      imageDir: () => join(dir, 'images'),
+      log: () => {},
+      console: () => {}
+    });
+    await service.requestHints(ctx({ imageDataUrl: png, imageNoStore: true, sessionContext: 'notes' }), 'screen', false);
+    expect(existsSync(join(dir, 'images'))).toBe(false);
+    // Control: the same request without the flag is stored when storage is on
+    await service.requestHints(ctx({ imageDataUrl: png }), 'screen', false);
+    expect(existsSync(join(dir, 'images'))).toBe(true);
+  });
+});

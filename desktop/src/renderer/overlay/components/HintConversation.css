@@ -1,16 +1,19 @@
+/* A panel inside Wolfie's overlay window (360x520), above the mascot. The window is transparent,
+   so there is no backdrop; it takes the mouse while the chat is open. */
 .hint-conversation-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  top: 6px;
+  left: 6px;
+  right: 6px;
+  /* Clears the top of Wolfie's head (Thu's 220px sprite sits at the bottom of the window) */
+  bottom: 220px;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   z-index: 2000;
-  padding: 20px;
   pointer-events: auto;
+  /* overlay.html makes the page a window-drag region; on macOS that swallows real scrolling,
+     hovering and typing, so the chat must opt out */
   -webkit-app-region: no-drag;
 }
 
@@ -19,7 +22,7 @@
   border-radius: 16px;
   width: 100%;
   max-width: 600px;
-  max-height: 80vh;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
@@ -131,8 +134,9 @@
 /* Messages */
 .hint-messages {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: 20px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -371,4 +375,58 @@
 
 .hint-messages::-webkit-scrollbar-thumb:hover {
   background: #b8b8bd;
+}
+
+/* Compact for the small overlay window */
+.hint-conversation-container .hint-header { padding: 10px 12px; }
+.hint-conversation-container .context-preview { padding: 8px 12px; }
+.hint-conversation-container .hint-actions { padding: 8px 12px; flex-wrap: wrap; gap: 6px; }
+.hint-conversation-container .action-btn { padding: 6px 10px; font-size: 12px; }
+.hint-conversation-container .hint-input-container { padding: 8px 12px; }
+.hint-conversation-container .message-text { font-size: 13px; line-height: 1.4; }
+.hint-conversation-container .action-btn:disabled,
+.hint-conversation-container .send-btn:disabled { opacity: 0.5; cursor: default; }
+.hint-conversation-container .context-preview .context-header { margin-bottom: 2px; }
+.hint-conversation-container .context-description { font-size: 12px; line-height: 1.35; margin: 0; }
+/* One line for "What I see" (full text on hover), so the messages get the space */
+.hint-conversation-container .context-preview { display: flex; align-items: center; gap: 6px; }
+.hint-conversation-container .context-preview .context-header { margin: 0; flex-shrink: 0; }
+.hint-conversation-container .context-description { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.hint-conversation-container .hint-messages { position: relative; overscroll-behavior: contain; }
+
+/* Suggested study material (clickable, opens in the browser) */
+.resource-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.resource-link {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid #e5e5ea;
+  border-radius: 10px;
+  background: white;
+  cursor: pointer;
+  font: inherit;
+}
+
+.resource-link:hover {
+  border-color: #CC0000;
+}
+
+.resource-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.resource-why,
+.resource-detail {
+  font-size: 11px;
+  color: #6e6e73;
 }

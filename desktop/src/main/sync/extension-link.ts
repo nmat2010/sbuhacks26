@@ -34,6 +34,7 @@ export interface ExtensionLinkDeps {
   setPageSummaryRequester(fn: (() => Promise<PageSummary | null>) | null): void;
   emitProblemChanged(problemId: string | null): void;
   onSignal?(signal: StruggleSignal, domain: string): void;
+  scheduleTabNone?(clear: () => void): void;
   helloTimeoutMs?: number;
   heartbeatMs?: number;
 }
@@ -71,7 +72,8 @@ export async function startExtensionLink(deps: ExtensionLinkDeps): Promise<Exten
     getDeskState,
     setLatestPageSummary: deps.setLatestPageSummary,
     emitProblemChanged: deps.emitProblemChanged,
-    onSignal: deps.onSignal
+    onSignal: deps.onSignal,
+    scheduleTabNone: deps.scheduleTabNone
   });
 
   const server = new ExtensionServer({

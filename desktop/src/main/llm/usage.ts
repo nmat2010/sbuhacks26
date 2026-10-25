@@ -36,6 +36,20 @@ export class SqliteUsageStore implements UsageStore {
   }
 }
 
+/** Counts under `prefix + day`, so another budget (Watch mode) shares the table but not the cap. */
+export class PrefixedUsageStore implements UsageStore {
+  constructor(
+    private readonly inner: UsageStore,
+    private readonly prefix: string
+  ) {}
+  get(day: string): number {
+    return this.inner.get(`${this.prefix}${day}`);
+  }
+  increment(day: string): number {
+    return this.inner.increment(`${this.prefix}${day}`);
+  }
+}
+
 /** Local calendar date, YYYY-MM-DD. */
 export function localDay(ts: number): string {
   const d = new Date(ts);

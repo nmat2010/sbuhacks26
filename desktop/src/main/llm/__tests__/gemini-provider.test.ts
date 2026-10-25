@@ -114,3 +114,23 @@ describe('helpers', () => {
     expect(text).toMatch(/nudge/);
   });
 });
+
+describe('GeminiProvider videos (Watch mode)', () => {
+  it('attaches YouTube URLs as fileData parts on the last message', async () => {
+    const seen: Array<Record<string, any>> = [];
+    const provider = new GeminiProvider({ apiKey: 'k', model: 'm', sdk: fakeSdk('{"a":1}', seen) });
+    await provider.generateJson({
+      task: 'watch_answer',
+      system: 's',
+      messages: [
+        { role: 'user', content: 'first' },
+        { role: 'assistant', content: 'reply' },
+        { role: 'user', content: 'what did he say?' }
+      ],
+      videos: ['https://www.youtube.com/watch?v=abcdef123']
+    });
+    const contents = seen[0].contents as Array<{ parts: Array<Record<string, unknown>> }>;
+    expect(contents[0].parts).toEqual([{ text: 'first' }]);
+    expect(contents[2].parts).toEqual([{ fileData: { fileUri: 'https://www.youtube.com/watch?v=abcdef123' } }, { text: 'what did he say?' }]);
+  });
+});

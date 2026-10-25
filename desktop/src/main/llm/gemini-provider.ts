@@ -45,6 +45,10 @@ export class GeminiProvider implements LLMProvider {
       if (i === lastUser && req.images?.length) {
         for (const image of req.images) parts.push({ inlineData: { mimeType: image.mimeType, data: image.data } });
       }
+      // Gemini watches public YouTube videos given by URL (video understanding, fileData)
+      if (i === lastUser && req.videos?.length) {
+        for (const uri of req.videos) parts.unshift({ fileData: { fileUri: uri } });
+      }
       return { role: m.role === 'assistant' ? ('model' as const) : ('user' as const), parts };
     });
 

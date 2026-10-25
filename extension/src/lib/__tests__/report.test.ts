@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { reconnectDelay } from '../backoff';
-import { isExcluded, normalizeDomainInput, reportableDomain, type ReportState } from '../report';
+import { contentUrlFor, isExcluded, normalizeDomainInput, reportableDomain, type ReportState } from '../report';
 
 const base: ReportState = {
   reporting: true,
@@ -70,5 +70,34 @@ describe('helpers', () => {
       1000, 2000, 4000, 8000, 16000, 30000, 30000, 30000
     ]);
     expect(reconnectDelay(0, () => 1)).toBe(1200);
+  });
+});
+
+describe('contentUrlFor (Watch mode)', () => {
+  it('sends the URL only for papers and videos', () => {
+    expect(contentUrlFor('https://example.edu/papers/niranjan.pdf?token=secret')).toBe('https://example.edu/papers/niranjan.pdf');
+    expect(contentUrlFor('https://arxiv.org/abs/1706.03762v7')).toBe('https://arxiv.org/abs/1706.03762v7');
+    expect(contentUrlFor('https://arxiv.org/pdf/1706.03762')).toBe('https://arxiv.org/pdf/1706.03762');
+    expect(contentUrlFor('https://www.youtube.com/watch?v=aircAruvnKk&t=42s&list=abc')).toBe('https://www.youtube.com/watch?v=aircAruvnKk');
+    expect(contentUrlFor('https://youtu.be/aircAruvnKk')).toBe('https://www.youtube.com/watch?v=aircAruvnKk');
+  });
+
+  it('sends nothing for other pages or odd URLs', () => {
+    expect(contentUrlFor('https://mail.google.com/mail/u/0/#inbox')).toBeNull();
+    expect(contentUrlFor('https://www.youtube.com/results?search_query=attention')).toBeNull();
+    expect(contentUrlFor('https://arxiv.org/list/cs.LG/recent')).toBeNull();
+    expect(contentUrlFor('file:///Users/me/paper.pdf')).toBeNull();
+    expect(contentUrlFor('https://www.youtube.com/watch?v=<script>')).toBeNull();
+    expect(contentUrlFor(undefined)).toBeNull();
+    expect(contentUrlFor('not a url')).toBeNull();
+  });
+});
+
+describe('contentUrlFor YouTube variants', () => {
+  it('normalizes mobile, shorts and live URLs to a watch URL', () => {
+    expect(contentUrlFor('https://m.youtube.com/watch?v=aircAruvnKk')).toBe('https://www.youtube.com/watch?v=aircAruvnKk');
+    expect(contentUrlFor('https://www.youtube.com/shorts/aircAruvnKk')).toBe('https://www.youtube.com/watch?v=aircAruvnKk');
+    expect(contentUrlFor('https://youtube.com/live/aircAruvnKk?feature=share')).toBe('https://www.youtube.com/watch?v=aircAruvnKk');
+    expect(contentUrlFor('https://www.youtube.com/@3blue1brown')).toBeNull();
   });
 });

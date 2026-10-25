@@ -206,6 +206,117 @@ export interface AskPaperInput {
   selection?: string;
 }
 
+// ---- Watch mode (WATCH_MODE.md) -----------------------------------------------------------------
+
+export type WatchState =
+  | 'off'
+  /** Turned on, but the consent screen hasn't been accepted. */
+  | 'needs_consent'
+  /** On, but no session is running or monitoring is paused. */
+  | 'idle'
+  | 'watching'
+  /** The window in front is excluded or private (nothing is captured). */
+  | 'skipping'
+  /** No keyboard or mouse input for 10+ minutes: nothing is looked at until the student is back. */
+  | 'away'
+  | 'no_permission'
+  | 'limit_reached'
+  | 'error';
+
+export interface WatchStatus {
+  enabled: boolean;
+  consented: boolean;
+  state: WatchState;
+  /** From the latest observation; null before the first one. */
+  mode: 'learning' | 'homework' | 'other' | null;
+  activity: string | null;
+  subject: string | null;
+  lastObservedAt: number | null;
+  /** The window being looked at right now ("Google Chrome — Practice: Linear equations"), before the model has answered. */
+  looking: string | null;
+  /** When `looking` last changed; a description older than this is about the previous window. */
+  lookingSince: number | null;
+  /** Why nothing is being watched right now, in words for the student; null when watching normally. */
+  note: string | null;
+  intervalSeconds: number;
+  autoImportPapers: boolean;
+  excludedApps: string[];
+}
+
+export interface WatchPatch {
+  enabled?: boolean;
+  intervalSeconds?: number;
+  autoImportPapers?: boolean;
+  excludedApps?: string[];
+}
+
+export interface WatchCitation {
+  n: number;
+  kind: 'paper' | 'video' | 'note';
+  title: string;
+  /** Section and page, or a video timestamp. */
+  locator: string | null;
+  url: string | null;
+}
+
+/** Study material from outside the session that Wolfie suggests; the link was found or checked by the app. */
+export interface WatchResource {
+  kind: 'video' | 'article' | 'course' | 'book' | 'paper' | 'other';
+  title: string;
+  url: string;
+  /** Why it helps, in a few words. */
+  why: string;
+  /** "Channel · 12:34" for a video, the site for a link, or "Search on Google" for a search link. */
+  detail: string | null;
+  /** False for a search link (the suggestion itself could not be checked). */
+  checked: boolean;
+}
+
+export interface WatchAnswer {
+  question: string;
+  mode: 'learning' | 'homework' | 'other';
+  answer: string;
+  /** True only when the answer is based on sources from this session (listed in citations). */
+  grounded: boolean;
+  /** Always shown with the answer, e.g. "From your session" or "Hint (homework mode...)". */
+  label: string;
+  citations: WatchCitation[];
+  /** New material to learn from (only when asked for). */
+  resources: WatchResource[];
+}
+
+/** One message in Wolfie's chat history (overlay chat panel). */
+export interface ChatMessageView {
+  id: string;
+  ts: number;
+  role: 'user' | 'wolfie';
+  text: string;
+  label?: string;
+  citations?: WatchCitation[];
+  resources?: WatchResource[];
+  /** For help-flow bubbles: answer their buttons with nudge-response. */
+  nudgeId?: string;
+  buttons?: Array<{ label: string; action: string; variant?: 'primary' | 'secondary' | 'danger' }>;
+  /** The buttons were used (or the step moved on): show them as inactive. */
+  answered?: boolean;
+}
+
+export interface WatchMemoryView {
+  sources: Array<{
+    kind: string;
+    title: string;
+    url: string | null;
+    paperId: string | null;
+    /** Watch mode's import of this paper (null if not a paper or not tried). */
+    paperImport: { status: 'importing' | 'imported' | 'failed'; at: number; error?: string } | null;
+    lastSeen: number;
+    minutes: number;
+    locators: string[];
+    points: string[];
+  }>;
+  recent: Array<{ ts: number; activity: string; mode: string; summary: string }>;
+}
+
 // ---- Channels --------------------------------------------------------------------------------
 
 /** renderer -> main, request/response: 'channel': { args: [...]; result: ... } */
@@ -215,6 +326,33 @@ export interface IntelligenceInvoke {
    * STT provider. Result is the router's decision: 'intent:<name>', 'followup', 'ignored', 'dropped:<why>'.
    */
   'voice-utterance': { args: [text: string]; result: { success: boolean; route: string } };
+  'watch-get': { args: []; result: WatchStatus };
+  /** Turning Watch mode on fails until the consent screen has been accepted. */
+  'watch-set': { args: [patch: WatchPatch]; result: BResult<WatchStatus> };
+  /** The consent screen's answer. Declining also turns Watch mode off. */
+  'watch-consent': { args: [accepted: boolean]; result: WatchStatus };
+  'watch-memory-get': { args: []; result: WatchMemoryView };
+  'watch-memory-clear': { args: []; result: WatchStatus };
+  /**
+   * The overlay chat panel. With a hint ladder or an explanation open, the text is a follow-up to
+   * it (the reply arrives as a 'stuck' nudge, like the ladder). Otherwise it is a question,
+   * answered from the session when Watch mode is on, or from general knowledge when it is off.
+   */
+  'chat-send': {
+    args: [text: string];
+    result: { kind: 'answer'; answer: WatchAnswer } | { kind: 'followup' } | { kind: 'error'; error: string };
+  };
+  /** The chat history (kept across closing the chat and restarts). */
+  'chat-history': { args: []; result: ChatMessageView[] };
+  'chat-clear': { args: []; result: { success: boolean } };
+  /** Opens a suggested resource (http/https only) in the default browser. */
+  'open-link': { args: [url: string]; result: { success: boolean } };
+  /** "Help me with this" from the chat: recorded, then the help flow starts. */
+  'chat-help': { args: []; result: { success: boolean } };
+  /** "I'm stuck" beside Wolfie: help with the question on screen now (`question`: the one Wolfie saw, if any). */
+  'help-stuck': { args: []; result: { success: boolean; question: string | null } };
+  /** A question about what the student is studying, answered from the whole session. */
+  'watch-ask': { args: [input: { question: string; inputMode: 'text' | 'voice' }]; result: BResult<WatchAnswer> };
   'voice-status': { args: []; result: VoiceStatus };
   /**
    * Mic frames from the hidden capture renderer: 16 kHz, 16-bit LE mono PCM. This is an invoke
@@ -281,4 +419,12 @@ export interface IntelligenceEvents {
   'voice-trouble': string;
   /** A spoken question answered from the focused paper (the answer is also spoken, first two sentences). */
   'paper-answer': PaperAnswer;
+  /** Watch mode changed state (for the watching indicator on the mascot). */
+  'watch-state': WatchStatus;
+  /** An answer to a spoken Watch-mode question (typed ones come back from watch-ask). */
+  'watch-answer': WatchAnswer;
+  /** The chat history changed (new message, a step answered, cleared): the full list. */
+  'chat-history-changed': ChatMessageView[];
+  /** Wolfie is working on a reply the student asked for (true) or is done (false): thinking sprite. */
+  'wolfie-thinking': boolean;
 }

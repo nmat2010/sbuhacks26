@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Nudge, NudgeButtonType } from '@wolfie/shared';
 
 interface SpeechBubbleProps {
@@ -45,7 +45,8 @@ export function SpeechBubble({ nudge, onButtonClick, onDismiss }: SpeechBubblePr
   return (
     <div style={{
       position: 'absolute',
-      bottom: '140px',
+      // Above Wolfie's head (the 220px sprite's cap is ~175px up), so the sprite stays in view
+      bottom: '210px',
       left: '50%',
       transform: 'translateX(-50%)',
       minWidth: '200px',
@@ -60,8 +61,13 @@ export function SpeechBubble({ nudge, onButtonClick, onDismiss }: SpeechBubblePr
         padding: '12px 16px',
         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
         border: '2px solid #3498db',
-        position: 'relative'
-      }}>
+        position: 'relative',
+        // Long text scrolls inside the bubble instead of running out of Wolfie's window
+        maxHeight: '300px',
+        overflowY: 'auto',
+        // The page is a window-drag region (overlay.html); the bubble must take real mouse input
+        WebkitAppRegion: 'no-drag'
+      } as React.CSSProperties}>
         {/* Speech bubble pointer */}
         <div style={{
           position: 'absolute',

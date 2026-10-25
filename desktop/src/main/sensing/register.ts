@@ -44,6 +44,8 @@ import { isPublicSettingKey, keyPresent, readPublicSettings, writePublicSetting 
 import { startLanLink, type LanLink } from '../sync/lan-link.js';
 import { getPlanSnapshotForSync, getStreakSnapshotForSync, notifySnapshotsChanged, setStreakSnapshotProvider } from '../sync/snapshots.js';
 import type { SyncInfo } from '../../common/ipc-sensing.js';
+import { foregroundEvents, setForegroundProvider, setTabReportProvider, type ForegroundInfo } from '../foreground.js';
+import { setFrontWindowProvider } from '../hints/capture.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -54,6 +56,8 @@ let signalSink: SignalSink | null = null;
 let lanLink: LanLink | null = null;
 let streakEngine: StreakEngine | null = null;
 const domainTracker = new DomainTracker();
+/** Longer than a monitor poll (2 s), so a switch to Wolfie is seen before the tab is forgotten. */
+const TAB_NONE_GRACE_MS = 3_000;
 
 function sessionInfo(): SessionInfo {
   const s = getActiveSession();
@@ -141,11 +145,46 @@ export function registerSensing(): void {
     });
     const m = monitor;
     m.start(2000);
+    // Watch mode and screen captures need to know what is in front (foreground.ts, hints/capture.ts)
+    const lastForeground = (): ForegroundInfo | null => {
+      const last = m.getLast();
+      if (!last) return null;
+      // Trust the tab report only if it is fresh and matches the window in front (a stale domain
+      // could otherwise stand in for an excluded, incognito or other-browser page)
+      const tab = last.isBrowser && domainTracker.matchesWindow(last.windowTitle, Date.now());
+      return {
+        appName: last.appName,
+        windowTitle: last.windowTitle,
+        isBrowser: last.isBrowser,
+        domain: tab ? domainTracker.getDomain() : null,
+        contentUrl: tab ? domainTracker.getContentUrl() : null,
+        reportedDomain: last.isBrowser ? domainTracker.getDomain() : null,
+        ts: last.ts
+      };
+    };
+    setForegroundProvider(lastForeground);
+    setTabReportProvider((windowTitle) => {
+      const domain = domainTracker.getDomain();
+      if (!domain || !domainTracker.matchesWindow(windowTitle, Date.now())) return null;
+      return { domain, contentUrl: domainTracker.getContentUrl() };
+    });
+    setFrontWindowProvider(() => {
+      const f = lastForeground();
+      return f ? { title: f.windowTitle ?? undefined, app: f.appName } : null;
+    });
     const off = sessionEvents.on('change', (s) => {
       if (s) void m.poke();
     });
+    // Watch mode looks again right away when the app or tab changes
+    const offFg = m.events.on('foreground', () => foregroundEvents.emit('change'));
+    const offTab = domainTracker.events.on('change', () => foregroundEvents.emit('change'));
     return () => {
       off();
+      offFg();
+      offTab();
+      setForegroundProvider(null);
+      setTabReportProvider(null);
+      setFrontWindowProvider(null);
       m.stop();
     };
   });
@@ -245,7 +284,13 @@ export function registerSensing(): void {
       setLatestPageSummary,
       setPageSummaryRequester,
       emitProblemChanged: (id) => stuckBus.emit('problem-changed', id),
-      onSignal: (signal) => void signalSink?.accept({ ...signal, timestamp: Date.now() }, 'extension')
+      onSignal: (signal) => void signalSink?.accept({ ...signal, timestamp: Date.now() }, 'extension'),
+      // Focus moved to Wolfie (a question typed in the overlay): keep the page; otherwise forget it
+      scheduleTabNone: (clear) => {
+        setTimeout(() => {
+          if (!m.isSelfFront()) clear();
+        }, TAB_NONE_GRACE_MS);
+      }
     })
       .then((link) => {
         extensionLink = link;

@@ -72,6 +72,8 @@ export class Monitor {
   private lastSessionId: string | null = null;
   private lastKey: string | null = null;
   private last: ForegroundSnapshot | null = null;
+  /** The last successful poll found one of Wolfie's own windows in front. */
+  private selfFront = false;
   private pauseMarked = false;
   private lastPollAt: number | null = null;
   private studyAppFront = false;
@@ -92,6 +94,11 @@ export class Monitor {
 
   getAutomationState(): PermissionState {
     return this.automation;
+  }
+
+  /** Wolfie itself (overlay, dashboard, dialogs) was in front at the last poll. */
+  isSelfFront(): boolean {
+    return this.selfFront;
   }
 
   getLast(): ForegroundSnapshot | null {
@@ -158,6 +165,7 @@ export class Monitor {
     }
 
     if (paused) {
+      this.selfFront = false;
       if (!this.pauseMarked) {
         this.pauseMarked = true;
         this.lastKey = null;
@@ -170,10 +178,14 @@ export class Monitor {
 
     const includeTitle = deps.settings.captureTitles();
     const info = await this.readWindow(includeTitle);
-    if (!info) return;
+    if (!info) {
+      this.selfFront = false;
+      return;
+    }
     // The session may have ended or paused while osascript ran.
     if (deps.getSession()?.id !== session.id || deps.isPaused()) return;
-    if (deps.isSelf?.(info)) {
+    this.selfFront = !!deps.isSelf?.(info);
+    if (this.selfFront) {
       // Still a poll, so a long stretch on Wolfie's own window is not mistaken for sleep.
       this.markSleepGap(session.id, deps.now());
       return;
@@ -222,6 +234,7 @@ export class Monitor {
 
   /** Not in a session: forget per-session state so the next session writes a fresh first row. */
   private resetForNoSession(): void {
+    this.selfFront = false;
     this.lastSessionId = null;
     this.lastKey = null;
     this.last = null;

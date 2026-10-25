@@ -1,5 +1,3 @@
-import { CSSProperties } from 'react';
-
 interface EffectProps {
   visible: boolean;
 }

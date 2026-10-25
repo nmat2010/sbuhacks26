@@ -59,6 +59,7 @@ function setup(
     capture?: HintFlowDeps['capture'];
     confirm?: HintFlowDeps['confirmCapture'];
     paused?: boolean;
+    watch?: HintFlowDeps['watch'];
   } = {}
 ) {
   const env = { now: NOW, paused: opts.paused ?? false };
@@ -77,6 +78,7 @@ function setup(
   const logs: string[] = [];
   const ladderOpen: boolean[] = [];
   const mascot: MascotStateType[] = [];
+  const thinking: boolean[] = [];
   let n = 0;
 
   const client = new LLMClient({ provider: opts.provider ?? new MockLLMProvider({ delayMs: 0 }), retryDelayMs: 1, log: () => {} });
@@ -118,7 +120,9 @@ function setup(
     setLadderOpen: (open) => void ladderOpen.push(open),
     markImGood,
     log: (type) => void logs.push(type),
-    thinkingDelayMs: 10 ** 9
+    thinkingDelayMs: 10 ** 9,
+    thinking: (on) => void thinking.push(on),
+    watch: opts.watch
   });
   flow.start();
 
@@ -126,7 +130,7 @@ function setup(
   /** Presses a button on the bubble currently on screen. */
   const press = (action: string) => queue.emit('response', { id: last().id, action, via: 'button' });
   const settle = () => new Promise((r) => setTimeout(r, 30));
-  return { flow, bus, queue, sessionChange, pushed, last, press, settle, env, logs, ladderOpen, mascot, markImGood, capture, confirm, requestPageSummary, requestHintsSpy, db };
+  return { flow, bus, queue, sessionChange, pushed, last, press, settle, env, logs, ladderOpen, mascot, thinking, markImGood, capture, confirm, requestPageSummary, requestHintsSpy, db };
 }
 
 const labels = (n: NudgeInput) => (n.buttons ?? []).map((b) => b.action);
@@ -211,6 +215,22 @@ describe('hint flow: accept -> five ladder levels', () => {
     t.press(ACTIONS.SHOW_ANSWER);
     await t.settle();
     expect(t.pushed).toHaveLength(count);
+  });
+});
+
+describe('hint flow: Wolfie thinking while a reply is on its way', () => {
+  it('thinks while the ladder is made and while "Show the answer" is asked; not for pre-built steps', async () => {
+    const t = setup();
+    t.bus.emit('help-requested', 'manual');
+    expect(t.thinking).toEqual([true]);
+    await t.settle();
+    expect(t.thinking).toEqual([true, false]);
+    t.press(ACTIONS.ANOTHER_HINT); // the next level is already there: no wait
+    expect(t.thinking).toEqual([true, false]);
+    t.press(ACTIONS.SHOW_ANSWER);
+    expect(t.thinking).toEqual([true, false, true]);
+    await t.settle();
+    expect(t.thinking).toEqual([true, false, true, false]);
   });
 });
 
@@ -469,5 +489,239 @@ describe('screen capture helper', () => {
       }
     };
     expect(await captureActiveWindow({ desktopCapturer: broken, screenAccess: () => 'granted' })).toEqual({ ok: false, reason: 'error' });
+  });
+});
+
+describe('hint flow with Watch mode on', () => {
+  const hooks = (mode: 'learning' | 'homework' | 'other', over: Partial<NonNullable<HintFlowDeps['watch']>> = {}) => {
+    const explain = vi.fn(async (_q: string | null) => ({ ok: true as const, text: 'He gates each score with a mask. That keeps heads sparse.', label: 'From your session' }));
+    const currentFrame = vi.fn(async () => 'data:image/jpeg;base64,QUFB');
+    return {
+      explain,
+      currentFrame,
+      watch: {
+        active: () => true,
+        mode: () => mode,
+        contextText: () => 'Sources this session: [paper] Sparse Gated Attention',
+        currentFrame,
+        explain,
+        ...over
+      }
+    };
+  };
+
+  it('learning mode: clicking Wolfie explains from the session instead of a hint ladder or screenshot prompt', async () => {
+    const h = hooks('learning');
+    const t = setup({ watch: h.watch });
+    t.bus.emit('help-requested', 'manual');
+    await t.settle();
+    expect(h.explain).toHaveBeenCalledWith(null, undefined);
+    expect(t.requestHintsSpy).not.toHaveBeenCalled();
+    expect(t.confirm).not.toHaveBeenCalled();
+    expect(t.last().text).toContain('He gates each score with a mask.');
+    expect(t.last().text).toContain('From your session');
+    expect(t.last().spokenText).toBe('He gates each score with a mask. That keeps heads sparse.');
+    expect(labels(t.last())).toEqual(['explain_simpler', ACTIONS.GOT_IT, ACTIONS.IM_GOOD]);
+    expect(t.flow.hasOpenExplanation()).toBe(true);
+    expect(t.ladderOpen).toEqual([true]);
+  });
+
+  it('"Explain more simply" asks again; "I got it" closes and lets offers resume', async () => {
+    const h = hooks('learning');
+    const t = setup({ watch: h.watch });
+    t.bus.emit('help-requested', 'manual');
+    await t.settle();
+    t.press('explain_simpler');
+    await t.settle();
+    // The follow-up carries the explanation it refers to
+    expect(h.explain).toHaveBeenLastCalledWith(FLOW_TEXT.simpler, 'He gates each score with a mask. That keeps heads sparse.');
+    t.press(ACTIONS.GOT_IT);
+    expect(t.flow.hasOpenExplanation()).toBe(false);
+    expect(t.ladderOpen.at(-1)).toBe(false);
+    expect(t.last().text).toBe(FLOW_TEXT.gotIt);
+  });
+
+  it('dismissing or going idle closes the explanation', async () => {
+    const t = setup({ watch: hooks('learning').watch });
+    t.bus.emit('help-requested', 'manual');
+    await t.settle();
+    t.env.now += LADDER_IDLE_MS + 1;
+    t.flow.tick();
+    expect(t.flow.hasOpenExplanation()).toBe(false);
+    expect(t.ladderOpen.at(-1)).toBe(false);
+  });
+
+  it('an explanation error is shown and does not leave offers blocked', async () => {
+    const t = setup({ watch: hooks('learning', { explain: async () => ({ ok: false as const, message: 'No key' }) }).watch });
+    t.bus.emit('help-requested', 'manual');
+    await t.settle();
+    expect(t.last().text).toBe('No key');
+    expect(t.ladderOpen).toEqual([true, false]);
+  });
+
+  it('homework mode: the hint ladder gets the session and the current screen, with no confirmation', async () => {
+    const h = hooks('homework');
+    const t = setup({ watch: h.watch, summary: null });
+    t.bus.emit('help-requested', 'manual');
+    await t.settle();
+    expect(h.explain).not.toHaveBeenCalled();
+    expect(t.confirm).not.toHaveBeenCalled();
+    expect(t.capture).not.toHaveBeenCalled();
+    const [context, source] = t.requestHintsSpy.mock.calls[0];
+    expect(source).toBe('screen');
+    expect(context.sessionContext).toContain('Sparse Gated Attention');
+    expect(context.imageDataUrl).toBe('data:image/jpeg;base64,QUFB');
+    expect(t.pushed).toHaveLength(1);
+  });
+
+  it('homework mode with a page summary sends both the page and the session', async () => {
+    const t = setup({ watch: hooks('homework').watch });
+    t.bus.emit('help-requested', 'manual');
+    await t.settle();
+    const [context, source] = t.requestHintsSpy.mock.calls[0];
+    expect(source).toBe('page');
+    expect(context.pageSummary?.problemId).toBe('demo-algebra-problem');
+    expect(context.sessionContext).toBeTruthy();
+  });
+
+  it('falls back to the normal flow when Watch mode has no frame and no page', async () => {
+    const h = hooks('homework', { currentFrame: async () => null });
+    const t = setup({ watch: h.watch, summary: null });
+    t.bus.emit('help-requested', 'manual');
+    await t.settle();
+    expect(t.capture).toHaveBeenCalled();
+    expect(t.confirm).toHaveBeenCalled();
+  });
+
+  it('Watch mode off: unchanged behavior', async () => {
+    const t = setup({ watch: { ...hooks('learning').watch, active: () => false }, summary: null });
+    t.bus.emit('help-requested', 'manual');
+    await t.settle();
+    expect(t.confirm).toHaveBeenCalled();
+    expect(t.requestHintsSpy).toHaveBeenCalled();
+  });
+});
+
+describe('captureActiveWindow JPEG (Watch mode frames)', () => {
+  it('encodes JPEG when asked and the thumbnail supports it, PNG otherwise', async () => {
+    const thumb = { isEmpty: () => false, toDataURL: () => 'data:image/png;base64,UE5H', toJPEG: () => Buffer.from('JPG') };
+    const getSources = vi.fn(async () => [{ id: 's', name: 'Screen 1', thumbnail: thumb }]);
+    const jpeg = await captureActiveWindow({ desktopCapturer: { getSources }, screenAccess: () => 'granted', jpegQuality: 60 });
+    expect(jpeg).toMatchObject({ ok: true, dataUrl: `data:image/jpeg;base64,${Buffer.from('JPG').toString('base64')}` });
+    const png = await captureActiveWindow({ desktopCapturer: { getSources }, screenAccess: () => 'granted' });
+    expect(png).toMatchObject({ ok: true, dataUrl: 'data:image/png;base64,UE5H' });
+  });
+});
+
+describe('Watch-mode explanation: voice and capture (review fixes)', () => {
+  const watch = (explain = vi.fn(async (_q: string | null) => ({ ok: true as const, text: 'Gated attention. It keeps heads sparse.', label: 'From your session' }))) => ({
+    explain,
+    hooks: {
+      active: () => true,
+      mode: () => 'learning' as const,
+      contextText: () => 'notes',
+      currentFrame: async () => null,
+      explain
+    }
+  });
+
+  it('"I got it" / "I\'m good" by voice act on the open explanation', async () => {
+    const w = watch();
+    const t = setup({ watch: w.hooks });
+    t.bus.emit('help-requested', 'manual');
+    await t.settle();
+    expect(t.flow.answer(ACTIONS.IM_GOOD, 'voice')).toBe(true);
+    expect(t.markImGood).toHaveBeenCalled();
+    expect(t.flow.hasOpenExplanation()).toBe(false);
+    expect(t.ladderOpen.at(-1)).toBe(false);
+  });
+
+  it('a spoken follow-up stays in the explanation (same flow, new bubble)', async () => {
+    const w = watch();
+    const t = setup({ watch: w.hooks });
+    t.bus.emit('help-requested', 'manual');
+    await t.settle();
+    expect(await t.flow.followupExplanation('why does the mask help?')).toBe(true);
+    expect(w.explain).toHaveBeenLastCalledWith('why does the mask help?', 'Gated attention. It keeps heads sparse.');
+    expect(t.flow.hasOpenExplanation()).toBe(true);
+    expect(await setup({ session: { id: 's2', assessmentMode: false } }).flow.followupExplanation('x')).toBe(false); // nothing open
+  });
+});
+
+describe('captureActiveWindow windowOnly', () => {
+  it('never falls back to the whole screen', async () => {
+    const thumb = { isEmpty: () => false, toDataURL: () => 'data:image/png;base64,UE5H' };
+    const getSources = vi.fn(async ({ types }: { types: string[] }) =>
+      types.includes('window') ? [{ id: 'w', name: 'Other window', thumbnail: thumb }] : [{ id: 's', name: 'Screen', thumbnail: thumb }]
+    );
+    const r = await captureActiveWindow({
+      desktopCapturer: { getSources },
+      screenAccess: () => 'granted',
+      frontWindow: () => ({ title: 'homework.pdf' }),
+      windowOnly: true
+    });
+    expect(r).toEqual({ ok: false, reason: 'empty' });
+    expect(getSources.mock.calls.some(([o]) => o.types.includes('screen'))).toBe(false);
+  });
+});
+
+describe('hint flow: hints follow the flagged wrong answer (two on screen)', () => {
+  const issues = [
+    { question: 'What is underfitting?', issue: 'This describes overfitting rather than underfitting.' },
+    { question: '2x + 5 = 13', issue: "The equation here doesn't match the original." }
+  ];
+  const watch = (mode: 'learning' | 'homework') => ({
+    active: () => true,
+    mode: () => mode,
+    contextText: () => 'notes',
+    currentFrame: async () => 'data:image/jpeg;base64,QUFB',
+    explain: vi.fn(async () => ({ ok: true as const, text: 'direct answer', label: 'x' })),
+    openIssues: () => issues
+  });
+
+  it('the ladder is about the first flagged problem, even in learning mode (hints, never the answer)', async () => {
+    const w = watch('learning');
+    const t = setup({ watch: w, summary: null });
+    t.bus.emit('help-requested', 'auto');
+    await t.settle();
+    expect(w.explain).not.toHaveBeenCalled();
+    const [context] = t.requestHintsSpy.mock.calls[0];
+    expect(context.focus).toContain('What is underfitting?');
+    expect(context.focus).toContain('overfitting rather than underfitting');
+  });
+
+  it('after "I got it", offers hints for the next one, and they focus on it', async () => {
+    const t = setup({ watch: watch('homework'), summary: null });
+    t.bus.emit('help-requested', 'auto');
+    await t.settle();
+    t.press(ACTIONS.GOT_IT);
+    expect(t.last().text).toContain("one more thing that looks off: the equation here doesn't match the original");
+    expect(labels(t.last())).toEqual(['next_issue', ACTIONS.IM_GOOD]);
+    t.press('next_issue');
+    await t.settle();
+    const [context] = t.requestHintsSpy.mock.calls[1];
+    expect(context.focus).toContain('2x + 5 = 13');
+  });
+});
+
+describe('hint flow: thinking pause', () => {
+  it('focuses the hints on the unanswered question', async () => {
+    const t = setup({
+      summary: null,
+      watch: {
+        active: () => true,
+        mode: () => 'homework',
+        contextText: () => 'notes',
+        currentFrame: async () => 'data:image/jpeg;base64,QUFB',
+        explain: vi.fn(),
+        openIssues: () => [],
+        stalledQuestion: () => 'What is overfitting?'
+      }
+    });
+    t.bus.emit('help-requested', 'auto');
+    await t.settle();
+    const [context] = t.requestHintsSpy.mock.calls[0];
+    expect(context.focus).toContain('What is overfitting?');
+    expect(context.focus).toContain('get started');
   });
 });

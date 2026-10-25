@@ -3,7 +3,7 @@
 // The pure parts live in ../lib and ./connection so they are unit-tested without chrome.*.
 import { EXTENSION_WS_PORT } from '@wolfie/shared';
 import { BacktrackDetector } from '../lib/backtrack';
-import { normalizeDomainInput, reportableDomain, type ReportState } from '../lib/report';
+import { contentUrlFor, normalizeDomainInput, reportableDomain, type ReportState } from '../lib/report';
 import type { ContentState, PopupStatus, RuntimeMessage, TabMessage } from '../lib/messages';
 import { DesktopConnection, type DeskStatePayload, type SocketLike } from './connection';
 
@@ -63,11 +63,22 @@ const ready = chrome.storage.local
 async function reportActiveTab(): Promise<void> {
   const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
   if (tab) reportTab(tab);
+  else reportNone();
+}
+
+/** Nothing reportable is in front: tell the desktop to forget the last domain (Watch mode relies on it). */
+function reportNone(): void {
+  if (desk.reporting) conn.send('ext.tab_none', {});
 }
 
 function reportTab(tab: chrome.tabs.Tab): void {
   const domain = reportableDomain(tab, reportState());
-  if (domain) conn.send('ext.tab', { domain, title: tab.title });
+  if (!domain) {
+    reportNone();
+    return;
+  }
+  const contentUrl = contentUrlFor(tab.url);
+  conn.send('ext.tab', contentUrl ? { domain, title: tab.title, contentUrl } : { domain, title: tab.title });
 }
 
 async function askActiveTabForSummary(): Promise<void> {
@@ -90,6 +101,12 @@ async function broadcastContentState(): Promise<void> {
     chrome.tabs.sendMessage(tab.id, message).catch(() => undefined);
   }
 }
+
+// Focus moved to a window this extension can't see (incognito) or away from Chrome
+chrome.windows.onFocusChanged.addListener((windowId) => {
+  if (windowId === chrome.windows.WINDOW_ID_NONE) reportNone();
+  else void reportActiveTab();
+});
 
 chrome.tabs.onActivated.addListener((info) => {
   chrome.tabs.get(info.tabId).then(reportTab, () => undefined);

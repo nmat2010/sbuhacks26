@@ -36,6 +36,15 @@ export const HintContextSchema = z.object({
   pageSummary: PageSummarySchema.optional(),
   imageDataUrl: z.string().optional(),
   problemId: z.string().optional(),
+  /** Watch mode: what the student has been reading/watching this session, as text (WATCH_MODE.md). */
+  sessionContext: z.string().max(8000).optional(),
+  /**
+   * The one problem to help with, when several are on screen (Watch mode saw it answered wrongly):
+   * its question and what looks off. The hints address only this problem.
+   */
+  focus: z.string().max(600).optional(),
+  /** The image is a Watch-mode frame: never written to disk, whatever image.storage_enabled says. */
+  imageNoStore: z.boolean().optional(),
   conversationHistory: z.array(ChatTurn).max(6).optional()
 });
 

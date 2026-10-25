@@ -31,6 +31,9 @@ export function normalizeDomainInput(input: string): string | null {
   return /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/.test(text) ? text : null;
 }
 
+// Paper/video URL rule, shared with the desktop's Watch mode (which applies it to Chrome's tab URL)
+export { contentUrlFor } from '@wolfie/shared';
+
 /**
  * The domain to report for a tab, or null if this tab must report nothing: not reporting,
  * paused (desktop or popup), incognito, no/unsupported URL, or excluded.

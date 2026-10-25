@@ -5,7 +5,10 @@
 
 import { join } from 'path';
 import WebSocket from 'ws';
-import { app, BrowserWindow, desktopCapturer, dialog, globalShortcut, nativeImage, systemPreferences } from 'electron';
+import { execFile } from 'child_process';
+import { existsSync } from 'fs';
+import { promisify } from 'util';
+import { app, BrowserWindow, desktopCapturer, dialog, globalShortcut, nativeImage, powerMonitor, shell, systemPreferences } from 'electron';
 import type { NudgeResponse } from '@wolfie/shared';
 import { stuckBus } from '../stuck/bus.js';
 import { ACTIONS } from '../stuck/actions.js';
@@ -13,6 +16,7 @@ import { EscalationEngine } from '../stuck/engine.js';
 import { getDatabase } from '../db/index.js';
 import { logEvent } from '../events.js';
 import { setMascotState } from '../overlay/state.js';
+import { beginThinking, thinkingEvents, whileThinking } from '../overlay/thinking.js';
 import { requestPageSummary } from '../sync/context.js';
 import { captureActiveWindow } from '../hints/capture.js';
 import { HintFlow } from '../hints/flow.js';
@@ -36,11 +40,37 @@ import { attachNudgeSpeech } from '../voice/nudge-speech.js';
 import { createVoiceService, type VoiceService } from '../voice/service.js';
 import type { IntentHandler } from '../voice/router.js';
 import type { VoiceIntent } from '../voice/intents.js';
+import { getLLMClient, LLMClient, selectProvider } from '../llm/client.js';
+import { PrefixedUsageStore, SqliteUsageStore } from '../llm/usage.js';
+import { foregroundEvents, getForeground, getTabReport } from '../foreground.js';
+import { isBrowserApp } from '../monitor/browsers.js';
+import { captureWindowById } from '../hints/capture.js';
+import { createFrontWindowReader } from '../watch/front-window.js';
+import { createBrowserProbe } from '../watch/browser-probe.js';
+import { getLatestPageSummary } from '../sync/context.js';
+import { isExcludedDomain } from '../sync/desk-state.js';
+import type { WatchHooks } from '../hints/flow.js';
+import { SessionMemory } from '../watch/memory.js';
+import { isStudying, Watcher } from '../watch/watcher.js';
+import { WatchController } from '../watch/controller.js';
+import { WatchAnswerService } from '../watch/answer.js';
+import { createResourceFinder, safeUrl } from '../watch/resources.js';
+import { attachChatLog, ChatLog } from '../chat/log.js';
 
 const cleanups: Array<() => void> = [];
 let voice: VoiceService | null = null;
 let engine: EscalationEngine | null = null;
 let flow: HintFlow | null = null;
+let watcher: Watcher | null = null;
+let watchController: WatchController | null = null;
+let watchAnswers: WatchAnswerService | null = null;
+let watchHooks: WatchHooks | undefined;
+let chatLog: ChatLog | null = null;
+const notifyChat = () => {
+  if (chatLog) broadcast('chat-history-changed', chatLog.list());
+};
+/** Set by registerWatch(); the escalation engine asks it before offering help. */
+let engagedCheck: (() => boolean) | null = null;
 /** The paper open in the reading view; spoken questions are answered from it. */
 let focusedPaperId: string | null = null;
 
@@ -59,9 +89,13 @@ export function registerIntelligence(): void {
   initLLMClient();
   configureHintService({ imageDir: join(app.getPath('userData'), 'images') });
   configureReading({ papersDir: join(app.getPath('userData'), 'papers') });
+  // Wolfie's thinking sprite while a reply the student asked for is on its way (overlay/thinking.ts)
+  cleanups.push(thinkingEvents.on('change', (thinking) => broadcast('wolfie-thinking', thinking)));
   registerVoice();
   registerEscalation();
+  registerWatch();
   registerHintFlow();
+  registerChat();
   registerPlan();
   registerReading();
 }
@@ -74,6 +108,7 @@ function registerEscalation(): void {
     getSession: getActiveSession,
     onSessionChange: (fn) => sessionEvents.on('change', fn),
     isPaused,
+    isEngaged: () => engagedCheck?.() ?? powerMonitor.getSystemIdleTime() < 10 * 60,
     isSnoozed: () => queue.isSnoozed(),
     voiceMode: () => getSetting('voice.enabled'),
     thresholds: () => getSetting('stuck.thresholds'),
@@ -97,6 +132,8 @@ function registerEscalation(): void {
 function registerHintFlow(): void {
   const queue = getNudgeQueue();
   const hints = getHintService();
+  let endFlowThinking: (() => void) | null = null;
+  cleanups.push(() => endFlowThinking?.());
 
   flow = new HintFlow({
     now: Date.now,
@@ -140,7 +177,12 @@ function registerHintFlow(): void {
     onSessionChange: (fn) => sessionEvents.on('change', fn),
     setLadderOpen: (open) => engine?.setLadderOpen(open),
     markImGood: () => engine?.imGood(),
-    log: safeLog
+    log: safeLog,
+    thinking: (on) => {
+      endFlowThinking?.();
+      endFlowThinking = on ? beginThinking() : null;
+    },
+    watch: watchHooks
   });
   flow.start();
   const idleTimer = setInterval(() => flow?.tick(), 5_000);
@@ -160,6 +202,222 @@ function registerHintFlow(): void {
 
   // Any nudge with spokenText is spoken in voice mode (hint bubbles carry the first two sentences)
   cleanups.push(attachNudgeSpeech(queue, (text) => voice?.speakIfVoice(text) ?? false));
+}
+
+/** Domain suffix match, the same rule the hint service uses for assessment domains. */
+function domainListed(domain: string | null, list: string[]): boolean {
+  if (!domain) return false;
+  const d = domain.toLowerCase();
+  return list.some((entry) => {
+    const e = entry.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    return e !== '' && (d === e || d.endsWith(`.${e}`));
+  });
+}
+
+// Watch mode (WATCH_MODE.md): watcher + session memory + answers, and the hooks the hint flow uses.
+function registerWatch(): void {
+  const memory = new SessionMemory();
+  // Its own daily budget (watch.calls_per_day), counted separately from hints and plans, and
+  // optionally its own model (GEMINI_WATCH_MODEL): Gemini quotas are per model, and the watcher
+  // makes most of the calls, so a cheaper flash-lite model keeps the main model free for answers
+  const watchModel = process.env.GEMINI_WATCH_MODEL?.trim();
+  const client = new LLMClient({
+    provider: watchModel ? selectProvider({ ...process.env, GEMINI_MODEL: watchModel }) : getLLMClient().provider,
+    usage: new PrefixedUsageStore(new SqliteUsageStore(), 'watch:'),
+    dailyCap: () => getSetting('watch.calls_per_day'),
+    timeoutMs: 30_000
+  });
+  const run = promisify(execFile) as unknown as (file: string, args: string[], opts: { timeout: number }) => Promise<{ stdout: string }>;
+  // Native helper (desktop/native, `npm run build:native`); without it nothing is captured
+  // Packaged builds ship it unpacked under Resources (electron-builder extraResources)
+  const helper = app.isPackaged
+    ? join(process.resourcesPath, 'native', 'bin', 'front-window')
+    : join(app.getAppPath(), 'native', 'bin', 'front-window');
+  if (!existsSync(helper)) console.warn('[watch] front-window helper missing; run npm run build:native in desktop/');
+
+  const w = new Watcher({
+    now: Date.now,
+    isActive: () => watchController?.isActive() ?? false,
+    intervalMs: () => getSetting('watch.interval_seconds') * 1000,
+    idleSeconds: () => powerMonitor.getSystemIdleTime(),
+    stallSeconds: () => getSetting('watch.stall_seconds'),
+    frontWindow: createFrontWindowReader(run, existsSync(helper) ? helper : null),
+    selfPid: process.pid,
+    isBrowser: (name) => isBrowserApp(name) || /^(safari|firefox|orion|zen|duckduckgo)/i.test(name.trim()),
+    probeBrowser: createBrowserProbe(run),
+    tabReport: getTabReport,
+    isExcludedApp: (name) => {
+      const n = name.trim().toLowerCase();
+      return getSetting('watch.excluded_apps').some((a) => a.trim().toLowerCase() === n);
+    },
+    isExcludedDomain: (domain) => isExcludedDomain(domain, getSetting('monitored.excluded_domains')),
+    getPageSummary: getLatestPageSummary,
+    capture: (windowId) =>
+      captureWindowById(
+        { desktopCapturer, screenAccess: () => systemPreferences.getMediaAccessStatus('screen'), thumbnailSize: { width: 1024, height: 640 }, jpegQuality: 60 },
+        windowId
+      ),
+    llm: () => client,
+    memory,
+    // The escalation engine logs stuck.signal itself
+    emitSignal: (signal) => stuckBus.emit('signal', signal),
+    onContentUrl: (url) => watchController?.onContentUrl(url),
+    onState: (state) => watchController?.onWatcherState(state),
+    onLook: () => watchController?.onLook(),
+    log: safeLog
+  });
+  watcher = w;
+
+  const controller = new WatchController({
+    now: Date.now,
+    getSetting,
+    setSetting,
+    getSession: getActiveSession,
+    isPaused,
+    memory,
+    watcher: w,
+    importPaper: async (url) => {
+      const res = await getReadingService().importPdfUrl(url);
+      return res.success && res.data
+        ? { ok: true as const, paperId: res.data.paper.id, title: res.data.paper.title }
+        : { ok: false as const, error: res.error ?? 'import failed' };
+    },
+    log: safeLog
+  });
+  watchController = controller;
+
+  // Questions use the main budget (api.call_limit_per_day, same usage rows as hints) but a longer
+  // timeout, because Gemini may be watching a whole video to answer
+  const answerClient = new LLMClient({
+    provider: getLLMClient().provider,
+    usage: new SqliteUsageStore(),
+    dailyCap: () => getSetting('api.call_limit_per_day'),
+    timeoutMs: 45_000
+  });
+  const answers = new WatchAnswerService({
+    now: Date.now,
+    memory,
+    llm: () => answerClient,
+    excerpts: (paperId, query, limit) => getReadingService().excerpts(paperId, query, limit),
+    paperTitle: (paperId) => memory.listSources().find((s) => s.paperId === paperId)?.title ?? null,
+    currentFrame: (maxAgeMs) => w.captureNow(maxAgeMs),
+    assessment: () =>
+      (getActiveSession()?.assessmentMode ?? false) ||
+      domainListed(getForeground()?.reportedDomain ?? null, getSetting('assessment.domains')),
+    findResources: createResourceFinder({ fetch: globalThis.fetch }),
+    log: safeLog
+  });
+  watchAnswers = answers;
+
+  // "Really working" (for automatic offers): at the keyboard in the last 10 minutes and, when Watch
+  // mode has a recent look, on a study task rather than browsing or an unrelated app
+  engagedCheck = () => {
+    const latest = memory.latest();
+    const fresh = !!latest && Date.now() - latest.ts <= 3 * 60_000;
+    // No input for 10 min means away, except while watching a lecture or video
+    const watchingVideo = fresh && latest!.obs.activity === 'watching_video';
+    if (powerMonitor.getSystemIdleTime() >= 10 * 60 && !watchingVideo) return false;
+    if (!controller.isActive() || !fresh) return true;
+    return isStudying(latest!.obs);
+  };
+
+  watchHooks = {
+    active: () => controller.isActive(),
+    mode: () => answers.mode(),
+    contextText: () => memory.toPromptText(8000),
+    openIssues: () => w.openIssues(),
+    stalledQuestion: () => w.stalledQuestion(),
+    currentFrame: () => w.captureNow(20_000),
+    explain: async (question, previousAnswer) => {
+      const res = await answers.ask({ question: question ?? '', inputMode: 'text', proactive: question === null, previousAnswer });
+      return res.success && res.data
+        ? { ok: true as const, text: res.data.answer, label: res.data.label }
+        : { ok: false as const, message: res.error ?? FALLBACK_WATCH_ERROR };
+    }
+  };
+
+  cleanups.push(controller.events.on('status', (status) => broadcast('watch-state', status)));
+  cleanups.push(foregroundEvents.on('change', () => w.poke()));
+  const refresh = () => controller.refresh();
+  cleanups.push(sessionEvents.on('change', refresh));
+  cleanups.push(sessionEvents.on('pause', refresh));
+  cleanups.push(
+    settingsEvents.on('change', (key) => {
+      if (key === 'watch.enabled' || key === 'watch.consented_at') refresh();
+    })
+  );
+
+  handle('watch-get', async () => controller.status());
+  handle('watch-set', async (patch) => controller.set(patch ?? {}));
+  handle('watch-consent', async (accepted) => controller.consent(accepted === true));
+  handle('watch-memory-get', async () => controller.memoryView());
+  handle('watch-memory-clear', async () => controller.clearMemory());
+  handle('chat-send', async (text) => {
+    const message = String(text ?? '').trim();
+    if (!message) return { kind: 'error' as const, error: 'Type a question first.' };
+    const history = chatLog?.recentTurns(6) ?? [];
+    chatLog?.add({ role: 'user', text: message });
+    notifyChat();
+    // Follow-ups stay in the conversation that is open (the reply comes back as a bubble/nudge)
+    if (flow?.hasOpenExplanation() && (await flow.followupExplanation(message))) return { kind: 'followup' as const };
+    if (flow?.hasOpenLadder()) {
+      void flow.followup(message);
+      return { kind: 'followup' as const };
+    }
+    const res = await whileThinking(answers.ask({ question: message, inputMode: 'text', history }));
+    if (res.success && res.data) {
+      chatLog?.add({ role: 'wolfie', text: res.data.answer, label: res.data.label, citations: res.data.citations, resources: res.data.resources });
+      notifyChat();
+      return { kind: 'answer' as const, answer: res.data };
+    }
+    const error = res.error ?? FALLBACK_WATCH_ERROR;
+    chatLog?.add({ role: 'wolfie', text: error });
+    notifyChat();
+    return { kind: 'error' as const, error };
+  });
+  handle('watch-ask', async (input) => {
+    if (!controller.isOn()) return { success: false, error: 'Turn on Watch mode first, so I can follow what you are studying.' };
+    return answers.ask({ question: String(input?.question ?? ''), inputMode: input?.inputMode === 'voice' ? 'voice' : 'text' });
+  });
+
+  refresh();
+}
+
+const FALLBACK_WATCH_ERROR = "Sorry, I couldn't put that together. Please try again in a moment.";
+
+// The chat history: help-flow steps and offers (shown as bubbles or in the chat), button answers,
+// and questions, kept across closing the chat and restarts (chat/log.ts).
+function registerChat(): void {
+  const log = new ChatLog(getDatabase);
+  chatLog = log;
+  cleanups.push(attachChatLog(getNudgeQueue(), log, notifyChat));
+
+  handle('chat-history', async () => log.list());
+  handle('open-link', async (url) => {
+    const target = safeUrl(typeof url === 'string' ? url : null);
+    if (!target) return { success: false };
+    await shell.openExternal(target);
+    return { success: true };
+  });
+  handle('chat-clear', async () => {
+    log.clear();
+    notifyChat();
+    return { success: true };
+  });
+  handle('chat-help', async () => {
+    log.add({ role: 'user', text: 'Help me with this' });
+    notifyChat();
+    stuckBus.emit('help-requested', 'manual');
+    return { success: true };
+  });
+  // "I'm stuck" beside Wolfie: the question on screen gets help now, without the 60 s wait
+  handle('help-stuck', async () => {
+    const question = watchController?.isActive() ? (watcher?.stuckNow() ?? null) : null;
+    log.add({ role: 'user', text: "I'm stuck" });
+    notifyChat();
+    stuckBus.emit('help-requested', 'manual');
+    return { success: true, question };
+  });
 }
 
 function registerPlan(): void {
@@ -240,6 +498,34 @@ function registerVoice(): void {
     hasOpenLadder: () => flow?.hasOpenLadder() ?? false,
     onFollowup: (utterance) => flow?.followup(utterance),
     onFreeSpeech: async (utterance) => {
+      // A follow-up to a Watch-mode explanation stays in that conversation
+      if (flow?.hasOpenExplanation() && (await flow.followupExplanation(utterance))) return true;
+      // Watch mode answers from the whole session (the reading view's paper wins while it is open)
+      if (!focusedPaperId && watchController?.isActive() && watchAnswers) {
+        const history = chatLog?.recentTurns(6) ?? [];
+        chatLog?.add({ role: 'user', text: utterance });
+        const res = await whileThinking(watchAnswers.ask({ question: utterance, inputMode: 'voice', history }));
+        if (res.success && res.data) {
+          chatLog?.add({ role: 'wolfie', text: res.data.answer, label: res.data.label, citations: res.data.citations, resources: res.data.resources });
+          notifyChat();
+          broadcast('watch-answer', res.data);
+          // Also as a bubble until the overlay chat panel (Thu, U2) shows watch-answer itself
+          getNudgeQueue().push(
+            {
+              kind: 'other',
+              level: 1,
+              text: `${res.data.answer}${res.data.resources.length ? `\n\n${res.data.resources.map((r) => `• ${r.title}`).join('\n')}\n(Links are in the chat.)` : ''}\n\n${res.data.label}`,
+              spokenText: firstSentences(res.data.answer),
+              buttons: [{ label: 'Got it', action: ACTIONS.GOT_IT, variant: 'primary' }],
+              priority: 8
+            },
+            { userInitiated: true }
+          );
+        } else if (res.error) {
+          broadcast('voice-trouble', res.error);
+        }
+        return true;
+      }
       if (!focusedPaperId) return false;
       const res = await getReadingService().ask({ paperId: focusedPaperId, mode: 'explain', inputMode: 'voice', question: utterance });
       if (res.success && res.data) {
@@ -303,6 +589,11 @@ function registerVoice(): void {
 /** Called on quit. */
 export function unregisterIntelligence(): void {
   while (cleanups.length) cleanups.pop()!();
+  watcher?.stop();
+  watcher = null;
+  watchController = null;
+  watchAnswers = null;
+  watchHooks = undefined;
   flow?.stop();
   flow = null;
   engine?.stop();

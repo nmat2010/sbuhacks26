@@ -50,7 +50,8 @@ export interface SyncInfo {
 }
 
 /** Settings the renderer may read and write. Pairing secrets have their own channels. */
-export type PublicSettingKey = Exclude<keyof SettingsValues, `pairing.${string}`>;
+/** Pairing secrets have their own screen; Watch mode on/off and consent go only through watch-set / watch-consent. */
+export type PublicSettingKey = Exclude<keyof SettingsValues, `pairing.${string}` | 'watch.enabled' | 'watch.consented_at'>;
 export type PublicSettings = { [K in PublicSettingKey]: SettingsValues[K] };
 
 export interface SettingsSetResult {

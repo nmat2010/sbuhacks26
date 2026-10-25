@@ -359,3 +359,139 @@ describe('EscalationEngine', () => {
     expect(JSON.stringify(t.logs)).not.toContain('secret');
   });
 });
+
+describe('EscalationEngine: Watch-mode signals', () => {
+  it('a weaker model_stuck does not downgrade an active strong one', () => {
+    const t = setup({ voice: false });
+    t.bus.emit('signal', t.strong('model_stuck'));
+    t.advance(45);
+    t.bus.emit('signal', t.weak('model_stuck'));
+    t.advance(90);
+    t.bus.emit('signal', t.weak('model_stuck'));
+    t.advance(135);
+    // Weak alone would cap at "?"; the strong signal still allows the offer
+    expect(t.pushed.some((n) => n.level === 3)).toBe(true);
+  });
+});
+
+describe('EscalationEngine: "really working" gate', () => {
+  it('makes no automatic offers while the student is not engaged, and resumes when they are', () => {
+    const t = setup({ voice: false });
+    let engaged = false;
+    (t.engine as unknown as { deps: { isEngaged: () => boolean } }).deps.isEngaged = () => engaged;
+    t.bus.emit('signal', t.strong());
+    t.advance(45);
+    t.advance(90);
+    expect(t.pushed).toHaveLength(0);
+    engaged = true;
+    t.advance(100);
+    t.advance(145);
+    t.advance(190);
+    expect(t.pushed.some((n) => n.level === 3)).toBe(true);
+  });
+});
+
+describe('EscalationEngine: Watch mode sees a wrong answer', () => {
+  it('offers help right away instead of climbing glance -> "?" first', () => {
+    const t = setup({ voice: false });
+    t.bus.emit('signal', { type: 'answer_seen_wrong', strength: 'strong', timestamp: t.clock.t });
+    expect(t.pushed.some((n) => n.level === 3)).toBe(true);
+  });
+
+  it('still waits 5 s after typing, and respects a decline', () => {
+    const t = setup({ voice: false });
+    t.bus.emit('input', t.clock.t);
+    t.bus.emit('signal', { type: 'answer_seen_wrong', strength: 'strong', timestamp: t.clock.t });
+    expect(t.pushed).toHaveLength(0);
+    t.advance(6);
+    expect(t.pushed.some((n) => n.level === 3)).toBe(true);
+  });
+});
+
+describe('EscalationEngine: the offer says what looks off', () => {
+  it('uses the issue Watch mode saw, and the generic text otherwise', () => {
+    const t = setup({ voice: false });
+    t.bus.emit('signal', {
+      type: 'answer_seen_wrong',
+      strength: 'strong',
+      timestamp: t.clock.t,
+      metadata: { source: 'watch', issue: "The equation here doesn't match the one in the problem set." }
+    });
+    expect(t.pushed.at(-1)?.text).toBe("Hmm, something looks off: the equation here doesn't match the one in the problem set. Want a hint?");
+    const u = setup({ voice: false, session: true });
+    u.bus.emit('signal', u.strong());
+    u.advance(45);
+    u.advance(90);
+    expect(u.pushed.at(-1)?.text).toBe(OFFER_TEXT);
+  });
+});
+
+describe('EscalationEngine: a new wrong answer after "Not now"', () => {
+  const wrong = (t: ReturnType<typeof setup>, issue: string) =>
+    t.bus.emit('signal', { type: 'answer_seen_wrong', strength: 'strong', timestamp: t.clock.t, metadata: { source: 'watch', issue } });
+
+  it('stays quiet for a minute, then offers again at full strength', () => {
+    const t = setup({ voice: false });
+    wrong(t, 'This describes overfitting rather than underfitting.');
+    const first = t.pushed.at(-1)!;
+    expect(first.level).toBe(3);
+    t.responses.emit('response', { id: 'n1', action: 'decline', via: 'button' });
+    const shown = t.pushed.length;
+
+    t.advance(30);
+    wrong(t, 'This still describes overfitting.');
+    t.advance(45);
+    expect(t.pushed).toHaveLength(shown); // still inside the minute of quiet
+
+    t.advance(61);
+    expect(t.pushed.length).toBe(shown + 1);
+    expect(t.pushed.at(-1)).toMatchObject({ level: 3, text: 'Hmm, something looks off: this still describes overfitting. Want a hint?' });
+  });
+
+  it('vague signals still get the full decline quiet', () => {
+    const t = setup({ voice: false });
+    wrong(t, 'x');
+    t.responses.emit('response', { id: 'n1', action: 'decline', via: 'button' });
+    const shown = t.pushed.length;
+    t.advance(70);
+    t.bus.emit('signal', t.strong());
+    for (let s = 75; s <= 170; s += 5) t.advance(s);
+    expect(t.pushed).toHaveLength(shown); // 3 min quiet not over yet
+  });
+
+  it("\"I'm good\" still silences wrong-answer offers", () => {
+    const t = setup({ voice: false });
+    wrong(t, 'x');
+    t.responses.emit('response', { id: 'n1', action: 'im_good', via: 'button' });
+    const shown = t.pushed.length;
+    t.advance(120);
+    wrong(t, 'y');
+    t.advance(130);
+    expect(t.pushed).toHaveLength(shown);
+  });
+});
+
+describe('EscalationEngine: two wrong answers at once', () => {
+  it('lists both in the offer', () => {
+    const t = setup({ voice: false });
+    for (const [question, issue] of [
+      ['What is underfitting?', 'This describes overfitting rather than underfitting.'],
+      ['2x + 5 = 13', "The equation here doesn't match the original."]
+    ]) {
+      t.bus.emit('input', t.clock.t); // same look: both arrive before the 5 s typing guard ends
+      t.bus.emit('signal', { type: 'answer_seen_wrong', strength: 'strong', timestamp: t.clock.t, metadata: { source: 'watch', issue, question } });
+    }
+    t.advance(6);
+    expect(t.pushed.at(-1)?.text).toBe(
+      "Hmm, 2 things look off: (1) this describes overfitting rather than underfitting; (2) the equation here doesn't match the original. Want a hint? We'll start with the first."
+    );
+  });
+});
+
+describe('EscalationEngine: thinking pause', () => {
+  it('offers right away, naming the question', () => {
+    const t = setup({ voice: false });
+    t.bus.emit('signal', { type: 'model_stuck', strength: 'strong', timestamp: t.clock.t, metadata: { source: 'watch', stall: true, question: 'What is overfitting?' } });
+    expect(t.pushed.at(-1)).toMatchObject({ level: 3, text: 'Taking a moment on "What is overfitting"? Want a hint to get started?' });
+  });
+});

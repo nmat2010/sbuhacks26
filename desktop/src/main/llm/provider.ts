@@ -3,7 +3,15 @@ import type { HintContext } from '@wolfie/shared';
 export type { HintContext };
 
 /** What a call is for. The mock provider keys its deterministic output on this. */
-export type LlmTask = 'hints' | 'followup' | 'plan' | 'ideas' | 'paper_answer' | 'generic';
+export type LlmTask =
+  | 'hints'
+  | 'followup'
+  | 'plan'
+  | 'ideas'
+  | 'paper_answer'
+  | 'watch_observe'
+  | 'watch_answer'
+  | 'generic';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -22,6 +30,8 @@ export interface LlmRequest {
   /** Conversation so far; the last message is the one being answered. Images attach to it. */
   messages: ChatMessage[];
   images?: LlmImage[];
+  /** Public YouTube watch URLs the model should watch (Gemini `fileData`). Attach to the last message. */
+  videos?: string[];
   /** JSON Schema for the reply (from zod-to-json-schema). Providers may ignore it. */
   jsonSchema?: Record<string, unknown>;
   /** Deterministic inputs for the mock provider (problem id, level, ...). Never sent to a real model. */
@@ -45,6 +55,8 @@ export type LlmErrorCode =
   | 'TIMEOUT'
   | 'NETWORK'
   | 'RATE_LIMITED'
+  /** The provider's daily quota is used up (e.g. Gemini free tier): retrying today won't help. */
+  | 'QUOTA'
   | 'AUTH'
   | 'BAD_REQUEST'
   | 'INVALID_JSON'

@@ -1,46 +1,72 @@
 import React, { useState, useEffect } from 'react';
-import ReactDOM from 'react-dom';
 import { Mascot, MascotState } from './components/Mascot';
 import { SpeechBubble } from './components/SpeechBubble';
 import { HoverMenu } from './components/HoverMenu';
-import { HintConversation, HintLevel } from './components/HintConversation';
+import { HintConversation } from './components/HintConversation';
+import { StuckButton } from './components/StuckButton';
 import { useNudge } from './hooks/useNudge';
 import { useVoiceIntents } from './hooks/useVoiceIntents';
+import type { MascotStateType } from '@wolfie/shared';
+
+/** Main's escalation states drawn with Thu's sprites (glance and "?" are thinking, alert is angry). */
+function spriteFor(state: MascotStateType): MascotState {
+  switch (state) {
+    case 'glance':
+    case 'question-mark':
+      return 'thinking';
+    case 'alert':
+      return 'angry';
+    case 'talking':
+    case 'sleeping':
+      return state;
+    default:
+      return 'idle';
+  }
+}
 
 function App() {
   const [isDragging, setIsDragging] = useState(false);
-  const [hasMoved, setHasMoved] = useState(false);
   const [mascotState, setMascotState] = useState<MascotState>('idle');
   const [voiceActive, setVoiceActive] = useState(false);
   const [showHoverMenu, setShowHoverMenu] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [showHintConversation, setShowHintConversation] = useState(false);
-  const [hoverMenuTimeout, setHoverMenuTimeout] = useState<NodeJS.Timeout | null>(null);
-
-  // Mascot position - load from localStorage or use default (bottom center)
-  const [position, setPosition] = useState(() => {
-    const saved = localStorage.getItem('wolfie-position');
-    if (saved) {
-      return JSON.parse(saved);
-    }
-    return { x: window.innerWidth / 2 - 110, y: window.innerHeight - 250 };
-  });
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
   const { currentNudge, dismissNudge, handleButtonClick } = useNudge();
   // Sprite state pushed by main when no bubble is showing (escalation glance / "?", sleeping)
-  const [baseState, setBaseState] = useState<MascotState>('idle');
+  const [baseState, setBaseState] = useState<MascotStateType>('idle');
 
   useEffect(() => window.electronAPI.on('overlay-state', setBaseState), []);
+  // Thinking sprite while a reply the student asked for is on its way (wins over bubbles)
+  const [thinking, setThinking] = useState(false);
+  useEffect(() => window.electronAPI.on('wolfie-thinking', setThinking), []);
 
-  // Cleanup hover menu timeout on unmount
+  // While the chat is open it takes the mouse, and help steps are shown in it instead of a bubble
+  const chatOpenRef = React.useRef(false);
   useEffect(() => {
-    return () => {
-      if (hoverMenuTimeout) {
-        clearTimeout(hoverMenuTimeout);
-      }
-    };
-  }, [hoverMenuTimeout]);
+    chatOpenRef.current = showHintConversation;
+    window.electronAPI.setIgnoreMouseEvents(!showHintConversation, { forward: true });
+    void window.electronAPI.invoke('overlay-expand', showHintConversation);
+  }, [showHintConversation]);
+  // Help answers (an explanation or hint step, or anything long) open the chat, where they can be
+  // scrolled; short prompts like the "Want a hint?" offer stay a bubble
+  useEffect(() => {
+    if (currentNudge?.kind !== 'stuck') return;
+    if (showHintConversation) {
+      dismissNudge();
+      return;
+    }
+    const helpActions = ['another_hint', 'explain_simpler', 'show_answer', 'got_it'];
+    const isHelpAnswer = currentNudge.text.length > 140 || (currentNudge.buttons ?? []).some((b) => helpActions.includes(b.action));
+    if (isHelpAnswer) {
+      // The answer is already in the chat history (recorded by the main process)
+      setShowHintConversation(true);
+      dismissNudge();
+    }
+  }, [showHintConversation, currentNudge, dismissNudge]);
+  const releaseMouse = () => {
+    if (!isDragging && !chatOpenRef.current) window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
+  };
 
   // Listen for voice toggle from context menu
   useEffect(() => {
@@ -81,25 +107,14 @@ function App() {
     }
   });
 
-  // Disable click-through when hint modal is open
-  useEffect(() => {
-    if (showHintConversation) {
-      console.log('[App] Modal opened, disabling click-through');
-      window.electronAPI.setIgnoreMouseEvents(false);
-    } else {
-      console.log('[App] Modal closed, re-enabling click-through');
-      window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
-    }
-  }, [showHintConversation]);
-
   // Update mascot state based on current nudge
   useEffect(() => {
-    if (currentNudge) {
+    if (thinking) {
+      setMascotState('thinking');
+    } else if (currentNudge) {
       switch (currentNudge.kind) {
         case 'stuck':
-          if (currentNudge.level === 1) {
-            setMascotState('thinking');
-          } else if (currentNudge.level === 2) {
+          if (currentNudge.level === 1 || currentNudge.level === 2) {
             setMascotState('thinking');
           } else {
             setMascotState('talking');
@@ -116,34 +131,20 @@ function App() {
           setMascotState('talking');
       }
     } else {
-      setMascotState(baseState);
+      setMascotState(spriteFor(baseState));
     }
-  }, [currentNudge, baseState]);
+  }, [thinking, currentNudge, baseState]);
 
   const handleMouseEnter = () => {
     // Disable click-through when hovering over mascot
     window.electronAPI.setIgnoreMouseEvents(false);
-
-    // Only show hover menu after a delay (to allow dragging without menu appearing)
-    const timeout = setTimeout(() => {
-      if (!isDragging && !hasMoved) {
-        setShowHoverMenu(true);
-      }
-    }, 300); // 300ms delay before showing menu
-    setHoverMenuTimeout(timeout);
+    // Show hover menu
+    setShowHoverMenu(true);
   };
 
   const handleMouseLeave = () => {
-    // Clear any pending hover menu timeout
-    if (hoverMenuTimeout) {
-      clearTimeout(hoverMenuTimeout);
-      setHoverMenuTimeout(null);
-    }
-
-    // Re-enable click-through when not hovering
-    if (!isDragging) {
-      window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
-    }
+    // Re-enable click-through when not hovering (not while the chat is open)
+    releaseMouse();
     // Hide hover menu
     setShowHoverMenu(false);
   };
@@ -153,76 +154,48 @@ function App() {
   };
 
   const handleBubbleLeave = () => {
-    if (!isDragging) {
-      window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
-    }
+    releaseMouse();
   };
+
+  // Dragging Wolfie moves the whole overlay window (main follows the cursor while the button is
+  // held). A press that moves more than a few pixels is a drag, not a click on Wolfie.
+  const dragRef = React.useRef<{ x: number; y: number; winX: number; winY: number; moved: boolean } | null>(null);
+  const draggedRef = React.useRef(false);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Store initial position to detect if it's a drag or a click
-    setDragOffset({
-      x: e.clientX - position.x,
-      y: e.clientY - position.y
-    });
+    if (e.button !== 0 || !(e.target as HTMLElement).closest('.mascot')) return;
     setIsDragging(true);
-    setHasMoved(false);
-
-    // Clear hover menu timeout if clicking
-    if (hoverMenuTimeout) {
-      clearTimeout(hoverMenuTimeout);
-      setHoverMenuTimeout(null);
-    }
+    dragRef.current = { x: e.screenX, y: e.screenY, winX: window.screenX, winY: window.screenY, moved: false };
+    void window.electronAPI.invoke('overlay-drag', 'start');
+    const onMove = (ev: MouseEvent) => {
+      const d = dragRef.current;
+      if (d && !d.moved && Math.hypot(ev.screenX - d.x, ev.screenY - d.y) > 4) {
+        d.moved = true;
+        setShowHoverMenu(false);
+      }
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      void window.electronAPI.invoke('overlay-drag', 'end');
+      // A drag if the pointer or the window itself moved (the click event comes right after this)
+      const d = dragRef.current;
+      draggedRef.current = !!d && (d.moved || Math.hypot(window.screenX - d.winX, window.screenY - d.winY) > 4);
+      dragRef.current = null;
+      setIsDragging(false);
+      if (!chatOpenRef.current) window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
   };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    setHasMoved(false);
-    window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
-    // Save position to localStorage
-    localStorage.setItem('wolfie-position', JSON.stringify(position));
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (isDragging) {
-      // Mark that we've moved (user is dragging, not just clicking)
-      setHasMoved(true);
-
-      // Hide hover menu while dragging
-      setShowHoverMenu(false);
-
-      // Calculate new position
-      let newX = e.clientX - dragOffset.x;
-      let newY = e.clientY - dragOffset.y;
-
-      // Constrain to window bounds (mascot is ~220px wide)
-      const mascotWidth = 220;
-      const mascotHeight = 220;
-      newX = Math.max(0, Math.min(newX, window.innerWidth - mascotWidth));
-      newY = Math.max(0, Math.min(newY, window.innerHeight - mascotHeight));
-
-      setPosition({ x: newX, y: newY });
-    }
-  };
-
+  // Clicking Wolfie opens (or closes) the chat; help starts from its "Help me with this" button
   const handleMascotClick = () => {
-    // Manual hint entry point (SPEC 4d); main routes it to the escalation engine
-    window.electronAPI.invoke('mascot-click');
-    // Disabled for now - modal was auto-opening
-    // setShowHintConversation(true);
-  };
-
-  const handleRequestHint = (level: HintLevel) => {
-    console.log(`Requesting hint level ${level}`);
-    // TODO: Call IPC to get actual hint from LLM
-    // await window.electronAPI.invoke('request-hint', { level, context });
-  };
-
-  const handleDismissHint = (action: 'got-it' | 'not-needed' | 'show-answer') => {
-    console.log(`Hint dismissed with action: ${action}`);
-    // TODO: Log to database
-    setTimeout(() => {
-      setShowHintConversation(false);
-    }, 500);
+    if (draggedRef.current) {
+      draggedRef.current = false; // the end of a drag, not a click
+      return;
+    }
+    setShowHintConversation((open) => !open);
   };
 
   const handleOpenTestPanel = () => {
@@ -241,141 +214,102 @@ function App() {
     setShowHoverMenu(false);
   };
 
+  // Hover-menu buttons to try each sprite for 3 s (Thu)
+  const testSprite = (state: MascotState) => {
+    setMascotState(state);
+    setShowHoverMenu(false);
+    setTimeout(() => setMascotState('idle'), 3000);
+  };
+
   const handleResume = () => {
     window.electronAPI.invoke('nudge-resume');
     setIsPaused(false);
     setShowHoverMenu(false);
   };
 
-  const handleTestThinking = () => {
-    // Set mascot to thinking state for testing
-    setMascotState('thinking');
-    setShowHoverMenu(false);
-    // Reset to idle after 3 seconds (4 frames at 3fps = 1.33s, give it time to loop)
-    setTimeout(() => {
-      setMascotState('idle');
-    }, 3000);
-  };
-
-  const handleTestHintModal = () => {
-    // Open hint conversation modal for testing
-    setShowHintConversation(true);
-    setShowHoverMenu(false);
-  };
-
-  const handleTestIdle = () => {
-    setMascotState('idle');
-    setShowHoverMenu(false);
-    setTimeout(() => setMascotState('idle'), 3000);
-  };
-
-  const handleTestTalking = () => {
-    setMascotState('talking');
-    setShowHoverMenu(false);
-    setTimeout(() => setMascotState('idle'), 3000);
-  };
-
-  const handleTestAngry = () => {
-    setMascotState('angry');
-    setShowHoverMenu(false);
-    setTimeout(() => setMascotState('idle'), 3000);
-  };
-
-  const handleTestSleeping = () => {
-    setMascotState('sleeping');
-    setShowHoverMenu(false);
-    setTimeout(() => setMascotState('idle'), 3000);
-  };
-
   return (
-    <>
+    <div
+      style={{
+        width: '100vw',
+        height: '100vh',
+        display: 'flex',
+        // Mascot sits at the bottom of the window so bubbles have room above it
+        alignItems: 'flex-end',
+        justifyContent: 'center',
+        paddingBottom: '12px',
+        boxSizing: 'border-box',
+        pointerEvents: 'none',
+        position: 'relative'
+      }}
+    >
       <div
-        onMouseMove={handleMouseMove}
-        style={{
-          width: '100vw',
-          height: '100vh',
-          pointerEvents: 'none',
-          position: 'relative'
+        onMouseDown={handleMouseDown}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          // Context menu handled by main process
         }}
+        style={{
+          pointerEvents: 'auto',
+          WebkitAppRegion: 'no-drag',
+          position: 'relative'
+        } as React.CSSProperties}
       >
+        {/* Hover area that includes both mascot and menu */}
         <div
-          onMouseDown={handleMouseDown}
-          onMouseUp={handleMouseUp}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            // Context menu handled by main process
-          }}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
           style={{
-            pointerEvents: 'auto',
-            WebkitAppRegion: 'no-drag',
-            position: 'absolute',
-            left: `${position.x}px`,
-            top: `${position.y}px`,
-            cursor: isDragging ? 'grabbing' : 'grab'
-          } as React.CSSProperties}
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center'
+          }}
         >
-          {/* Hover area that includes both mascot and menu */}
-          <div
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
-            style={{
-              position: 'relative',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center'
+          <HoverMenu
+            visible={showHoverMenu}
+            onOpenTestPanel={handleOpenTestPanel}
+            onTestIdle={() => testSprite('idle')}
+            onTestTalking={() => testSprite('talking')}
+            onTestAngry={() => testSprite('angry')}
+            onTestSleeping={() => testSprite('sleeping')}
+            onTestThinking={() => testSprite('thinking')}
+            onTestHintModal={() => {
+              setShowHintConversation(true);
+              setShowHoverMenu(false);
             }}
-          >
-            <HoverMenu
-              visible={showHoverMenu}
-              onOpenTestPanel={handleOpenTestPanel}
-              onTestIdle={handleTestIdle}
-              onTestTalking={handleTestTalking}
-              onTestAngry={handleTestAngry}
-              onTestSleeping={handleTestSleeping}
-              onTestThinking={handleTestThinking}
-              onTestHintModal={handleTestHintModal}
-              onSnooze={handleSnooze}
-              onPause={handlePause}
-              onResume={handleResume}
-              isPaused={isPaused}
-            />
+            onSnooze={handleSnooze}
+            onPause={handlePause}
+            onResume={handleResume}
+            isPaused={isPaused}
+          />
 
-            <Mascot
-              state={mascotState}
-              voiceActive={voiceActive}
-              onClick={handleMascotClick}
-            />
-          </div>
+          <Mascot
+            state={mascotState}
+            voiceActive={voiceActive}
+            onClick={handleMascotClick}
+          />
+        </div>
 
-          {/* The window ignores the mouse outside hover areas; take clicks while over the bubble */}
-          <div onMouseEnter={handleBubbleEnter} onMouseLeave={handleBubbleLeave}>
-            <SpeechBubble
-              nudge={currentNudge}
-              onButtonClick={handleButtonClick}
-              onDismiss={dismissNudge}
-            />
-          </div>
+        {!showHintConversation && <StuckButton onMouseEnter={handleBubbleEnter} onMouseLeave={handleBubbleLeave} />}
+
+        {/* The window ignores the mouse outside hover areas; take clicks while over the bubble */}
+        <div onMouseEnter={handleBubbleEnter} onMouseLeave={handleBubbleLeave}>
+          <SpeechBubble
+            nudge={currentNudge}
+            onButtonClick={handleButtonClick}
+            onDismiss={dismissNudge}
+          />
         </div>
       </div>
 
-      {/* Hint Conversation Modal - Rendered via Portal to bypass pointer-events: none */}
-      {showHintConversation && ReactDOM.createPortal(
+      {/* Hint Conversation Modal */}
+      {showHintConversation && (
         <HintConversation
-          onClose={() => {
-            console.log('[App] Closing hint conversation');
-            setShowHintConversation(false);
-          }}
-          onRequestHint={handleRequestHint}
-          onDismiss={handleDismissHint}
+          onClose={() => setShowHintConversation(false)}
           voiceMode={voiceActive}
-          contextPreview={{
-            type: 'page',
-            description: 'I can see you\'re working on a data structures problem about linked lists.'
-          }}
-        />,
-        document.body
+        />
       )}
-    </>
+    </div>
   );
 }
 

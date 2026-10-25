@@ -1,181 +1,135 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { ChatMessageView, WatchStatus } from '../../../common/ipc-intelligence';
 import './HintConversation.css';
 
-export type HintLevel = 1 | 2 | 3 | 4 | 5;
+// Wolfie's chat panel (opened by clicking Wolfie). Thu's design, wired to the backend by Tuan:
+// - "Help me with this" starts the help flow (an explanation in learning mode, the hint ladder in
+//   homework mode); its steps arrive as 'stuck' nudges and are shown here with their buttons.
+// - Typed messages go to chat-send: a follow-up to the open hint/explanation, or a question
+//   answered from the study session (Watch mode) or general knowledge.
 
-export interface HintMessage {
-  level: HintLevel;
-  text: string;
-  timestamp: Date;
-}
-
-export interface ConversationMessage {
-  role: 'user' | 'wolfie';
-  text: string;
-  timestamp: Date;
-  hintLevel?: HintLevel;
-}
+type ConversationMessage = ChatMessageView;
 
 interface HintConversationProps {
   onClose: () => void;
-  onRequestHint: (level: HintLevel) => void;
-  onDismiss: (action: 'got-it' | 'not-needed' | 'show-answer') => void;
-  assessmentMode?: boolean;
   voiceMode?: boolean;
-  contextPreview?: {
-    type: 'page' | 'screen' | 'handwriting' | 'camera';
-    description: string;
-  };
 }
 
-const HINT_LEVEL_NAMES: Record<HintLevel, string> = {
-  1: 'Nudge',
-  2: 'Hint',
-  3: 'Explanation',
-  4: 'Example',
-  5: 'Next Step'
+const GREETING: ConversationMessage = {
+  id: 'greeting',
+  ts: 0,
+  role: 'wolfie',
+  text: 'Hi! Ask me anything about what you are working on, or tap "Help me with this".'
 };
 
-export function HintConversation({
-  onClose,
-  onRequestHint,
-  onDismiss,
-  assessmentMode = false,
-  voiceMode = false,
-  contextPreview
-}: HintConversationProps) {
-  const [messages, setMessages] = useState<ConversationMessage[]>([
-    {
-      role: 'wolfie',
-      text: "I see you might be stuck. I'm here to help! What would you like?",
-      timestamp: new Date()
+const RESOURCE_ICONS: Record<string, string> = { video: '🎬', article: '📰', course: '🎓', book: '📚', paper: '📄' };
+
+function describeWatch(status: WatchStatus | null): { icon: string; text: string } | null {
+  if (!status) return null;
+  if (status.state === 'watching') {
+    // The model's description, unless it is about the window before the latest switch
+    const fresh =
+      status.subject && status.lastObservedAt !== null && (status.lookingSince === null || status.lastObservedAt >= status.lookingSince);
+    if (fresh) {
+      const what = status.activity ? status.activity.replace(/_/g, ' ') : 'working';
+      return { icon: '👀', text: `${what}: ${status.subject}` };
     }
-  ]);
-  const [currentLevel, setCurrentLevel] = useState<HintLevel>(0 as HintLevel);
+    if (status.looking) return { icon: '👀', text: `Looking at ${status.looking}...` };
+  }
+  if (!status.enabled || !status.consented) {
+    return { icon: '🙈', text: "Watch mode is off, so I only know what you tell me." };
+  }
+  return { icon: '⏸️', text: status.note ?? "I haven't had a look yet. Keep working and ask me anytime." };
+}
+
+export function HintConversation({ onClose, voiceMode = false }: HintConversationProps) {
+  // The conversation lives in the main process (kept across closing the chat and restarts)
+  const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [userInput, setUserInput] = useState('');
+  /** Waiting for Wolfie: the number of Wolfie messages when the request was made. */
+  const [waitingFrom, setWaitingFrom] = useState<number | null>(null);
+  const [watch, setWatch] = useState<WatchStatus | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const firstLoad = useRef(true);
 
-  const handleRequestNextHint = () => {
-    const nextLevel = Math.min((currentLevel + 1), 5) as HintLevel;
-    setCurrentLevel(nextLevel);
-    onRequestHint(nextLevel);
+  const wolfieCount = (list: ConversationMessage[]) => list.filter((m) => m.role === 'wolfie').length;
+  const busy = waitingFrom !== null && wolfieCount(messages) <= waitingFrom;
 
-    // Add user message
-    setMessages(prev => [...prev, {
-      role: 'user',
-      text: 'Give me another hint',
-      timestamp: new Date()
-    }]);
+  useEffect(() => {
+    void window.electronAPI.invoke('watch-get').then(setWatch).catch(() => setWatch(null));
+    void window.electronAPI.invoke('chat-history').then(setMessages).catch(() => setMessages([]));
+    const offs = [
+      window.electronAPI.on('watch-state', setWatch),
+      window.electronAPI.on('chat-history-changed', setMessages)
+    ];
+    return () => offs.forEach((off) => off());
+  }, []);
 
-    // Simulate Wolfie response (will be replaced with actual API call)
-    setTimeout(() => {
-      setMessages(prev => [...prev, {
-        role: 'wolfie',
-        text: getMockHintForLevel(nextLevel),
-        timestamp: new Date(),
-        hintLevel: nextLevel
-      }]);
-    }, 500);
+  // Give up waiting after a minute (the reply may have failed silently)
+  useEffect(() => {
+    if (waitingFrom === null) return;
+    const t = setTimeout(() => setWaitingFrom(null), 60_000);
+    return () => clearTimeout(t);
+  }, [waitingFrom]);
+
+  // On open, show the end of the conversation; afterwards bring each new message into view from
+  // its first line, so a long answer reads from the top
+  useEffect(() => {
+    const list = listRef.current;
+    const last = list?.lastElementChild as HTMLElement | null;
+    if (!list || !last) return;
+    if (firstLoad.current && messages.length) {
+      firstLoad.current = false;
+      list.scrollTo({ top: list.scrollHeight });
+      return;
+    }
+    list.scrollTo({ top: Math.max(0, last.offsetTop - list.offsetTop - 8), behavior: 'smooth' });
+  }, [messages, busy]);
+
+  const openStep = () => [...messages].reverse().find((m) => m.buttons?.length && !m.answered && m.nudgeId);
+
+  const handleHelp = () => {
+    setWaitingFrom(wolfieCount(messages));
+    void window.electronAPI.invoke('chat-help');
   };
 
-  const handleGotIt = () => {
-    setMessages(prev => [...prev, {
-      role: 'user',
-      text: "I got it, thanks!",
-      timestamp: new Date()
-    }]);
-
-    setTimeout(() => {
-      setMessages(prev => [...prev, {
-        role: 'wolfie',
-        text: "Great work! I'm always here if you need me. 🐺",
-        timestamp: new Date()
-      }]);
-    }, 300);
-
-    setTimeout(() => {
-      onDismiss('got-it');
-    }, 1500);
+  const handleButton = (message: ConversationMessage, action: string) => {
+    if (!message.nudgeId) return;
+    setWaitingFrom(wolfieCount(messages));
+    void window.electronAPI.invoke('nudge-response', { id: message.nudgeId, action, via: 'button' });
   };
 
-  const handleNotNeeded = () => {
-    onDismiss('not-needed');
-  };
-
-  const handleShowAnswer = () => {
-    setMessages(prev => [...prev, {
-      role: 'user',
-      text: "Show me the answer",
-      timestamp: new Date()
-    }]);
-
-    setTimeout(() => {
-      setMessages(prev => [...prev, {
-        role: 'wolfie',
-        text: "Here's a complete walkthrough of the solution...",
-        timestamp: new Date()
-      }]);
-    }, 500);
-
-    setTimeout(() => {
-      onDismiss('show-answer');
-    }, 2000);
-  };
-
-  const handleSendMessage = () => {
-    if (!userInput.trim()) return;
-
-    setMessages(prev => [...prev, {
-      role: 'user',
-      text: userInput,
-      timestamp: new Date()
-    }]);
-
+  const handleSendMessage = async () => {
+    const text = userInput.trim();
+    if (!text || busy) return;
     setUserInput('');
-
-    // Simulate Wolfie response (will be replaced with actual API call)
-    setTimeout(() => {
-      setMessages(prev => [...prev, {
-        role: 'wolfie',
-        text: "I understand. Let me help clarify that for you...",
-        timestamp: new Date()
-      }]);
-    }, 500);
-  };
-
-  const getMockHintForLevel = (level: HintLevel): string => {
-    const hints = {
-      1: "Have you tried reviewing the problem statement carefully? Sometimes the answer is in the details.",
-      2: "Think about what data structure would be most efficient here. What are the time complexity requirements?",
-      3: "A linked list allows O(1) insertion and deletion at known positions. The key is maintaining proper pointers between nodes.",
-      4: "Here's a similar problem: if you were organizing a queue of people, how would you handle someone joining in the middle? You'd need to update the connections.",
-      5: "Start by creating a Node class with data and next pointers. Then implement an insert method that updates the previous node's next pointer and sets the new node's next to the following node."
-    };
-    return hints[level] || "Let me help you with that...";
-  };
-
-  const handleOverlayClick = (e: React.MouseEvent) => {
-    console.log('[HintConversation] Overlay clicked');
-    // Close modal when clicking on the overlay background (not the container)
-    if (e.target === e.currentTarget) {
-      console.log('[HintConversation] Closing modal via overlay click');
-      onClose();
+    setWaitingFrom(wolfieCount(messages) + 0);
+    try {
+      const res = await window.electronAPI.invoke('chat-send', text);
+      if (res.kind !== 'followup') setWaitingFrom(null); // answers and errors are already in the history
+    } catch {
+      setWaitingFrom(null);
     }
   };
 
-  const handleCloseClick = () => {
-    console.log('[HintConversation] Close button clicked');
+  const handleClear = () => {
+    setWaitingFrom(null);
+    void window.electronAPI.invoke('chat-clear');
+  };
+
+  const handleClose = () => {
+    // Closing with a hint or explanation still open ends it, so Wolfie can offer help again later
+    const step = openStep();
+    if (step?.nudgeId) void window.electronAPI.invoke('nudge-response', { id: step.nudgeId, action: 'dismissed', via: 'button' });
     onClose();
   };
 
+  const shown = messages.length ? messages : [GREETING];
+  const seeing = describeWatch(watch);
+  const helpOpen = !!openStep();
+
   return (
-    <div
-      className="hint-conversation-overlay"
-      onClick={handleOverlayClick}
-      onMouseEnter={() => {
-        // Ensure the window accepts mouse events when hovering over modal
-        window.electronAPI?.setIgnoreMouseEvents?.(false);
-      }}
-    >
+    <div className="hint-conversation-overlay">
       <div className="hint-conversation-container">
         {/* Header */}
         <div className="hint-header">
@@ -184,110 +138,118 @@ export function HintConversation({
             <div>
               <h3 className="hint-title">Wolfie Sensei</h3>
               <p className="hint-subtitle">
-                {assessmentMode && <span className="assessment-badge">Assessment Mode</span>}
+                {watch?.mode === 'homework' && <span className="assessment-badge">Homework: hints only</span>}
                 {voiceMode && <span className="voice-badge">🎤 Voice Active</span>}
               </p>
             </div>
           </div>
-          <button className="close-btn" onClick={handleCloseClick}>×</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {messages.length > 0 && (
+              <button className="close-btn" title="Clear chat" style={{ fontSize: 14, width: 'auto', padding: '0 8px' }} onClick={handleClear}>
+                Clear
+              </button>
+            )}
+            <button className="close-btn" onClick={handleClose}>×</button>
+          </div>
         </div>
 
-        {/* Context Preview */}
-        {contextPreview && (
+        {/* What Wolfie sees (Watch mode) */}
+        {seeing && (
           <div className="context-preview">
             <div className="context-header">
-              <span className="context-icon">
-                {contextPreview.type === 'page' && '📄'}
-                {contextPreview.type === 'screen' && '🖥️'}
-                {contextPreview.type === 'handwriting' && '✍️'}
-                {contextPreview.type === 'camera' && '📷'}
-              </span>
+              <span className="context-icon">{seeing.icon}</span>
               <span className="context-label">What I see:</span>
             </div>
-            <p className="context-description">{contextPreview.description}</p>
+            <p className="context-description" title={seeing.text}>{seeing.text}</p>
           </div>
         )}
 
         {/* Messages */}
-        <div className="hint-messages">
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={`message ${message.role === 'user' ? 'message-user' : 'message-wolfie'}`}
-            >
-              {message.role === 'wolfie' && (
-                <div className="message-avatar">🐺</div>
-              )}
+        <div className="hint-messages" ref={listRef}>
+          {shown.map((message) => (
+            <div key={message.id} className={`message ${message.role === 'user' ? 'message-user' : 'message-wolfie'}`}>
+              {message.role === 'wolfie' && <div className="message-avatar">🐺</div>}
               <div className="message-content">
-                {message.hintLevel && (
-                  <div className="hint-level-badge">
-                    Level {message.hintLevel}: {HINT_LEVEL_NAMES[message.hintLevel]}
+                {message.label && <div className="hint-level-badge">{message.label}</div>}
+                <p className="message-text" style={{ whiteSpace: 'pre-wrap' }}>{message.text}</p>
+                {!!message.citations?.length && (
+                  <p className="message-time">
+                    {message.citations
+                      .map((c) => `${c.kind === 'video' ? '🎬' : '📄'} ${c.title}${c.locator ? ` (${c.locator})` : ''}`)
+                      .join(' · ')}
+                  </p>
+                )}
+                {!!message.resources?.length && (
+                  <div className="resource-list">
+                    {message.resources.map((r) => (
+                      <button
+                        key={r.url}
+                        className="resource-link"
+                        title={r.url}
+                        onClick={() => void window.electronAPI.invoke('open-link', r.url)}
+                      >
+                        <span className="resource-title">
+                          {RESOURCE_ICONS[r.kind] ?? '🔗'} {r.title}
+                        </span>
+                        {r.why && <span className="resource-why">{r.why}</span>}
+                        {r.detail && <span className="resource-detail">{r.checked ? r.detail : `🔎 ${r.detail}`}</span>}
+                      </button>
+                    ))}
                   </div>
                 )}
-                <p className="message-text">{message.text}</p>
+                {!!message.buttons?.length && !message.answered && (
+                  <div className="hint-actions" style={{ padding: '8px 0 0', borderTop: 'none' }}>
+                    {message.buttons.map((b) => (
+                      <button
+                        key={b.action}
+                        className={`action-btn ${b.variant === 'primary' ? 'primary' : 'secondary'}`}
+                        onClick={() => handleButton(message, b.action)}
+                      >
+                        {b.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <span className="message-time">
-                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {message.ts ? new Date(message.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                 </span>
               </div>
             </div>
           ))}
+          {busy && (
+            <div className="message message-wolfie">
+              <div className="message-avatar">🐺</div>
+              <div className="message-content">
+                <p className="message-text">Thinking...</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Actions */}
-        <div className="hint-actions">
-          {currentLevel > 0 && currentLevel < 5 && (
-            <button className="action-btn primary" onClick={handleRequestNextHint}>
-              Another Hint ({currentLevel + 1}/5)
+        {!helpOpen && (
+          <div className="hint-actions">
+            <button className="action-btn primary" onClick={handleHelp} disabled={busy}>
+              Help me with this
             </button>
-          )}
+          </div>
+        )}
 
-          <button className="action-btn success" onClick={handleGotIt}>
-            I Got It!
-          </button>
-
-          <button className="action-btn secondary" onClick={handleNotNeeded}>
-            I'm Good
-          </button>
-
-          {!assessmentMode && (
-            <button className="action-btn warning" onClick={handleShowAnswer}>
-              Show Answer
-            </button>
-          )}
-        </div>
-
-        {/* Input (for follow-up questions) */}
+        {/* Input (questions and follow-ups) */}
         <div className="hint-input-container">
           <input
             type="text"
             className="hint-input"
-            placeholder={voiceMode ? "Speak or type your question..." : "Ask a follow-up question..."}
+            autoFocus
+            placeholder={helpOpen ? 'Ask about this hint...' : voiceMode ? 'Speak or type your question...' : 'Ask me anything...'}
             value={userInput}
             onChange={(e) => setUserInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+            onKeyDown={(e) => e.key === 'Enter' && void handleSendMessage()}
           />
-          <button className="send-btn" onClick={handleSendMessage}>
+          <button className="send-btn" onClick={() => void handleSendMessage()} disabled={busy}>
             Send
           </button>
         </div>
-
-        {/* Hint Progress */}
-        {currentLevel > 0 && (
-          <div className="hint-progress">
-            <div className="progress-label">Hint Progress</div>
-            <div className="progress-track">
-              {[1, 2, 3, 4, 5].map(level => (
-                <div
-                  key={level}
-                  className={`progress-step ${level <= currentLevel ? 'active' : ''}`}
-                  title={HINT_LEVEL_NAMES[level as HintLevel]}
-                >
-                  {level}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

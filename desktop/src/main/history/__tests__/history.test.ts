@@ -150,11 +150,19 @@ describe('History', () => {
 });
 
 describe('settings access', () => {
-  it('reads every setting except pairing secrets', () => {
+  it('reads every setting except pairing secrets and the Watch-mode consent keys', () => {
     const s = readPublicSettings(getSetting) as unknown as Record<string, unknown>;
+    const hidden = (k: string) => k.startsWith('pairing.') || k === 'watch.enabled' || k === 'watch.consented_at';
     expect(s['monitored.excluded_domains']).toEqual(SettingsDefaults['monitored.excluded_domains']);
-    expect(Object.keys(s).some((k) => k.startsWith('pairing.'))).toBe(false);
-    expect(Object.keys(s).length).toBe(Object.keys(SettingsDefaults).filter((k) => !k.startsWith('pairing.')).length);
+    expect(Object.keys(s).some(hidden)).toBe(false);
+    expect(Object.keys(s).length).toBe(Object.keys(SettingsDefaults).filter((k) => !hidden(k)).length);
+  });
+
+  it('refuses to turn Watch mode on or fake consent through settings-set', () => {
+    expect(writePublicSetting('watch.enabled' as never, true, setSetting).success).toBe(false);
+    expect(writePublicSetting('watch.consented_at' as never, Date.now(), setSetting).success).toBe(false);
+    expect(getSetting('watch.enabled')).toBe(false);
+    expect(getSetting('watch.consented_at')).toBeNull();
   });
 
   it('writes valid values and normalizes domains and rule lists', () => {
@@ -236,6 +244,7 @@ describe('data controls', () => {
       INSERT INTO paper_meta (paper_id) VALUES ('pa1');
       INSERT INTO paper_chunks (paper_id, position, text) VALUES ('pa1', 0, 't');
       INSERT INTO paper_answer_meta (question_id, mode, grounded) VALUES (1, 'explain', 1);
+      INSERT INTO chat_messages (id, ts, role, text) VALUES ('c1', 1, 'user', 'hi');
     `);
     db.prepare("UPDATE streak_state SET current = 5, longest = 9, freezes_available = 2, last_freeze_grant = '2026-10-01' WHERE id = 1").run();
     setSetting('voice.enabled', true);

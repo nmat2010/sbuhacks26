@@ -14,6 +14,12 @@ export interface ExtensionBridgeDeps {
   emitProblemChanged(problemId: string | null): void;
   /** A6 forwards extension signals into stuckBus + web_signals. */
   onSignal?(signal: StruggleSignal, domain: string): void;
+  /**
+   * Chrome reports focus loss also when the student just clicks into Wolfie. When set, clearing is
+   * handed to this scheduler (which can wait and skip it while Wolfie is in front); otherwise the
+   * tab is forgotten at once.
+   */
+  scheduleTabNone?(clear: () => void): void;
 }
 
 export interface ExtensionBridge {
@@ -22,6 +28,24 @@ export interface ExtensionBridge {
   clearContext(): void;
   /** New session: the first problem seen counts as a change again. */
   resetProblem(): void;
+}
+
+/** Same site for content URLs: www./m. prefixes and youtu.be count as the same YouTube. */
+function sameSite(a: string | null, b: string): boolean {
+  if (!a) return false;
+  const norm = (h: string) => {
+    const x = h.toLowerCase().replace(/^(www|m)\./, '');
+    return x === 'youtu.be' ? 'youtube.com' : x;
+  };
+  return norm(a) === norm(b);
+}
+
+function hostOf(url: string): string | null {
+  try {
+    return new URL(url).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
 }
 
 export function createExtensionBridge(deps: ExtensionBridgeDeps): ExtensionBridge {
@@ -36,10 +60,21 @@ export function createExtensionBridge(deps: ExtensionBridgeDeps): ExtensionBridg
 
   return {
     handlers: {
-      onTab({ domain, title }) {
-        if (!allowed(domain)) return;
-        // The tab title is kept in memory only; app_events stores the OS window title instead.
-        deps.tracker.set(domain, title ?? null);
+      onTab({ domain, title, contentUrl }) {
+        if (!allowed(domain)) {
+          // An excluded page is in front: forget the previous one rather than keep it
+          deps.tracker.clear();
+          return;
+        }
+        // The tab title and content URL are kept in memory only; app_events stores the OS window
+        // title instead. A content URL must belong to the reported domain.
+        deps.tracker.set(domain, title ?? null, contentUrl && sameSite(hostOf(contentUrl), domain) ? contentUrl : null);
+      },
+      onTabNone() {
+        if (!deps.scheduleTabNone) return deps.tracker.clear();
+        const at = deps.tracker.getReportedAt();
+        // A newer tab report in the meantime wins over this "nothing here"
+        deps.scheduleTabNone(() => deps.tracker.clearIfUnchanged(at));
       },
       onPageSummary(summary) {
         if (!allowed(summary.domain, true)) return;

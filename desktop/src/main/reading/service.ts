@@ -18,7 +18,14 @@ import type { HttpGet } from '../papers/types.js';
 import { PaperNotFoundError, type PapersStore } from '../papers/store.js';
 import { Bm25Index } from './bm25.js';
 import { buildChunks } from './chunk.js';
-import { ArxivFetchError, downloadArxivPdf, fetchArxivMetadata, parseArxivId, type HttpGetBinary } from './arxiv-fetch.js';
+import {
+  ArxivFetchError,
+  downloadArxivPdf,
+  fetchArxivMetadata,
+  MAX_PDF_BYTES,
+  parseArxivId,
+  type HttpGetBinary
+} from './arxiv-fetch.js';
 import { extractPdf, PdfExtractError } from './extract.js';
 import type { ReadingStore, StoredChunk } from './store.js';
 
@@ -75,6 +82,55 @@ export class ReadingService {
     if (!id) return { success: false, error: "That doesn't look like an arXiv link or id. Try something like arxiv.org/abs/1706.03762." };
     const existing = this.deps.papers.findDuplicate(`https://arxiv.org/abs/${id}`, id);
     return this.fetchAndRead(id, existing?.id, goalId);
+  }
+
+  /**
+   * A PDF the student opened in the browser (Watch mode). arXiv links go through `importArxiv`;
+   * other links are downloaded directly, which fails for papers behind a login.
+   */
+  async importPdfUrl(url: string): Promise<BResult<{ paper: PaperView }>> {
+    // Already read (e.g. opened again in a later session): don't download it again
+    const ready = this.findReadableByUrl(url);
+    if (ready) return { success: true, data: { paper: ready } };
+    const arxivId = parseArxivId(url);
+    if (arxivId && /arxiv\.org/i.test(url)) return this.importArxiv(url);
+    const existing = this.deps.papers.findDuplicate(url);
+    let bytes: Uint8Array;
+    try {
+      const res = await this.deps.httpBinary(url);
+      if (res.status !== 200) return { success: false, error: `The PDF link answered HTTP ${res.status}.` };
+      if (res.data.length > MAX_PDF_BYTES) return { success: false, error: 'That PDF is too large to open here.' };
+      if (Buffer.from(res.data.subarray(0, 5)).toString('latin1') !== '%PDF-') {
+        return { success: false, error: "That link didn't return a PDF (it may need a login)." };
+      }
+      bytes = res.data;
+    } catch {
+      return { success: false, error: "I couldn't download that PDF." };
+    }
+    const name = decodeURIComponent(url.split('/').pop() ?? 'paper').replace(/\.pdf$/i, '');
+    return this.importBytes(bytes, { urlOrPath: url, fallbackTitle: name, existingId: existing?.id });
+  }
+
+  /** The library paper for a URL the student has open, if Wolfie has read it. */
+  findReadableByUrl(url: string): PaperView | null {
+    const arxivId = /arxiv\.org/i.test(url) ? parseArxivId(url) : null;
+    const paper = this.deps.papers.findDuplicate(arxivId ? `https://arxiv.org/abs/${arxivId}` : url, arxivId);
+    return paper?.readable ? paper : null;
+  }
+
+  /**
+   * The passages of a paper that best match `query` (keyword search, no model call), for Watch
+   * mode answers that draw on several sources. Empty if the paper has no text.
+   */
+  excerpts(paperId: string, query: string, limit = EXCERPTS): Array<{ section: string; page: number | null; text: string }> {
+    const chunks = this.deps.store.getChunks(paperId);
+    if (chunks.length === 0 || !query.trim()) return [];
+    const byId = new Map(chunks.map((c) => [c.id, c]));
+    return this.index(paperId, chunks)
+      .search(query, limit)
+      .map((h) => byId.get(h.id))
+      .filter((c): c is StoredChunk => !!c)
+      .map((c) => ({ section: c.section, page: c.page, text: c.text }));
   }
 
   /** Library papers added from recommendations have a link but no text yet. */
@@ -391,6 +447,7 @@ function joinList(items: string[]): string {
 function friendly(error: unknown): string {
   if (error instanceof LLMError) {
     if (error.code === 'DAILY_CAP') return "I've reached today's limit for questions. Try again tomorrow.";
+    if (error.code === 'QUOTA') return "Gemini's daily quota for this API key is used up. It resets at midnight Pacific time, or turn on billing in Google AI Studio.";
     if (error.code === 'SCHEMA' || error.code === 'INVALID_JSON') return "I couldn't put together a good answer this time. Please try asking again.";
   }
   return "I couldn't reach the question service. Check your connection and try again.";

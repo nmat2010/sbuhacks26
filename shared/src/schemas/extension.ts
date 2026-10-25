@@ -23,7 +23,23 @@ const envelope = <T extends string, P extends z.ZodTypeAny>(type: T, payload: P)
 export const ExtensionMessageSchema = z.discriminatedUnion('type', [
   // extension -> desktop
   envelope('ext.hello', z.object({ token: z.string(), extensionVersion: z.string() })),
-  envelope('ext.tab', z.object({ domain: z.string(), title: z.string().optional() })),
+  envelope(
+    'ext.tab',
+    z.object({
+      domain: z.string(),
+      title: z.string().optional(),
+      /**
+       * Full URL, sent only for papers and videos (a PDF, an arXiv page, a YouTube watch page) so
+       * Watch mode can read the paper or the video. Never sent for other pages.
+       */
+      contentUrl: z.string().url().max(2048).optional()
+    })
+  ),
+  /**
+   * The active tab reports nothing (excluded, incognito, not a web page, or Chrome lost focus).
+   * The desktop forgets the last domain so nothing is attributed to, or captured for, it.
+   */
+  envelope('ext.tab_none', z.object({})),
   envelope('ext.page_summary', z.object({ summary: PageSummarySchema })),
   envelope('ext.signal', z.object({ signal: StruggleSignalSchema, domain: z.string() })),
   // desktop -> extension

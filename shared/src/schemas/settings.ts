@@ -46,6 +46,15 @@ export const SettingsKeys = {
   EXTENSION_ID: 'pairing.extension_id',
   WEBAPP_DEVICES: 'pairing.webapp_devices',
 
+  // Watch mode (WATCH_MODE.md)
+  WATCH_ENABLED: 'watch.enabled',
+  WATCH_CONSENTED_AT: 'watch.consented_at',
+  WATCH_INTERVAL_SECONDS: 'watch.interval_seconds',
+  WATCH_EXCLUDED_APPS: 'watch.excluded_apps',
+  WATCH_AUTO_IMPORT_PAPERS: 'watch.auto_import_papers',
+  WATCH_CALLS_PER_DAY: 'watch.calls_per_day',
+  WATCH_STALL_SECONDS: 'watch.stall_seconds',
+
   // API
   API_CALL_LIMIT_PER_DAY: 'api.call_limit_per_day',
 
@@ -125,6 +134,17 @@ export interface SettingsValues {
   'pairing.extension_token': string | null;
   'pairing.extension_id': string | null;
   'pairing.webapp_devices': PairedDeviceType[];
+  'watch.enabled': boolean;
+  /** When the student accepted the Watch-mode consent screen (epoch ms), or null. */
+  'watch.consented_at': number | null;
+  'watch.interval_seconds': number;
+  /** App names that are never captured (matched case-insensitively against the app name). */
+  'watch.excluded_apps': string[];
+  'watch.auto_import_papers': boolean;
+  /** Separate cap for watcher calls, so watching never uses up the hint/plan budget. */
+  'watch.calls_per_day': number;
+  /** On an unanswered question with no keyboard/mouse input this long: offer a hint to get started. */
+  'watch.stall_seconds': number;
   'api.call_limit_per_day': number;
   'demo.mode': boolean;
 }
@@ -165,7 +185,9 @@ export const SettingsDefaults: SettingsValues = {
   'monitoring.capture_page_text': true,
   'monitored.rule_cooldown_minutes': 10,
   'nudge.max_per_hour': 12,
-  'nudge.cooldown_minutes': { distraction: 10, ai_tool: 10, stuck: 3, streak: 60, other: 5 },
+  // stuck: 1 min. The escalation engine paces offers itself (steps, decline quiet, "I'm good");
+  // this is only a safety net, and must not exceed the 1 min re-offer for a new wrong answer
+  'nudge.cooldown_minutes': { distraction: 10, ai_tool: 10, stuck: 1, streak: 60, other: 5 },
   'stuck.idle_minutes': 4,
   'stuck.long_problem_minutes': 12,
   'stuck.thresholds': {
@@ -199,6 +221,26 @@ export const SettingsDefaults: SettingsValues = {
   'pairing.extension_token': null,
   'pairing.extension_id': null,
   'pairing.webapp_devices': [],
+  'watch.enabled': false,
+  'watch.consented_at': null,
+  'watch.interval_seconds': 8,
+  'watch.excluded_apps': [
+    'Messages',
+    'Mail',
+    'FaceTime',
+    'WhatsApp',
+    'Signal',
+    'Telegram',
+    '1Password',
+    'Bitwarden',
+    'Keychain Access',
+    'System Settings',
+    'Wallet'
+  ],
+  // Opt-in: the Watch-mode consent screen asks "Let Wolfie read papers you open?" (WATCH_MODE.md §3.2)
+  'watch.auto_import_papers': false,
+  'watch.calls_per_day': 2000,
+  'watch.stall_seconds': 60,
   'api.call_limit_per_day': 200,
   'demo.mode': false
 };
