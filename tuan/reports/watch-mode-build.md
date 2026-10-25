@@ -130,3 +130,16 @@
 - **New option:** `GEMINI_WATCH_MODEL` gives the watcher its own model and quota pool. On this key today, `gemini-3.5-flash-lite`, `gemini-3.1-flash-lite` and `gemini-flash-lite-latest` still respond, while `gemini-3.5-flash` is also at 20/day.
 - **Recommendation:** turn on billing (Tier 1) for real use; the free tier can't support Watch mode.
 - Tests: 625 pass.
+
+## Update: third real run (chat scrolling root cause, "What I see" lag, homework offer)
+- **Chat scrolling, root cause found:** `overlay.html` makes the whole page `-webkit-app-region: drag`. On macOS, real mouse moves and scrolls over a drag region are handled by the system as window dragging and never reach the page. Only the mascot was `no-drag`.
+  - My earlier checks injected events inside Chromium, which skips that layer. A real macOS scroll event, posted with CGEvent over the chat, reproduced the bug: scrollTop stayed at 850.
+  - Fix: the chat panel and speech bubbles are `no-drag`. Re-test with a real macOS scroll: 850 → 130.
+  - Bubbles also get a 300 px scrollable maximum height. Long help answers (explanations, hint steps) open in the chat instead of a bubble; the short "Want a hint?" offer stays a bubble.
+- **"What I see" lagged:** the chat only updated on watcher *state* changes.
+  - Status is now emitted after every look.
+  - A window or tab switch pokes the watcher to look right away (at most one look per 3 s).
+  - The status carries `looking` / `lookingSince`, so the chat shows "Looking at <window>..." until a look about that window lands.
+- **Homework: Wolfie didn't step in.** The signals did fire (`answer_seen_wrong` + `model_stuck` at 19:44:44), but escalation climbs glance → "?" → offer at 45 s per step, and it holds whenever the latest look isn't study work (the student checked VS Code). It reached level 1 only at 19:46:04.
+  - Fix: `answer_seen_wrong` fast-tracks to the offer. It still waits 5 s after typing and respects decline, "I'm good", snooze and pause.
+- Tests: 630 pass. Real-app smoke: chat round trip plus real OS scrolling.

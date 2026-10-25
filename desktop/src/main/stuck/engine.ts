@@ -7,7 +7,7 @@ import type {
   StruggleSignal,
   StuckThresholdsType
 } from '@wolfie/shared';
-import { applyEscalationEvent, computeLevel, initialEscalationState, type EscalationState } from './escalation.js';
+import { applyEscalationEvent, computeLevel, ESCALATION_TIMING, initialEscalationState, type EscalationState } from './escalation.js';
 import { ACTIONS, AUTO_RESPONSES } from './actions.js';
 import type { stuckBus } from './bus.js';
 import type { EventType } from '../events.js';
@@ -151,6 +151,12 @@ export class EscalationEngine {
     const fresh = !existing;
     this.signals.set(signal.type, { signal, expiresAt: now + this.lifetimeMs(signal.type) });
     if (fresh) this.deps.log('stuck.signal', { type: signal.type, strength: signal.strength });
+    // Watch mode read a wrong answer on screen: step in now with the offer instead of climbing
+    // glance -> "?" over 90 s. The usual guards still apply (5 s after typing, declines, "I'm good",
+    // snooze, pause, not engaged), because the offer still goes through computeLevel.
+    if (signal.type === 'answer_seen_wrong' && this.state.lastLevel < 2) {
+      this.state = applyEscalationEvent(this.state, { type: 'shown', level: 2, at: now - ESCALATION_TIMING.stepCooldownMs });
+    }
     this.tick();
   }
 

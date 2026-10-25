@@ -18,6 +18,11 @@ export interface ForegroundInfo {
   ts: number;
 }
 
+import { TypedEmitter } from './typed-emitter.js';
+
+/** The front app or browser tab changed (monitor poll or extension report). */
+export const foregroundEvents = new TypedEmitter<{ change: [] }>();
+
 let provider: (() => ForegroundInfo | null) | null = null;
 let tabReportProvider: ((windowTitle: string | null) => { domain: string; contentUrl: string | null } | null) | null = null;
 

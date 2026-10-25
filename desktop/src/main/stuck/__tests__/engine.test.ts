@@ -390,3 +390,20 @@ describe('EscalationEngine: "really working" gate', () => {
     expect(t.pushed.some((n) => n.level === 3)).toBe(true);
   });
 });
+
+describe('EscalationEngine: Watch mode sees a wrong answer', () => {
+  it('offers help right away instead of climbing glance -> "?" first', () => {
+    const t = setup({ voice: false });
+    t.bus.emit('signal', { type: 'answer_seen_wrong', strength: 'strong', timestamp: t.clock.t });
+    expect(t.pushed.some((n) => n.level === 3)).toBe(true);
+  });
+
+  it('still waits 5 s after typing, and respects a decline', () => {
+    const t = setup({ voice: false });
+    t.bus.emit('input', t.clock.t);
+    t.bus.emit('signal', { type: 'answer_seen_wrong', strength: 'strong', timestamp: t.clock.t });
+    expect(t.pushed).toHaveLength(0);
+    t.advance(6);
+    expect(t.pushed.some((n) => n.level === 3)).toBe(true);
+  });
+});

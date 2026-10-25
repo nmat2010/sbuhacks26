@@ -41,7 +41,7 @@ import type { IntentHandler } from '../voice/router.js';
 import type { VoiceIntent } from '../voice/intents.js';
 import { getLLMClient, LLMClient, selectProvider } from '../llm/client.js';
 import { PrefixedUsageStore, SqliteUsageStore } from '../llm/usage.js';
-import { getForeground, getTabReport } from '../foreground.js';
+import { foregroundEvents, getForeground, getTabReport } from '../foreground.js';
 import { isBrowserApp } from '../monitor/browsers.js';
 import { captureWindowById } from '../hints/capture.js';
 import { createFrontWindowReader } from '../watch/front-window.js';
@@ -246,6 +246,7 @@ function registerWatch(): void {
     emitSignal: (signal) => stuckBus.emit('signal', signal),
     onContentUrl: (url) => watchController?.onContentUrl(url),
     onState: (state) => watchController?.onWatcherState(state),
+    onLook: () => watchController?.onLook(),
     log: safeLog
   });
   watcher = w;
@@ -316,6 +317,7 @@ function registerWatch(): void {
   };
 
   cleanups.push(controller.events.on('status', (status) => broadcast('watch-state', status)));
+  cleanups.push(foregroundEvents.on('change', () => w.poke()));
   const refresh = () => controller.refresh();
   cleanups.push(sessionEvents.on('change', refresh));
   cleanups.push(sessionEvents.on('pause', refresh));

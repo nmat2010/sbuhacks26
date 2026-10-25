@@ -32,6 +32,8 @@ export const STRONG_STUCK = 0.75;
 export const WEAK_STUCK = 0.5;
 /** No keyboard/mouse input for this long: the student is away, so nothing is looked at. */
 export const AWAY_SECONDS = 10 * 60;
+/** Minimum time between looks triggered by window/tab switches. */
+export const POKE_GAP_MS = 3000;
 /** Activities where "stuck" means something; browsing or "other" never raises a stuck signal. */
 const STUDY_ACTIVITIES = new Set<Observation['activity']>(['reading_paper', 'watching_video', 'homework', 'coding', 'writing']);
 
@@ -94,6 +96,8 @@ export interface WatcherDeps {
   /** A paper or video URL came into view (enrichment). */
   onContentUrl: (url: string) => void;
   onState?: (state: WatcherState) => void;
+  /** Something new to show: the window being looked at changed, or a look was recorded. */
+  onLook?: () => void;
   log: (type: EventType, payload: Record<string, unknown>) => void;
 }
 
@@ -120,6 +124,11 @@ export class Watcher {
   /** The newest frame, kept in memory briefly for questions asked right after (never written). */
   private frame: { dataUrl: string; ts: number } | null = null;
   private frameWindow: number | null = null;
+  /** The window the latest look is about (shown in the chat before the model answers). */
+  private looking: { app: string; title: string | null; windowId: number; since: number } | null = null;
+  /** A poke arrived during a look: the next look starts right after it. */
+  private poked = false;
+  private lastTickAt: number | null = null;
 
   constructor(private readonly deps: WatcherDeps) {}
 
@@ -137,11 +146,30 @@ export class Watcher {
     this.timer = null;
     this.frame = null;
     this.frameWindow = null;
+    this.looking = null;
     this.setState('idle');
   }
 
   getState(): WatcherState {
     return this.state;
+  }
+
+  /** The window currently being looked at; null while skipping, away or idle. */
+  lookingAt(): { app: string; title: string | null; since: number } | null {
+    return this.looking ? { app: this.looking.app, title: this.looking.title, since: this.looking.since } : null;
+  }
+
+  /** The front app or tab changed: look now instead of waiting for the next interval. */
+  poke(): void {
+    if (!this.running) return;
+    if (this.busy) {
+      this.poked = true;
+      return;
+    }
+    if (this.timer) clearTimeout(this.timer);
+    // At most one look every POKE_GAP_MS, so flicking through apps doesn't spend a call per window
+    const since = this.lastTickAt === null ? Infinity : this.deps.now() - this.lastTickAt;
+    this.schedule(Math.max(0, POKE_GAP_MS - since), this.loopToken);
   }
 
   /** True when watching stopped on Gemini's daily quota rather than Wolfie's own cap. */
@@ -265,7 +293,11 @@ export class Watcher {
     if (!this.running || token !== this.loopToken) return;
     this.timer = setTimeout(() => {
       this.timer = null;
-      void this.tick().finally(() => this.schedule(Math.max(1000, this.deps.intervalMs()), token));
+      void this.tick().finally(() => {
+        const soon = this.poked;
+        this.poked = false;
+        this.schedule(soon ? POKE_GAP_MS : Math.max(1000, this.deps.intervalMs()), token);
+      });
     }, delayMs);
   }
 
@@ -279,6 +311,7 @@ export class Watcher {
   async tick(): Promise<void> {
     const { deps } = this;
     if (this.busy) return;
+    this.lastTickAt = deps.now();
     if (!deps.isActive()) {
       this.frame = null;
       this.setState('idle');
@@ -294,11 +327,19 @@ export class Watcher {
       if (!resolved.ok) {
         // Private, excluded, unknown, or the student is away: no capture, and drop the last frame
         this.frame = null;
+        if (this.looking) {
+          this.looking = null;
+          deps.onLook?.();
+        }
         this.skipReason = resolved.reason ?? null;
         this.setState(resolved.state);
         return;
       }
       const fg = resolved.target;
+      if (this.looking?.windowId !== fg.windowId || this.looking.title !== fg.title) {
+        this.looking = { app: fg.app, title: fg.title, windowId: fg.windowId, since: deps.now() };
+        deps.onLook?.();
+      }
       const shot = await deps.capture(fg.windowId);
       if (stale()) return;
       // The student may have switched window or tab while we captured: then this frame is dropped
@@ -348,6 +389,7 @@ export class Watcher {
       this.emitSignals(obs, now);
       deps.log('watch.observed', { activity: obs.activity, mode: obs.mode, stuck: obs.stuck.likely });
       this.setState('watching');
+      deps.onLook?.();
     } catch (error) {
       if (stale()) return; // stopped meanwhile: stay idle
       if (error instanceof LLMError && (error.code === 'DAILY_CAP' || error.code === 'QUOTA')) {

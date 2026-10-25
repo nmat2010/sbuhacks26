@@ -11,6 +11,9 @@
   justify-content: center;
   z-index: 2000;
   pointer-events: auto;
+  /* overlay.html makes the page a window-drag region; on macOS that swallows real scrolling,
+     hovering and typing, so the chat must opt out */
+  -webkit-app-region: no-drag;
 }
 
 .hint-conversation-container {

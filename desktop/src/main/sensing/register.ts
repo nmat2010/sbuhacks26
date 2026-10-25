@@ -44,7 +44,7 @@ import { isPublicSettingKey, keyPresent, readPublicSettings, writePublicSetting 
 import { startLanLink, type LanLink } from '../sync/lan-link.js';
 import { getPlanSnapshotForSync, getStreakSnapshotForSync, notifySnapshotsChanged, setStreakSnapshotProvider } from '../sync/snapshots.js';
 import type { SyncInfo } from '../../common/ipc-sensing.js';
-import { setForegroundProvider, setTabReportProvider, type ForegroundInfo } from '../foreground.js';
+import { foregroundEvents, setForegroundProvider, setTabReportProvider, type ForegroundInfo } from '../foreground.js';
 import { setFrontWindowProvider } from '../hints/capture.js';
 
 const execFileAsync = promisify(execFile);
@@ -175,8 +175,13 @@ export function registerSensing(): void {
     const off = sessionEvents.on('change', (s) => {
       if (s) void m.poke();
     });
+    // Watch mode looks again right away when the app or tab changes
+    const offFg = m.events.on('foreground', () => foregroundEvents.emit('change'));
+    const offTab = domainTracker.events.on('change', () => foregroundEvents.emit('change'));
     return () => {
       off();
+      offFg();
+      offTab();
       setForegroundProvider(null);
       setTabReportProvider(null);
       setFrontWindowProvider(null);

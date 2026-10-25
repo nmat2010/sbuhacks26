@@ -26,6 +26,8 @@ export interface ConversationMessage {
 interface HintConversationProps {
   onClose: () => void;
   voiceMode?: boolean;
+  /** A help answer that arrived as a bubble and opened the chat; shown first. */
+  initialNudge?: Nudge | null;
 }
 
 let seq = 0;
@@ -33,9 +35,15 @@ const nextId = () => `m${++seq}`;
 
 function describeWatch(status: WatchStatus | null): { icon: string; text: string } | null {
   if (!status) return null;
-  if (status.state === 'watching' && status.subject) {
-    const what = status.activity ? status.activity.replace(/_/g, ' ') : 'working';
-    return { icon: '👀', text: `${what}: ${status.subject}` };
+  if (status.state === 'watching') {
+    // The model's description, unless it is about the window before the latest switch
+    const fresh =
+      status.subject && status.lastObservedAt !== null && (status.lookingSince === null || status.lastObservedAt >= status.lookingSince);
+    if (fresh) {
+      const what = status.activity ? status.activity.replace(/_/g, ' ') : 'working';
+      return { icon: '👀', text: `${what}: ${status.subject}` };
+    }
+    if (status.looking) return { icon: '👀', text: `Looking at ${status.looking}...` };
   }
   if (!status.enabled || !status.consented) {
     return { icon: '🙈', text: "Watch mode is off, so I only know what you tell me." };
@@ -43,15 +51,19 @@ function describeWatch(status: WatchStatus | null): { icon: string; text: string
   return { icon: '⏸️', text: status.note ?? "I haven't had a look yet. Keep working and ask me anytime." };
 }
 
-export function HintConversation({ onClose, voiceMode = false }: HintConversationProps) {
-  const [messages, setMessages] = useState<ConversationMessage[]>([
-    {
-      id: nextId(),
-      role: 'wolfie',
-      text: 'Hi! Ask me anything about what you are working on, or tap "Help me with this".',
-      timestamp: new Date()
-    }
-  ]);
+export function HintConversation({ onClose, voiceMode = false, initialNudge = null }: HintConversationProps) {
+  const [messages, setMessages] = useState<ConversationMessage[]>(() =>
+    initialNudge
+      ? [{ id: nextId(), role: 'wolfie', text: initialNudge.text, nudgeId: initialNudge.id, buttons: initialNudge.buttons, timestamp: new Date() }]
+      : [
+          {
+            id: nextId(),
+            role: 'wolfie',
+            text: 'Hi! Ask me anything about what you are working on, or tap "Help me with this".',
+            timestamp: new Date()
+          }
+        ]
+  );
   const [userInput, setUserInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [watch, setWatch] = useState<WatchStatus | null>(null);

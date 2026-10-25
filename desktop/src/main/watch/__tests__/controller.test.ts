@@ -191,3 +191,15 @@ describe('WatchController: paper import (second real run)', () => {
     expect(attempts).toBe(2);
   });
 });
+
+describe('WatchController: live "looking" status', () => {
+  it('shows the window being looked at while watching', () => {
+    (watcher as unknown as { lookingAt: () => unknown }).lookingAt = () => ({ app: 'Google Chrome', title: 'Practice: Linear equations', since: 50 });
+    const c = make();
+    c.consent(true);
+    c.set({ enabled: true });
+    expect(c.status()).toMatchObject({ looking: 'Google Chrome — Practice: Linear equations', lookingSince: 50 });
+    paused = true;
+    expect(c.status().looking).toBeNull();
+  });
+});

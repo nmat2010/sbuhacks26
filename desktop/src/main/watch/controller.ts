@@ -16,7 +16,8 @@ export interface WatchControllerDeps {
   getSession: () => { id: string } | null;
   isPaused: () => boolean;
   memory: SessionMemory;
-  watcher: Pick<Watcher, 'start' | 'stop' | 'reset' | 'getState'> & Partial<Pick<Watcher, 'getSkipReason' | 'isQuotaExhausted'>>;
+  watcher: Pick<Watcher, 'start' | 'stop' | 'reset' | 'getState'> &
+    Partial<Pick<Watcher, 'getSkipReason' | 'isQuotaExhausted' | 'lookingAt'>>;
   /** Import a PDF/arXiv paper the student opened; the library paper, or why it failed. */
   importPaper: (url: string) => Promise<{ ok: true; paperId: string; title: string } | { ok: false; error: string }>;
   log: (type: EventType, payload: Record<string, unknown>) => void;
@@ -60,11 +61,25 @@ export class WatchController {
       activity: latest?.obs.activity ?? null,
       subject: latest?.obs.subject ?? null,
       lastObservedAt: latest?.ts ?? null,
+      looking: this.lookingText(),
+      lookingSince: this.isActive() ? (deps.watcher.lookingAt?.()?.since ?? null) : null,
       note: this.note(),
       intervalSeconds: deps.getSetting('watch.interval_seconds'),
       autoImportPapers: deps.getSetting('watch.auto_import_papers'),
       excludedApps: deps.getSetting('watch.excluded_apps')
     };
+  }
+
+  private lookingText(): string | null {
+    if (!this.isActive()) return null;
+    const w = this.deps.watcher.lookingAt?.();
+    if (!w) return null;
+    return w.title ? `${w.app} — ${w.title}` : w.app;
+  }
+
+  /** A new look or a new window: tell the UI (the chat's "What I see"). */
+  onLook(): void {
+    this.emit();
   }
 
   private note(): string | null {

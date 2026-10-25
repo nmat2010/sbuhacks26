@@ -3,6 +3,7 @@ import { Mascot, MascotState } from './components/Mascot';
 import { SpeechBubble } from './components/SpeechBubble';
 import { HoverMenu } from './components/HoverMenu';
 import { HintConversation } from './components/HintConversation';
+import type { Nudge } from '@wolfie/shared';
 import { useNudge } from './hooks/useNudge';
 import { useVoiceIntents } from './hooks/useVoiceIntents';
 
@@ -27,8 +28,22 @@ function App() {
     window.electronAPI.setIgnoreMouseEvents(!showHintConversation, { forward: true });
     void window.electronAPI.invoke('overlay-expand', showHintConversation);
   }, [showHintConversation]);
+  // Help answers (an explanation or hint step, or anything long) open the chat, where they can be
+  // scrolled; short prompts like the "Want a hint?" offer stay a bubble
+  const [chatOpener, setChatOpener] = useState<Nudge | null>(null);
   useEffect(() => {
-    if (showHintConversation && currentNudge?.kind === 'stuck') dismissNudge();
+    if (currentNudge?.kind !== 'stuck') return;
+    if (showHintConversation) {
+      dismissNudge();
+      return;
+    }
+    const helpActions = ['another_hint', 'explain_simpler', 'show_answer', 'got_it'];
+    const isHelpAnswer = currentNudge.text.length > 140 || (currentNudge.buttons ?? []).some((b) => helpActions.includes(b.action));
+    if (isHelpAnswer) {
+      setChatOpener(currentNudge);
+      setShowHintConversation(true);
+      dismissNudge();
+    }
   }, [showHintConversation, currentNudge, dismissNudge]);
   const releaseMouse = () => {
     if (!isDragging && !chatOpenRef.current) window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
@@ -134,6 +149,7 @@ function App() {
 
   // Clicking Wolfie opens (or closes) the chat; help starts from its "Help me with this" button
   const handleMascotClick = () => {
+    setChatOpener(null);
     setShowHintConversation((open) => !open);
   };
 
@@ -226,7 +242,14 @@ function App() {
 
       {/* Hint Conversation Modal */}
       {showHintConversation && (
-        <HintConversation onClose={() => setShowHintConversation(false)} voiceMode={voiceActive} />
+        <HintConversation
+          onClose={() => {
+            setShowHintConversation(false);
+            setChatOpener(null);
+          }}
+          voiceMode={voiceActive}
+          initialNudge={chatOpener}
+        />
       )}
     </div>
   );

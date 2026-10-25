@@ -232,6 +232,10 @@ export interface WatchStatus {
   activity: string | null;
   subject: string | null;
   lastObservedAt: number | null;
+  /** The window being looked at right now ("Google Chrome — Practice: Linear equations"), before the model has answered. */
+  looking: string | null;
+  /** When `looking` last changed; a description older than this is about the previous window. */
+  lookingSince: number | null;
   /** Why nothing is being watched right now, in words for the student; null when watching normally. */
   note: string | null;
   intervalSeconds: number;

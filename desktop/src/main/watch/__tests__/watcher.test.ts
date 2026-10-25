@@ -454,3 +454,35 @@ describe('titlesMatch', () => {
     expect(titlesMatch(null, 'x')).toBe(false);
   });
 });
+
+describe('Watcher: quick reaction to a window switch', () => {
+  it('poke() looks again within the 3 s gap instead of the full interval', async () => {
+    vi.useFakeTimers();
+    try {
+      const w = make();
+      w.start();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(calls).toHaveLength(1);
+      front = { app: 'Preview', pid: 500, windowId: 42, title: 'lecture.pdf' };
+      frame = FRAME_B;
+      w.poke();
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(calls).toHaveLength(2);
+      expect(captures.at(-1)).toBe(42);
+      w.stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('reports the window it is looking at before the model answers', async () => {
+    let looks = 0;
+    const w = make({ onLook: () => void looks++ });
+    await w.tick();
+    expect(w.lookingAt()).toMatchObject({ app: 'Google Chrome', title: 'paper.pdf' });
+    expect(looks).toBeGreaterThanOrEqual(2); // new window, then the recorded look
+    front = { app: 'Messages', pid: 200, windowId: 9, title: 'Mom' };
+    await w.tick();
+    expect(w.lookingAt()).toBeNull();
+  });
+});
