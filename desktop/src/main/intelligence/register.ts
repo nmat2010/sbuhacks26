@@ -9,7 +9,7 @@ import { execFile } from 'child_process';
 import { existsSync } from 'fs';
 import { promisify } from 'util';
 import { app, BrowserWindow, desktopCapturer, dialog, globalShortcut, nativeImage, powerMonitor, systemPreferences } from 'electron';
-import type { NudgeResponse } from '@wolfie/shared';
+import type { Nudge, NudgeResponse } from '@wolfie/shared';
 import { stuckBus } from '../stuck/bus.js';
 import { ACTIONS } from '../stuck/actions.js';
 import { EscalationEngine } from '../stuck/engine.js';
@@ -53,6 +53,7 @@ import { SessionMemory } from '../watch/memory.js';
 import { isStudying, Watcher } from '../watch/watcher.js';
 import { WatchController } from '../watch/controller.js';
 import { WatchAnswerService } from '../watch/answer.js';
+import { ChatLog, isTransient } from '../chat/log.js';
 
 const cleanups: Array<() => void> = [];
 let voice: VoiceService | null = null;
@@ -62,6 +63,10 @@ let watcher: Watcher | null = null;
 let watchController: WatchController | null = null;
 let watchAnswers: WatchAnswerService | null = null;
 let watchHooks: WatchHooks | undefined;
+let chatLog: ChatLog | null = null;
+const notifyChat = () => {
+  if (chatLog) broadcast('chat-history-changed', chatLog.list());
+};
 /** Set by registerWatch(); the escalation engine asks it before offering help. */
 let engagedCheck: (() => boolean) | null = null;
 /** The paper open in the reading view; spoken questions are answered from it. */
@@ -86,6 +91,7 @@ export function registerIntelligence(): void {
   registerEscalation();
   registerWatch();
   registerHintFlow();
+  registerChat();
   registerPlan();
   registerReading();
 }
@@ -338,14 +344,25 @@ function registerWatch(): void {
   handle('chat-send', async (text) => {
     const message = String(text ?? '').trim();
     if (!message) return { kind: 'error' as const, error: 'Type a question first.' };
+    const history = chatLog?.recentTurns(6) ?? [];
+    chatLog?.add({ role: 'user', text: message });
+    notifyChat();
     // Follow-ups stay in the conversation that is open (the reply comes back as a bubble/nudge)
     if (flow?.hasOpenExplanation() && (await flow.followupExplanation(message))) return { kind: 'followup' as const };
     if (flow?.hasOpenLadder()) {
       void flow.followup(message);
       return { kind: 'followup' as const };
     }
-    const res = await answers.ask({ question: message, inputMode: 'text' });
-    return res.success && res.data ? { kind: 'answer' as const, answer: res.data } : { kind: 'error' as const, error: res.error ?? FALLBACK_WATCH_ERROR };
+    const res = await answers.ask({ question: message, inputMode: 'text', history });
+    if (res.success && res.data) {
+      chatLog?.add({ role: 'wolfie', text: res.data.answer, label: res.data.label, citations: res.data.citations });
+      notifyChat();
+      return { kind: 'answer' as const, answer: res.data };
+    }
+    const error = res.error ?? FALLBACK_WATCH_ERROR;
+    chatLog?.add({ role: 'wolfie', text: error });
+    notifyChat();
+    return { kind: 'error' as const, error };
   });
   handle('watch-ask', async (input) => {
     if (!controller.isOn()) return { success: false, error: 'Turn on Watch mode first, so I can follow what you are studying.' };
@@ -356,6 +373,44 @@ function registerWatch(): void {
 }
 
 const FALLBACK_WATCH_ERROR = "Sorry, I couldn't put that together. Please try again in a moment.";
+
+// The chat history: help-flow steps and offers (shown as bubbles or in the chat), button answers,
+// and questions, kept across closing the chat and restarts (chat/log.ts).
+function registerChat(): void {
+  const log = new ChatLog(getDatabase);
+  chatLog = log;
+  const queue = getNudgeQueue();
+  const onShow = (nudge: Nudge) => {
+    if (nudge.kind !== 'stuck' || isTransient(nudge.text)) return;
+    log.add({ role: 'wolfie', text: nudge.text, nudgeId: nudge.id, buttons: nudge.buttons });
+    notifyChat();
+  };
+  const onResponse = (response: NudgeResponse) => {
+    const label = log.buttonLabel(response.id, response.action);
+    if (!log.markAnswered(response.id) && !label) return;
+    if (label) log.add({ role: 'user', text: label });
+    notifyChat();
+  };
+  queue.on('show', onShow);
+  queue.on('response', onResponse);
+  cleanups.push(() => {
+    queue.off('show', onShow);
+    queue.off('response', onResponse);
+  });
+
+  handle('chat-history', async () => log.list());
+  handle('chat-clear', async () => {
+    log.clear();
+    notifyChat();
+    return { success: true };
+  });
+  handle('chat-help', async () => {
+    log.add({ role: 'user', text: 'Help me with this' });
+    notifyChat();
+    stuckBus.emit('help-requested', 'manual');
+    return { success: true };
+  });
+}
 
 function registerPlan(): void {
   const plan = () => getPlanService();
@@ -439,8 +494,12 @@ function registerVoice(): void {
       if (flow?.hasOpenExplanation() && (await flow.followupExplanation(utterance))) return true;
       // Watch mode answers from the whole session (the reading view's paper wins while it is open)
       if (!focusedPaperId && watchController?.isActive() && watchAnswers) {
-        const res = await watchAnswers.ask({ question: utterance, inputMode: 'voice' });
+        const history = chatLog?.recentTurns(6) ?? [];
+        chatLog?.add({ role: 'user', text: utterance });
+        const res = await watchAnswers.ask({ question: utterance, inputMode: 'voice', history });
         if (res.success && res.data) {
+          chatLog?.add({ role: 'wolfie', text: res.data.answer, label: res.data.label, citations: res.data.citations });
+          notifyChat();
           broadcast('watch-answer', res.data);
           // Also as a bubble until the overlay chat panel (Thu, U2) shows watch-answer itself
           getNudgeQueue().push(

@@ -200,3 +200,17 @@
   - The hint flow focuses on that question ("help them get started (no answer)"). Flagged wrong answers still come first.
 - **Verified on real `gemini-3.1-flash-lite`:** a Doc with two wrong answers and a blank "what is overfitting?" returned both wrong checks plus `unanswered_question: "what is overfitting?"`.
 - Tests: 645 pass.
+
+## Update: chat history kept, and remembered
+- **Reported:** closing and reopening the chat lost the conversation.
+- **Fix:**
+  - **Storage:** the conversation lives in the main process and in SQLite (migration `205_b_chat_messages`, newest 200 messages, `chat/log.ts`).
+  - **What's recorded:**
+    - questions from typing (`chat-send`) and voice, with their answers (label and citations);
+    - help-flow steps and offers, including ones shown as bubbles while the chat was closed (the transient "Let me take a look..." is skipped);
+    - the label of each button pressed;
+    - only the newest step keeps active buttons.
+  - **Panel:** loads `chat-history` and follows `chat-history-changed`; opens scrolled to the end; has a "Clear" button (`chat-clear`). "Help me with this" goes through `chat-help`, so it's recorded.
+  - **Memory:** the last 6 turns go with each question (`conversation` in the watch-answer payload, plus a prompt rule on continuity), so Wolfie remembers what was said.
+  - **Privacy:** local only, and included in "Clear all data" (`DATA_TABLES`).
+- **Verified:** two real app runs on the same data folder. Run 1 opened with the greeting and asked 5 questions; run 2 opened the chat with all 10 messages. 657 tests pass.

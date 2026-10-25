@@ -46,6 +46,8 @@ export interface AskInput {
   proactive?: boolean;
   /** Wolfie's previous answer, when this is a follow-up to it ("why does that work?"). */
   previousAnswer?: string;
+  /** The recent chat (oldest first), so Wolfie remembers what was said. */
+  history?: Array<{ role: 'user' | 'assistant'; content: string }>;
 }
 
 interface NumberedSource {
@@ -83,6 +85,7 @@ export class WatchAnswerService {
     const payload = {
       question: question || null,
       previous_answer: input.previousAnswer?.slice(0, 2500),
+      conversation: input.history?.length ? input.history.slice(-6) : undefined,
       proactive: !!input.proactive,
       mode,
       assessment: deps.assessment(),

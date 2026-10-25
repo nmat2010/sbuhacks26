@@ -244,6 +244,7 @@ describe('data controls', () => {
       INSERT INTO paper_meta (paper_id) VALUES ('pa1');
       INSERT INTO paper_chunks (paper_id, position, text) VALUES ('pa1', 0, 't');
       INSERT INTO paper_answer_meta (question_id, mode, grounded) VALUES (1, 'explain', 1);
+      INSERT INTO chat_messages (id, ts, role, text) VALUES ('c1', 1, 'user', 'hi');
     `);
     db.prepare("UPDATE streak_state SET current = 5, longest = 9, freezes_available = 2, last_freeze_grant = '2026-10-01' WHERE id = 1").run();
     setSetting('voice.enabled', true);

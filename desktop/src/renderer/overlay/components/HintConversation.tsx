@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Nudge, NudgeButtonType } from '@wolfie/shared';
-import type { WatchAnswer, WatchStatus } from '../../../common/ipc-intelligence';
+import type { ChatMessageView, WatchStatus } from '../../../common/ipc-intelligence';
 import './HintConversation.css';
 
 // Wolfie's chat panel (opened by clicking Wolfie). Thu's design, wired to the backend by Tuan:
@@ -9,29 +8,19 @@ import './HintConversation.css';
 // - Typed messages go to chat-send: a follow-up to the open hint/explanation, or a question
 //   answered from the study session (Watch mode) or general knowledge.
 
-export interface ConversationMessage {
-  id: string;
-  role: 'user' | 'wolfie';
-  text: string;
-  timestamp: Date;
-  /** Bubble id for answering this message's buttons (nudge-response). */
-  nudgeId?: string;
-  buttons?: NudgeButtonType[];
-  /** Buttons are active only on the newest Wolfie message that has them. */
-  answered?: boolean;
-  label?: string;
-  citations?: WatchAnswer['citations'];
-}
+type ConversationMessage = ChatMessageView;
 
 interface HintConversationProps {
   onClose: () => void;
   voiceMode?: boolean;
-  /** A help answer that arrived as a bubble and opened the chat; shown first. */
-  initialNudge?: Nudge | null;
 }
 
-let seq = 0;
-const nextId = () => `m${++seq}`;
+const GREETING: ConversationMessage = {
+  id: 'greeting',
+  ts: 0,
+  role: 'wolfie',
+  text: 'Hi! Ask me anything about what you are working on, or tap "Help me with this".'
+};
 
 function describeWatch(status: WatchStatus | null): { icon: string; text: string } | null {
   if (!status) return null;
@@ -51,94 +40,79 @@ function describeWatch(status: WatchStatus | null): { icon: string; text: string
   return { icon: '⏸️', text: status.note ?? "I haven't had a look yet. Keep working and ask me anytime." };
 }
 
-export function HintConversation({ onClose, voiceMode = false, initialNudge = null }: HintConversationProps) {
-  const [messages, setMessages] = useState<ConversationMessage[]>(() =>
-    initialNudge
-      ? [{ id: nextId(), role: 'wolfie', text: initialNudge.text, nudgeId: initialNudge.id, buttons: initialNudge.buttons, timestamp: new Date() }]
-      : [
-          {
-            id: nextId(),
-            role: 'wolfie',
-            text: 'Hi! Ask me anything about what you are working on, or tap "Help me with this".',
-            timestamp: new Date()
-          }
-        ]
-  );
+export function HintConversation({ onClose, voiceMode = false }: HintConversationProps) {
+  // The conversation lives in the main process (kept across closing the chat and restarts)
+  const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [userInput, setUserInput] = useState('');
-  const [busy, setBusy] = useState(false);
+  /** Waiting for Wolfie: the number of Wolfie messages when the request was made. */
+  const [waitingFrom, setWaitingFrom] = useState<number | null>(null);
   const [watch, setWatch] = useState<WatchStatus | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const messagesRef = useRef(messages);
-  messagesRef.current = messages;
+  const firstLoad = useRef(true);
 
-  const add = (msg: Omit<ConversationMessage, 'id' | 'timestamp'>) =>
-    setMessages((prev) => {
-      // A new message with buttons replaces the buttons of older ones
-      const settled = msg.buttons?.length ? prev.map((m) => (m.buttons ? { ...m, answered: true } : m)) : prev;
-      return [...settled, { ...msg, id: nextId(), timestamp: new Date() }];
-    });
+  const wolfieCount = (list: ConversationMessage[]) => list.filter((m) => m.role === 'wolfie').length;
+  const busy = waitingFrom !== null && wolfieCount(messages) <= waitingFrom;
 
   useEffect(() => {
     void window.electronAPI.invoke('watch-get').then(setWatch).catch(() => setWatch(null));
+    void window.electronAPI.invoke('chat-history').then(setMessages).catch(() => setMessages([]));
     const offs = [
       window.electronAPI.on('watch-state', setWatch),
-      // Help-flow steps (explanation, hint ladder, follow-up replies) show up here while the chat is open
-      window.electronAPI.on('nudge-show', (nudge: Nudge) => {
-        if (nudge.kind !== 'stuck') return;
-        setBusy(false);
-        add({ role: 'wolfie', text: nudge.text, nudgeId: nudge.id, buttons: nudge.buttons });
-      }),
-      // Spoken questions answered from the session
-      window.electronAPI.on('watch-answer', (answer: WatchAnswer) => {
-        add({ role: 'wolfie', text: answer.answer, label: answer.label, citations: answer.citations });
-      })
+      window.electronAPI.on('chat-history-changed', setMessages)
     ];
     return () => offs.forEach((off) => off());
   }, []);
 
-  // Bring the newest message into view from its first line, so a long answer reads from the top
+  // Give up waiting after a minute (the reply may have failed silently)
+  useEffect(() => {
+    if (waitingFrom === null) return;
+    const t = setTimeout(() => setWaitingFrom(null), 60_000);
+    return () => clearTimeout(t);
+  }, [waitingFrom]);
+
+  // On open, show the end of the conversation; afterwards bring each new message into view from
+  // its first line, so a long answer reads from the top
   useEffect(() => {
     const list = listRef.current;
     const last = list?.lastElementChild as HTMLElement | null;
     if (!list || !last) return;
+    if (firstLoad.current && messages.length) {
+      firstLoad.current = false;
+      list.scrollTo({ top: list.scrollHeight });
+      return;
+    }
     list.scrollTo({ top: Math.max(0, last.offsetTop - list.offsetTop - 8), behavior: 'smooth' });
   }, [messages, busy]);
 
-  const openStep = () => [...messagesRef.current].reverse().find((m) => m.buttons?.length && !m.answered && m.nudgeId);
+  const openStep = () => [...messages].reverse().find((m) => m.buttons?.length && !m.answered && m.nudgeId);
 
   const handleHelp = () => {
-    add({ role: 'user', text: 'Help me with this' });
-    setBusy(true);
-    void window.electronAPI.invoke('mascot-click');
+    setWaitingFrom(wolfieCount(messages));
+    void window.electronAPI.invoke('chat-help');
   };
 
-  const handleButton = (message: ConversationMessage, button: NudgeButtonType) => {
+  const handleButton = (message: ConversationMessage, action: string) => {
     if (!message.nudgeId) return;
-    setMessages((prev) => prev.map((m) => (m.id === message.id ? { ...m, answered: true } : m)));
-    add({ role: 'user', text: button.label });
-    void window.electronAPI.invoke('nudge-response', { id: message.nudgeId, action: button.action, via: 'button' });
+    setWaitingFrom(wolfieCount(messages));
+    void window.electronAPI.invoke('nudge-response', { id: message.nudgeId, action, via: 'button' });
   };
 
   const handleSendMessage = async () => {
     const text = userInput.trim();
     if (!text || busy) return;
-    add({ role: 'user', text });
     setUserInput('');
-    setBusy(true);
+    setWaitingFrom(wolfieCount(messages) + 0);
     try {
       const res = await window.electronAPI.invoke('chat-send', text);
-      if (res.kind === 'answer') {
-        add({ role: 'wolfie', text: res.answer.answer, label: res.answer.label, citations: res.answer.citations });
-        setBusy(false);
-      } else if (res.kind === 'error') {
-        add({ role: 'wolfie', text: res.error });
-        setBusy(false);
-      }
-      // 'followup': the reply arrives as a nudge (handled above)
+      if (res.kind !== 'followup') setWaitingFrom(null); // answers and errors are already in the history
     } catch {
-      add({ role: 'wolfie', text: "Sorry, I couldn't reach my brain just now. Please try again." });
-      setBusy(false);
+      setWaitingFrom(null);
     }
+  };
+
+  const handleClear = () => {
+    setWaitingFrom(null);
+    void window.electronAPI.invoke('chat-clear');
   };
 
   const handleClose = () => {
@@ -148,6 +122,7 @@ export function HintConversation({ onClose, voiceMode = false, initialNudge = nu
     onClose();
   };
 
+  const shown = messages.length ? messages : [GREETING];
   const seeing = describeWatch(watch);
   const helpOpen = !!openStep();
 
@@ -166,7 +141,14 @@ export function HintConversation({ onClose, voiceMode = false, initialNudge = nu
               </p>
             </div>
           </div>
-          <button className="close-btn" onClick={handleClose}>×</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {messages.length > 0 && (
+              <button className="close-btn" title="Clear chat" style={{ fontSize: 14, width: 'auto', padding: '0 8px' }} onClick={handleClear}>
+                Clear
+              </button>
+            )}
+            <button className="close-btn" onClick={handleClose}>×</button>
+          </div>
         </div>
 
         {/* What Wolfie sees (Watch mode) */}
@@ -182,7 +164,7 @@ export function HintConversation({ onClose, voiceMode = false, initialNudge = nu
 
         {/* Messages */}
         <div className="hint-messages" ref={listRef}>
-          {messages.map((message) => (
+          {shown.map((message) => (
             <div key={message.id} className={`message ${message.role === 'user' ? 'message-user' : 'message-wolfie'}`}>
               {message.role === 'wolfie' && <div className="message-avatar">🐺</div>}
               <div className="message-content">
@@ -201,7 +183,7 @@ export function HintConversation({ onClose, voiceMode = false, initialNudge = nu
                       <button
                         key={b.action}
                         className={`action-btn ${b.variant === 'primary' ? 'primary' : 'secondary'}`}
-                        onClick={() => handleButton(message, b)}
+                        onClick={() => handleButton(message, b.action)}
                       >
                         {b.label}
                       </button>
@@ -209,7 +191,7 @@ export function HintConversation({ onClose, voiceMode = false, initialNudge = nu
                   </div>
                 )}
                 <span className="message-time">
-                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {message.ts ? new Date(message.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                 </span>
               </div>
             </div>

@@ -266,6 +266,7 @@ app.whenReady().then(() => {
           const ui = (js: string) => overlayWindow!.webContents.executeJavaScript(js);
           await ui("document.querySelector('.mascot').click()");
           await new Promise((r) => setTimeout(r, 500));
+          console.log(`[smoke] chat-open messages=${await ui("document.querySelectorAll('.message-text').length")} first=${await ui("document.querySelector('.message-text')?.textContent?.slice(0, 40)")}`);
           await ui(`(() => {
             const input = document.querySelector('.hint-input');
             const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;

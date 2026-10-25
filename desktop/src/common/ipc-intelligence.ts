@@ -270,6 +270,21 @@ export interface WatchAnswer {
   citations: WatchCitation[];
 }
 
+/** One message in Wolfie's chat history (overlay chat panel). */
+export interface ChatMessageView {
+  id: string;
+  ts: number;
+  role: 'user' | 'wolfie';
+  text: string;
+  label?: string;
+  citations?: WatchCitation[];
+  /** For help-flow bubbles: answer their buttons with nudge-response. */
+  nudgeId?: string;
+  buttons?: Array<{ label: string; action: string; variant?: 'primary' | 'secondary' | 'danger' }>;
+  /** The buttons were used (or the step moved on): show them as inactive. */
+  answered?: boolean;
+}
+
 export interface WatchMemoryView {
   sources: Array<{
     kind: string;
@@ -311,6 +326,11 @@ export interface IntelligenceInvoke {
     args: [text: string];
     result: { kind: 'answer'; answer: WatchAnswer } | { kind: 'followup' } | { kind: 'error'; error: string };
   };
+  /** The chat history (kept across closing the chat and restarts). */
+  'chat-history': { args: []; result: ChatMessageView[] };
+  'chat-clear': { args: []; result: { success: boolean } };
+  /** "Help me with this" from the chat: recorded, then the help flow starts. */
+  'chat-help': { args: []; result: { success: boolean } };
   /** A question about what the student is studying, answered from the whole session. */
   'watch-ask': { args: [input: { question: string; inputMode: 'text' | 'voice' }]; result: BResult<WatchAnswer> };
   'voice-status': { args: []; result: VoiceStatus };
@@ -383,4 +403,6 @@ export interface IntelligenceEvents {
   'watch-state': WatchStatus;
   /** An answer to a spoken Watch-mode question (typed ones come back from watch-ask). */
   'watch-answer': WatchAnswer;
+  /** The chat history changed (new message, a step answered, cleared): the full list. */
+  'chat-history-changed': ChatMessageView[];
 }

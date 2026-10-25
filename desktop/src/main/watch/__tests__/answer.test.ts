@@ -172,3 +172,14 @@ describe('WatchAnswerService: Gemini quota used up', () => {
     expect(res.error).toContain('daily quota');
   });
 });
+
+describe('WatchAnswerService: chat history', () => {
+  it('sends the recent conversation with the question', async () => {
+    const history = [
+      { role: 'user' as const, content: 'What is underfitting?' },
+      { role: 'assistant' as const, content: 'A model too simple to capture the pattern.' }
+    ];
+    await make().ask({ question: 'and how is that different from overfitting?', inputMode: 'text', history });
+    expect(JSON.parse(calls[0].messages[0].content).conversation).toEqual(history);
+  });
+});
