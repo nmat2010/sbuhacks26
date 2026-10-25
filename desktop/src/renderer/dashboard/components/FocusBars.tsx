@@ -3,21 +3,22 @@ import { duration, sessionDate, shares, totalSeconds } from '../format';
 
 // How each session's time split between focused work, AI tools, distractions and idle.
 
-export function FocusBars({ sessions }: { sessions: HistorySession[] }) {
+/** `bare`: just the bar (one session whose date and length are already shown above it). */
+export function FocusBars({ sessions, bare = false }: { sessions: HistorySession[]; bare?: boolean }) {
   return (
     <div>
       {sessions.map((s) => {
         const p = shares(s.seconds);
         return (
-          <div key={s.id} className="focus-row">
-            <span>{sessionDate(s)}</span>
+          <div key={s.id} className="focus-row" style={bare ? { gridTemplateColumns: '1fr' } : undefined}>
+            {!bare && <span>{sessionDate(s)}</span>}
             <div className="focus-bar" title={`Work ${Math.round(p.work)}% · AI ${Math.round(p.ai_tool)}% · Distracted ${Math.round(p.distraction)}% · Idle ${Math.round(p.idle)}%`}>
               <span className="focus-work" style={{ width: `${p.work}%` }} />
               <span className="focus-ai" style={{ width: `${p.ai_tool}%` }} />
               <span className="focus-distraction" style={{ width: `${p.distraction}%` }} />
               <span className="focus-idle" style={{ width: `${p.idle}%` }} />
             </div>
-            <span style={{ textAlign: 'right' }}>{duration(totalSeconds(s.seconds))}</span>
+            {!bare && <span style={{ textAlign: 'right' }}>{duration(totalSeconds(s.seconds))}</span>}
           </div>
         );
       })}

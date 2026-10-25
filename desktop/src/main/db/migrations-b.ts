@@ -120,6 +120,34 @@ export function migrations(db: Database.Database): Migration[] {
           );
         `);
       }
+    },
+    {
+      // A report per study session (what was studied, problems, strengths and weaknesses)
+      name: '206_b_session_reports',
+      up: () => {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS session_reports (
+            session_id TEXT PRIMARY KEY,
+            created_at INTEGER NOT NULL,
+            status TEXT NOT NULL CHECK(status IN ('pending', 'ready', 'failed')),
+            report_json TEXT NOT NULL
+          );
+        `);
+      }
+    },
+    {
+      // Strengths and weaknesses across sessions: one row per skill with its history
+      name: '207_b_skills',
+      up: () => {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS skills (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            updated_at INTEGER NOT NULL,
+            record_json TEXT NOT NULL
+          );
+        `);
+      }
     }
   ];
 }
@@ -135,5 +163,7 @@ export const tables: readonly string[] = [
   'paper_meta',
   'paper_chunks',
   'paper_answer_meta',
-  'chat_messages'
+  'chat_messages',
+  'session_reports',
+  'skills'
 ];

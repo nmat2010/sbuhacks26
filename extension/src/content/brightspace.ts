@@ -170,7 +170,7 @@ export function scrapeCourses(doc: Document): BrightspaceCourse[] {
 
       // Look for the course title in the card - usually in a heading
       const headingEl = card.querySelector('h3, [role="heading"], d2l-heading');
-      let titleText = headingEl?.textContent?.trim() || link.textContent?.trim() || '';
+      const titleText = headingEl?.textContent?.trim() || link.textContent?.trim() || '';
 
       if (!titleText || titleText.length < 3) continue;
 
@@ -870,7 +870,7 @@ export async function scrapeBrightspace(doc: Document, pathname: string): Promis
         console.log('[Wolfie Brightspace] Courses before semester enrichment:', allCourses.length);
 
         // Check if we need to enrich semester info using org unit parents
-        const coursesWithoutSemester = allCourses.filter(c => !c.semester);
+        const coursesWithoutSemester = allCourses.filter((c: { semester?: string }) => !c.semester);
         console.log('[Wolfie Brightspace] Courses missing semester:', coursesWithoutSemester.length);
 
         if (coursesWithoutSemester.length > 0) {
@@ -893,7 +893,7 @@ export async function scrapeBrightspace(doc: Document, pathname: string): Promis
         // Filter to only courses from the current semester
         // STRICT filtering: only include courses that match the current semester
         // If semester info is missing, we'll try to fetch it
-        courses = allCourses.filter((course) => {
+        courses = allCourses.filter((course: { code: string; semester?: string }) => {
           const include = course.semester === semester;
           if (!include) {
             console.log('[Wolfie Brightspace] Excluding course:', course.code, 'from semester:', course.semester, '(current:', semester + ')');

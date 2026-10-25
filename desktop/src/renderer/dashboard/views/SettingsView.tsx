@@ -76,7 +76,7 @@ export function SettingsView() {
 
       {error && (
         <div className="card" style={{ borderColor: '#e74c3c' }}>
-          <div className="card-content" style={{ color: '#a30000' }}>
+          <div className="card-content report-error">
             {error}
           </div>
         </div>
@@ -115,7 +115,7 @@ export function SettingsView() {
           <button className="btn btn-secondary" style={{ marginRight: '12px' }} onClick={() => void handleExport()}>
             Export Data (JSON)
           </button>
-          <button className="btn btn-secondary" style={{ color: '#e74c3c' }} onClick={() => void handleClear()}>
+          <button className="btn btn-secondary" onClick={() => void handleClear()}>
             Clear All Data
           </button>
         </div>
@@ -156,7 +156,7 @@ function RuleList({
         <h2 className="card-title">{title}</h2>
       </div>
       <div className="card-content">
-        <p style={{ color: '#6e6e73', marginBottom: '12px' }}>{description}</p>
+        <p className="muted-text" style={{ marginBottom: '12px' }}>{description}</p>
         {rules.map((rule, i) => (
           <div key={`${rule.name}-${i}`} className="rule-row">
             <label className="switch" title={rule.enabled ? 'Warning on' : 'Warning off'}>

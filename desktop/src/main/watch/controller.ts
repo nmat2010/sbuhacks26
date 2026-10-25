@@ -20,6 +20,8 @@ export interface WatchControllerDeps {
     Partial<Pick<Watcher, 'getSkipReason' | 'isQuotaExhausted' | 'lookingAt'>>;
   /** Import a PDF/arXiv paper the student opened; the library paper, or why it failed. */
   importPaper: (url: string) => Promise<{ ok: true; paperId: string; title: string } | { ok: false; error: string }>;
+  /** A session ended: called before its memory is cleared (the session report snapshots it). */
+  onSessionEnd?: (sessionId: string) => void;
   log: (type: EventType, payload: Record<string, unknown>) => void;
 }
 
@@ -188,6 +190,7 @@ export class WatchController {
     const session = deps.getSession();
     const id = session?.id ?? null;
     if (id !== this.sessionId) {
+      if (this.sessionId) deps.onSessionEnd?.(this.sessionId);
       this.endSessionMemory();
       this.sessionId = id;
     }

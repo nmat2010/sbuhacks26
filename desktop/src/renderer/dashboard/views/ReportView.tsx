@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import type { HistoryData, HistorySession } from '../../../common/ipc-sensing';
-import { Planned } from '../components/Planned';
+import type { DriftView } from '../../../common/ipc-intelligence';
 import { FocusBars } from '../components/FocusBars';
+import { SessionReport } from '../components/SessionReport';
 import { duration, minutes, sessionDate, totalSeconds } from '../format';
 
-// Reports: every study session (real, from history-get), and the report for the selected one.
-// The report itself (what was studied, the problems, strengths and weaknesses) is the next step.
+// Reports: every study session (history-get) and the selected one's report: what was studied, the
+// problems and how each went, strengths, weaknesses and next steps (written when it ended).
 
 export function ReportView() {
   const [history, setHistory] = useState<HistoryData | null>(null);
@@ -56,18 +57,10 @@ export function ReportView() {
                   <Stat label="Hints asked" value={`${session.hintCount}`} />
                   <Stat label="Deepest hint" value={session.deepestHintLevel ? `${session.deepestHintLevel} / 5` : '–'} />
                 </div>
-                <FocusBars sessions={[session]} />
-                <div style={{ marginTop: 16 }}>
-                  <Planned
-                    owner="Tuan"
-                    shows={[
-                      'Topics and sources studied (papers, videos, course pages)',
-                      'Each problem worked on: solved alone, with hints, or with the answer',
-                      'Strengths shown and weaknesses found in this session',
-                      'What to do next: practice suggestions and material'
-                    ]}
-                    source="Watch mode's session memory and answer checks, saved when the session ends"
-                  />
+                <FocusBars sessions={[session]} bare />
+                <SessionDrifts sessionId={session.id} />
+                <div style={{ marginTop: 20 }}>
+                  <SessionReport sessionId={session.id} />
                 </div>
               </div>
             </div>
@@ -104,6 +97,33 @@ export function ReportView() {
         </>
       )}
     </div>
+  );
+}
+
+/** When this session left for distracting or AI sites (recorded app activity). */
+function SessionDrifts({ sessionId }: { sessionId: string }) {
+  const [drifts, setDrifts] = useState<DriftView[] | null>(null);
+  useEffect(() => {
+    void window.electronAPI
+      .invoke('session-drifts-get', sessionId)
+      .then(setDrifts)
+      .catch(() => setDrifts([]));
+  }, [sessionId]);
+  if (!drifts) return null;
+  return (
+    <p className="drift-list">
+      {drifts.length
+        ? drifts.map((d, i) => (
+            <span key={i}>
+              {i > 0 && ' · '}
+              <strong>
+                min {d.minute}: {d.site}
+              </strong>{' '}
+              ({d.minutes < 1 ? '<1' : Math.round(d.minutes)} min{d.kind === 'ai_tool' ? ', AI' : ''})
+            </span>
+          ))
+        : 'No drifts to distracting or AI sites in this session.'}
+    </p>
   );
 }
 

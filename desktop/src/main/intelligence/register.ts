@@ -39,6 +39,13 @@ import type { SocketFactory } from '../voice/elevenlabs-stt.js';
 import { attachNudgeSpeech } from '../voice/nudge-speech.js';
 import { isUnaskedOffer, spokenReply } from '../voice/read-aloud.js';
 import { createClipStt } from '../voice/clip-stt.js';
+import { SessionTracker } from '../report/tracker.js';
+import { ReportService, type SessionSnapshot } from '../report/service.js';
+import { ReportStore, type StoredReport } from '../report/store.js';
+import { SkillRecordStore, skillStatus } from '../skills/record.js';
+import { tidySkills } from '../skills/tidy.js';
+import { getHistory } from '../history/queries.js';
+import { getFocusCurve, sessionDrifts } from '../history/focus-curve.js';
 import { createVoiceService, type VoiceService } from '../voice/service.js';
 import type { IntentHandler } from '../voice/router.js';
 import type { VoiceIntent } from '../voice/intents.js';
@@ -68,6 +75,9 @@ let watchController: WatchController | null = null;
 let watchAnswers: WatchAnswerService | null = null;
 let watchHooks: WatchHooks | undefined;
 let chatLog: ChatLog | null = null;
+/** Follows the problems of the running session, for its report (report/tracker.ts). */
+const tracker = new SessionTracker();
+let reports: ReportService | null = null;
 const notifyChat = () => {
   if (chatLog) broadcast('chat-history-changed', chatLog.list());
 };
@@ -108,6 +118,7 @@ export function registerIntelligence(): void {
   cleanups.push(thinkingEvents.on('change', (thinking) => broadcast('wolfie-thinking', thinking)));
   registerVoice();
   registerEscalation();
+  registerReports();
   registerWatch();
   registerHintFlow();
   registerChat();
@@ -193,6 +204,7 @@ function registerHintFlow(): void {
     setLadderOpen: (open) => engine?.setLadderOpen(open),
     markImGood: () => engine?.imGood(),
     log: safeLog,
+    onHelpClosed: (help) => tracker.help(help.question, help.deepest, Date.now()),
     thinking: (on) => {
       endFlowThinking?.();
       endFlowThinking = on ? beginThinking() : null;
@@ -282,7 +294,13 @@ function registerWatch(): void {
     llm: () => client,
     memory,
     // The escalation engine logs stuck.signal itself
-    emitSignal: (signal) => stuckBus.emit('signal', signal),
+    emitSignal: (signal) => {
+      // A thinking pause on a question goes into the session report
+      if (signal.metadata?.stall && typeof signal.metadata.question === 'string') tracker.stalled(signal.metadata.question, Date.now());
+      stuckBus.emit('signal', signal);
+    },
+    onObservation: (obs, now) => tracker.observe(obs, now),
+    knownProblems: () => tracker.names(),
     onContentUrl: (url) => watchController?.onContentUrl(url),
     onState: (state) => watchController?.onWatcherState(state),
     onLook: () => watchController?.onLook(),
@@ -303,6 +321,16 @@ function registerWatch(): void {
       return res.success && res.data
         ? { ok: true as const, paperId: res.data.paper.id, title: res.data.paper.title }
         : { ok: false as const, error: res.error ?? 'import failed' };
+    },
+    // The session's report: memory is copied now (it is cleared right after), the problems a
+    // moment later, once the hint flow has closed any open ladder for this session
+    onSessionEnd: (sessionId) => {
+      const content = memorySnapshot(memory);
+      setTimeout(() => {
+        const snapshot: SessionSnapshot = { ...content, ...tracker.snapshot() };
+        tracker.reset();
+        void reports?.sessionEnded(sessionId, snapshot).catch((error) => console.error('[report] failed:', error));
+      }, 0);
     },
     log: safeLog
   });
@@ -379,6 +407,7 @@ function registerWatch(): void {
     if (!message) return { kind: 'error' as const, error: 'Type a question first.' };
     // A new question: Wolfie stops reading the last answer
     voice?.speaker.stop();
+    if (getActiveSession()) tracker.asked(message);
     const history = chatLog?.recentTurns(6) ?? [];
     chatLog?.add({ role: 'user', text: message });
     notifyChat();
@@ -426,6 +455,11 @@ function registerChat(): void {
   handle('open-link', async (url) => {
     const target = safeUrl(typeof url === 'string' ? url : null);
     if (!target) return { success: false };
+    // Smoke runs never open the student's browser
+    if (process.env.WOLFIE_SMOKE === '1') {
+      console.log(`[smoke] open-link ${target}`);
+      return { success: true };
+    }
     await shell.openExternal(target);
     return { success: true };
   });
@@ -443,11 +477,101 @@ function registerChat(): void {
   // "I'm stuck" beside Wolfie: the question on screen gets help now, without the 60 s wait
   handle('help-stuck', async () => {
     const question = watchController?.isActive() ? (watcher?.stuckNow() ?? null) : null;
+    if (question) tracker.stalled(question, Date.now());
     log.add({ role: 'user', text: "I'm stuck" });
     notifyChat();
     stuckBus.emit('help-requested', 'manual');
     return { success: true, question };
   });
+}
+
+// Session reports (report/): written when a session ends, shown on the dashboard
+function registerReports(): void {
+  const store = new ReportStore(getDatabase);
+  // Strengths & weaknesses across sessions (skills/record.ts), fed by each written report
+  const skills = new SkillRecordStore(getDatabase);
+  const addReport = (report: StoredReport): number =>
+    report.prose ? skills.addSession(report.sessionId, report.facts.endedAt ?? report.facts.startedAt, report.prose.topics) : 0;
+  // Merges skills that are one concept under different names (one small model call)
+  const tidy = () =>
+    void tidySkills(skills, () => getLLMClient())
+      .then((merged) => {
+        if (merged) broadcast('skills-updated', {});
+      })
+      .catch((error) => console.error('[skills] tidy-up failed:', (error as Error).message));
+  // First run with the record: build it from the reports written so far, oldest first. Then (and
+  // at every start) it is tidied once: older reports named topics without seeing the record
+  try {
+    if (skills.isEmpty()) store.list(500).reverse().forEach(addReport);
+    if (skills.names(2).length > 1) tidy();
+  } catch (error) {
+    console.error('[skills] could not build the record from past reports:', error);
+  }
+  const ruleLists = () => ({ aiTools: getSetting('monitored.ai_tools'), distractions: getSetting('monitored.distractions') });
+  handle('focus-curve-get', async () => getFocusCurve(getDatabase(), ruleLists()));
+  handle('session-drifts-get', async (sessionId) => sessionDrifts(getDatabase(), String(sessionId ?? ''), ruleLists()));
+
+  handle('skills-get', async () =>
+    skills.list().map((s) => ({
+      id: s.id,
+      name: s.name,
+      status: skillStatus(s.history),
+      firstSeen: s.firstSeen,
+      lastSeen: s.lastSeen,
+      history: [...s.history].reverse(),
+      plan: s.plan
+    }))
+  );
+
+  reports = new ReportService({
+    now: Date.now,
+    store,
+    llm: () => getLLMClient(),
+    sessionNumbers: (sessionId) => {
+      const db = getDatabase();
+      const row = db.prepare('SELECT started_at FROM sessions WHERE id = ?').get(sessionId) as { started_at: number } | undefined;
+      if (!row) return null;
+      const lists = { aiTools: getSetting('monitored.ai_tools'), distractions: getSetting('monitored.distractions') };
+      const s = getHistory(db, { now: Date.now(), lists, sinceTs: row.started_at, limit: 20 }).sessions.find((x) => x.id === sessionId);
+      return s ? { startedAt: s.startedAt, endedAt: s.endedAt, seconds: s.seconds, hintCount: s.hintCount, deepestHintLevel: s.deepestHintLevel } : null;
+    },
+    onUpdated: (sessionId) => broadcast('report-updated', { sessionId }),
+    drifts: (sessionId) => sessionDrifts(getDatabase(), sessionId, ruleLists()),
+    // The report reuses the record's names, and its topics go into the record
+    knownSkills: () => skills.names(),
+    onWritten: (report) => {
+      // A report that added a skill may have named an old concept anew: tidy the record
+      if (addReport(report) > 0) tidy();
+      broadcast('skills-updated', {});
+    },
+    log: (line) => console.log(line)
+  });
+  handle('report-get', async (sessionId) => store.get(String(sessionId ?? '')));
+  handle('report-regenerate', async (sessionId) => {
+    const report = await reports?.regenerate(String(sessionId ?? ''));
+    return { success: !!report && report.status === 'ready' };
+  });
+}
+
+/** Watch mode's memory as report facts (copied: the memory is cleared right after). */
+function memorySnapshot(memory: SessionMemory): Pick<SessionSnapshot, 'sources' | 'timeline'> {
+  return {
+    sources: memory
+      .listSources()
+      .slice(0, 15)
+      .map((s) => ({
+        kind: s.kind,
+        title: s.title,
+        url: s.url,
+        minutes: Math.round(s.seconds / 60),
+        locators: [...s.locators],
+        points: s.points.slice(-6)
+      })),
+    timeline: memory
+      .segments()
+      .slice(-60)
+      .map((t) => ({ from: t.from, to: t.to, activity: t.activity, summary: t.summary }))
+  };
 }
 
 function registerPlan(): void {
@@ -534,6 +658,7 @@ function registerVoice(): void {
       if (!focusedPaperId && watchController?.isActive() && watchAnswers) {
         const history = chatLog?.recentTurns(6) ?? [];
         chatLog?.add({ role: 'user', text: utterance });
+        if (getActiveSession()) tracker.asked(utterance);
         const res = await whileThinking(watchAnswers.ask({ question: utterance, inputMode: 'voice', history }));
         if (res.success && res.data) {
           chatLog?.add({ role: 'wolfie', text: res.data.answer, label: res.data.label, citations: res.data.citations, resources: res.data.resources });

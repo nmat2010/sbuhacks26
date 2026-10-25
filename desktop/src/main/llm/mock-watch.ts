@@ -60,3 +60,24 @@ export function mockWatchAnswer(key: Record<string, unknown> | undefined): unkno
     citations: first ? [{ n: first.n, locator: null }] : []
   };
 }
+
+export function mockSessionReport(key: Record<string, unknown> | undefined): unknown {
+  const k = (key ?? {}) as { problems?: Array<{ question: string; outcome: string }>; sources?: string[] };
+  const problems = k.problems ?? [];
+  const weak = problems.filter((p) => p.outcome === 'answer_shown' || p.outcome === 'unresolved');
+  const strong = problems.filter((p) => p.outcome === 'solved_alone');
+  return {
+    headline: `You studied ${k.sources?.[0] ?? 'your material'} and worked on ${problems.length} problem(s).`,
+    summary: 'A focused session. Keep practicing the problems that needed help.',
+    topics: [
+      ...strong.map((p) => ({ name: p.question.slice(0, 80), verdict: 'strength', evidence: 'Solved without hints.' })),
+      ...weak.map((p) => ({
+        name: p.question.slice(0, 80),
+        verdict: 'weakness',
+        evidence: 'Needed the answer or is still open.',
+        plan: [`Review the idea behind "${p.question.slice(0, 50)}".`, 'Try a similar problem without hints.']
+      }))
+    ].slice(0, 8),
+    next_steps: weak.length ? weak.map((p) => `Try "${p.question.slice(0, 60)}" again without hints.`).slice(0, 5) : ['Keep going at this pace.']
+  };
+}

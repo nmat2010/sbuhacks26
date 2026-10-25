@@ -79,6 +79,7 @@ function setup(
   const ladderOpen: boolean[] = [];
   const mascot: MascotStateType[] = [];
   const thinking: boolean[] = [];
+  const helpClosed: Array<{ question: string | null; deepest: number }> = [];
   let n = 0;
 
   const client = new LLMClient({ provider: opts.provider ?? new MockLLMProvider({ delayMs: 0 }), retryDelayMs: 1, log: () => {} });
@@ -122,6 +123,7 @@ function setup(
     log: (type) => void logs.push(type),
     thinkingDelayMs: 10 ** 9,
     thinking: (on) => void thinking.push(on),
+    onHelpClosed: (h) => void helpClosed.push(h),
     watch: opts.watch
   });
   flow.start();
@@ -130,7 +132,7 @@ function setup(
   /** Presses a button on the bubble currently on screen. */
   const press = (action: string) => queue.emit('response', { id: last().id, action, via: 'button' });
   const settle = () => new Promise((r) => setTimeout(r, 30));
-  return { flow, bus, queue, sessionChange, pushed, last, press, settle, env, logs, ladderOpen, mascot, thinking, markImGood, capture, confirm, requestPageSummary, requestHintsSpy, db };
+  return { flow, bus, queue, sessionChange, pushed, last, press, settle, env, logs, ladderOpen, mascot, thinking, helpClosed, markImGood, capture, confirm, requestPageSummary, requestHintsSpy, db };
 }
 
 const labels = (n: NudgeInput) => (n.buttons ?? []).map((b) => b.action);
@@ -688,6 +690,15 @@ describe('hint flow: hints follow the flagged wrong answer (two on screen)', () 
     const [context] = t.requestHintsSpy.mock.calls[0];
     expect(context.focus).toContain('What is underfitting?');
     expect(context.focus).toContain('overfitting rather than underfitting');
+  });
+
+  it('tells the session report which problem the hints were about, and how deep they went', async () => {
+    const t = setup({ watch: watch('homework'), summary: null });
+    t.bus.emit('help-requested', 'auto');
+    await t.settle();
+    t.press(ACTIONS.ANOTHER_HINT);
+    t.press(ACTIONS.GOT_IT);
+    expect(t.helpClosed).toEqual([{ question: 'What is underfitting?', deepest: 2 }]);
   });
 
   it('after "I got it", offers hints for the next one, and they focus on it', async () => {

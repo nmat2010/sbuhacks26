@@ -7,6 +7,7 @@ import { StuckButton } from './components/StuckButton';
 import { useNudge } from './hooks/useNudge';
 import { useVoiceIntents } from './hooks/useVoiceIntents';
 import { useVoicePlayer } from './hooks/useVoicePlayer';
+import { useLaunch } from './components/LaunchTransition';
 import type { MascotStateType } from '@wolfie/shared';
 
 /** Main's escalation states drawn with Thu's sprites (glance and "?" are thinking, alert is angry). */
@@ -43,6 +44,8 @@ function App() {
   useEffect(() => window.electronAPI.on('wolfie-thinking', setThinking), []);
   // Talking sprite while Wolfie's voice is playing (ElevenLabs)
   const speaking = useVoicePlayer();
+  // While Wolfie's launch plays where he stands, the usual Wolfie is hidden (he reappears in place)
+  const { launching } = useLaunch();
 
   // While the chat is open it takes the mouse, and help steps are shown in it instead of a bubble
   const chatOpenRef = React.useRef(false);
@@ -288,11 +291,14 @@ function App() {
             isPaused={isPaused}
           />
 
-          <Mascot
-            state={mascotState}
-            voiceActive={voiceActive}
-            onClick={handleMascotClick}
-          />
+          {/* Hidden (keeping its place) while the launch plays on the same spot */}
+          <div style={{ visibility: launching ? 'hidden' : 'visible', transition: 'none' }}>
+            <Mascot
+              state={mascotState}
+              voiceActive={voiceActive}
+              onClick={handleMascotClick}
+            />
+          </div>
         </div>
 
         {!showHintConversation && <StuckButton onMouseEnter={handleBubbleEnter} onMouseLeave={handleBubbleLeave} />}
