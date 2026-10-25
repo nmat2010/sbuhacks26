@@ -1,0 +1,21 @@
+.outcome-tag {
+  font-family: var(--ws-font-heading);
+  font-size: 9px;
+  line-height: 1.4;
+  padding: 7px 9px;
+  flex: none;
+  white-space: nowrap;
+  color: var(--ws-bg);
+}
+
+.outcome-tag--solved {
+  background: var(--ws-green);
+}
+
+.outcome-tag--hinted {
+  background: var(--ws-gold);
+}
+
+.outcome-tag--stuck {
+  background: var(--ws-weak);
+}

@@ -1,5 +1,6 @@
 import type { MascotStateType, Nudge, NudgeInput, NudgeResponse } from '@wolfie/shared';
 import type { SensingEvents, SensingInvoke, SensingSend } from './ipc-sensing.js';
+import type { DashboardEvents, DashboardInvoke } from './ipc-dashboard.js';
 import type { IntelligenceEvents, IntelligenceInvoke, IntelligenceSend } from './ipc-intelligence.js';
 
 // Typed IPC contract between the main process and renderers (SPEC 3: "typed IPC only").
@@ -56,9 +57,9 @@ export interface CoreEvents {
   'voice-toggle': boolean;
 }
 
-export interface InvokeChannels extends CoreInvoke, SensingInvoke, IntelligenceInvoke {}
+export interface InvokeChannels extends CoreInvoke, SensingInvoke, IntelligenceInvoke, DashboardInvoke {}
 export interface SendChannels extends CoreSend, SensingSend, IntelligenceSend {}
-export interface EventChannels extends CoreEvents, SensingEvents, IntelligenceEvents {}
+export interface EventChannels extends CoreEvents, SensingEvents, IntelligenceEvents, DashboardEvents {}
 
 export type InvokeChannel = keyof InvokeChannels;
 export type SendChannel = keyof SendChannels;

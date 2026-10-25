@@ -1,0 +1,18 @@
+.sample-notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 15px;
+  color: var(--ws-text-muted);
+}
+
+.sample-notice__tag {
+  font-family: var(--ws-font-heading);
+  font-size: 9px;
+  line-height: 1.4;
+  padding: 7px 9px;
+  color: var(--ws-bg);
+  background: var(--ws-gold);
+  white-space: nowrap;
+}

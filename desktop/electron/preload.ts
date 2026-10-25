@@ -43,11 +43,13 @@ const api = {
 };
 
 contextBridge.exposeInMainWorld('electronAPI', api);
+contextBridge.exposeInMainWorld('ipc', api); // Alias for convenience
 
 export type ElectronAPI = typeof api;
 
 declare global {
   interface Window {
     electronAPI: ElectronAPI;
+    ipc: ElectronAPI; // Alias for convenience
   }
 }

@@ -1,0 +1,20 @@
+.step-chart {
+  width: 100%;
+}
+
+.step-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.step-chart__time-labels {
+  display: flex;
+  font-size: 14px;
+  color: var(--ws-text-muted);
+  margin-top: 8px;
+}
+
+.step-chart__time-labels span {
+  flex: 1;
+}

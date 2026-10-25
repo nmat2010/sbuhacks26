@@ -1,0 +1,76 @@
+.settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-gap);
+}
+
+.settings-page__cols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ws-gap);
+  align-items: flex-start;
+}
+
+.settings-page__col {
+  flex: 1 1 420px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-gap);
+}
+
+/* One settings row: name + help on the left, control on the right (design: .set) */
+.settings-row {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.settings-row__name {
+  flex: 1 1 200px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-row__help {
+  font-size: 15px;
+  color: var(--ws-text-muted);
+}
+
+.settings-row__ctl {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+
+.settings-pill {
+  font-family: var(--ws-font-heading);
+  font-size: 9px;
+  line-height: 1.4;
+  padding: 7px 9px;
+  color: var(--ws-bg);
+  background: var(--ws-green);
+  white-space: nowrap;
+}
+
+.settings-pill--off {
+  background: var(--ws-weak);
+}
+
+.settings-pill--idle {
+  background: var(--ws-text-muted);
+}
+
+.settings-status {
+  font-size: 15px;
+  color: var(--ws-gold);
+}
+
+.settings-status--error {
+  color: var(--ws-weak-text);
+}

@@ -1,0 +1,9 @@
+.chip {
+  background: var(--ws-card-2);
+  box-shadow:
+    0 -4px 0 0 var(--ws-edge), 0 4px 0 0 var(--ws-edge),
+    -4px 0 0 0 var(--ws-edge), 4px 0 0 0 var(--ws-edge);
+  padding: 4px 12px;
+  font-size: 16px;
+  display: inline-block;
+}

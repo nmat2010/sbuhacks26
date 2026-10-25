@@ -61,7 +61,6 @@ export function RetroOnboarding({ onComplete }: RetroOnboardingProps) {
   });
 
   const currentStepIndex = STEPS.findIndex(s => s.id === currentStep);
-  const completedSteps = STEPS.slice(0, currentStepIndex);
 
   const handleNext = (stepData?: Partial<OnboardingData>) => {
     if (stepData) {

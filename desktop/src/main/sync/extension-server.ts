@@ -141,6 +141,13 @@ export class ExtensionServer {
     });
   }
 
+  /** Asks every authenticated extension to scrape Brightspace; false when none is connected. */
+  requestBrightspace(): boolean {
+    const targets = [...this.clients].filter((c) => c.authed);
+    for (const c of targets) this.send(c.ws, 'desk.request_brightspace', { requestId: randomUUID() });
+    return targets.length > 0;
+  }
+
   // ---- internals ----------------------------------------------------------------------------
 
   private verifyOrigin(origin: string, done: (ok: boolean, code?: number, msg?: string) => void): void {

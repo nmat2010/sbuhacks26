@@ -1,0 +1,25 @@
+.option-btn {
+  min-height: 44px;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--ws-font-heading);
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--ws-text);
+  background: var(--ws-card-2);
+  padding: 12px 16px;
+  box-shadow:
+    0 -4px 0 0 var(--ws-edge), 0 4px 0 0 var(--ws-edge),
+    -4px 0 0 0 var(--ws-edge), 4px 0 0 0 var(--ws-edge);
+}
+
+.option-btn:hover {
+  background: var(--ws-card-2-hover);
+}
+
+.option-btn--pressed {
+  background: var(--ws-red-dark);
+  box-shadow:
+    0 -4px 0 0 var(--ws-text), 0 4px 0 0 var(--ws-text),
+    -4px 0 0 0 var(--ws-text), 4px 0 0 0 var(--ws-text);
+}

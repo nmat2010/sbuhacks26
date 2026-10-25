@@ -13,6 +13,7 @@ import { getSetting, setSetting } from '../src/main/settings.js';
 import { startFeatures, stopFeatures } from '../src/main/features/index.js';
 import { isPaused, sessionEvents, setPaused, startSession, stopSession } from '../src/main/session/index.js';
 import { registerSensing, unregisterSensing } from '../src/main/sensing/register.js';
+import { registerDashboard, unregisterDashboard } from '../src/main/dashboard/register.js';
 import { registerIntelligence, unregisterIntelligence } from '../src/main/intelligence/register.js';
 import { Nudge } from '@wolfie/shared';
 
@@ -261,6 +262,7 @@ app.whenReady().then(() => {
   // Each agent wires its modules in its own register file; do not add calls to main.ts
   registerSensing();
   registerIntelligence();
+  registerDashboard();
 
   startFeatures({
     pushNudge: (nudge) => getNudgeQueue().push(nudge),
@@ -513,6 +515,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   stopFeatures();
+  unregisterDashboard();
   unregisterIntelligence();
   unregisterSensing();
   closeDatabase();

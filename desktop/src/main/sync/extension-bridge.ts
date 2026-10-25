@@ -1,4 +1,5 @@
-import type { PageSummary, StruggleSignal } from '@wolfie/shared';
+import type { PageSummary, StruggleSignal, BrightspaceData } from '@wolfie/shared';
+import { saveBrightspaceData } from '../brightspace/index.js';
 import { isExcludedDomain, type DeskState } from './desk-state.js';
 import type { DomainTracker } from './domain-tracker.js';
 import type { ExtensionHandlers } from './extension-server.js';
@@ -28,6 +29,8 @@ export interface ExtensionBridge {
   clearContext(): void;
   /** New session: the first problem seen counts as a change again. */
   resetProblem(): void;
+  /** Get cached Brightspace data from the extension. */
+  getBrightspaceData(): BrightspaceData | null;
 }
 
 /** Same site for content URLs: www./m. prefixes and youtu.be count as the same YouTube. */
@@ -50,6 +53,7 @@ function hostOf(url: string): string | null {
 
 export function createExtensionBridge(deps: ExtensionBridgeDeps): ExtensionBridge {
   let lastProblemId: string | null = null;
+  let brightspaceData: BrightspaceData | null = null;
 
   const allowed = (domain: string, needsText = false): boolean => {
     const state = deps.getDeskState();
@@ -88,6 +92,15 @@ export function createExtensionBridge(deps: ExtensionBridgeDeps): ExtensionBridg
       onSignal(signal, domain) {
         if (!allowed(domain)) return;
         deps.onSignal?.(signal, domain);
+      },
+      onBrightspaceData(data) {
+        console.log('[extension-bridge] Received Brightspace data:', {
+          semester: data.semester,
+          courseCount: data.courses.length,
+          lastFetched: new Date(data.lastFetched).toISOString()
+        });
+        brightspaceData = data;
+        saveBrightspaceData(data);
       }
     },
     clearContext() {
@@ -96,6 +109,9 @@ export function createExtensionBridge(deps: ExtensionBridgeDeps): ExtensionBridg
     },
     resetProblem() {
       lastProblemId = null;
+    },
+    getBrightspaceData() {
+      return brightspaceData;
     }
   };
 }

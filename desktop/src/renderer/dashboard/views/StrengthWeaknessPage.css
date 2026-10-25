@@ -1,0 +1,39 @@
+.strength-weakness-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-gap);
+}
+
+.strength-weakness-page__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.topic-band {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.topic-band__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.topic-card {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.topic-card__main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}

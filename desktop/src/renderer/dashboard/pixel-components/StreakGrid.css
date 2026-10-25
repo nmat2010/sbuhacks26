@@ -1,0 +1,48 @@
+.streak-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.streak-grid__labels {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.streak-grid__label {
+  text-align: center;
+  font-size: 13px;
+  color: var(--ws-text-muted);
+}
+
+.streak-grid__row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.streak-grid__day {
+  aspect-ratio: 1 / 1;
+  min-height: 24px;
+  background: var(--ws-edge);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ws-font-heading);
+  font-size: 10px;
+  color: var(--ws-bg);
+}
+
+.streak-grid__day--clean {
+  background: var(--ws-gold);
+}
+
+.streak-grid__day--ai {
+  background: var(--ws-weak);
+}
+
+.streak-grid__day--open {
+  background: transparent;
+  box-shadow: inset 0 0 0 3px var(--ws-gold);
+}

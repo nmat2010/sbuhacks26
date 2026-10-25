@@ -24,12 +24,12 @@ const DEMO_COURSES: Course[] = [
   { id: '5', code: 'WRT 102', name: 'Intermediate Writing Workshop', dueSoon: 0, visible: false },
 ];
 
-export default function Brightspace({ onNext, onBack, data, updateData }: BrightspaceProps) {
+export default function Brightspace({ onNext, onBack, data: _data, updateData }: BrightspaceProps) {
   const [fetchStage, setFetchStage] = useState(0); // 0: signin, 1: semester, 2: courses, 3: assignments, 4: announcements
   const [assignmentsProgress, setAssignmentsProgress] = useState(0);
-  const [totalAssignments, setTotalAssignments] = useState(23);
+  const [totalAssignments] = useState(23);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [semester, setSemester] = useState('Fall 2026');
+  const [semester] = useState('Fall 2026');
 
   // Simulate fetching process
   useEffect(() => {

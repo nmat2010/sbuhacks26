@@ -9,6 +9,12 @@ interface ExtensionScreenProps {
 export function ExtensionScreen({ onNext, onBack }: ExtensionScreenProps) {
   const [pairingCode, setPairingCode] = useState('------');
   const [isConnected, setIsConnected] = useState(false);
+  const [isPaired, setIsPaired] = useState(false); // True if extension has ever connected
+  const [lastConnectedTime, setLastConnectedTime] = useState<number>(0);
+
+  // Grace period: show as connected for 60s after disconnect (Chrome service worker restarts)
+  const GRACE_PERIOD_MS = 60000;
+  const effectivelyConnected = isConnected || (isPaired && Date.now() - lastConnectedTime < GRACE_PERIOD_MS);
 
   useEffect(() => {
     // Fetch real pairing info from desktop
@@ -18,6 +24,12 @@ export function ExtensionScreen({ onNext, onBack }: ExtensionScreenProps) {
         console.log('[ExtensionScreen] Pairing info:', info);
         setPairingCode(info.token || '------');
         setIsConnected(info.connected);
+
+        // If connected, mark as paired and update last connected time
+        if (info.connected) {
+          setIsPaired(true);
+          setLastConnectedTime(Date.now());
+        }
       } catch (error) {
         console.error('[ExtensionScreen] Failed to get pairing info:', error);
         setPairingCode('ERROR!');
@@ -30,6 +42,12 @@ export function ExtensionScreen({ onNext, onBack }: ExtensionScreenProps) {
     const handleStatusChange = (payload: { connected: boolean }) => {
       console.log('[ExtensionScreen] Status changed:', payload);
       setIsConnected(payload.connected);
+
+      // Mark as paired once connected, and track last connection time
+      if (payload.connected) {
+        setIsPaired(true);
+        setLastConnectedTime(Date.now());
+      }
     };
 
     const unsubscribe = window.electronAPI.on('extension-status', handleStatusChange);
@@ -111,7 +129,7 @@ export function ExtensionScreen({ onNext, onBack }: ExtensionScreenProps) {
 
           <div className="card2" style={{padding:"16px 20px",display:"flex",alignItems:"center",gap:"16px",flexWrap:"wrap"}}>
             <div style={{display:"flex",gap:"6px"}} aria-hidden="true">
-              {isConnected ? (
+              {effectivelyConnected ? (
                 <span style={{width:"12px",height:"12px",background:"#6fd27a"}}></span>
               ) : (
                 <>
@@ -121,10 +139,10 @@ export function ExtensionScreen({ onNext, onBack }: ExtensionScreenProps) {
                 </>
               )}
             </div>
-            <span style={{color: isConnected ? "#6fd27a" : "#f2a03a",fontWeight:600}}>
-              {isConnected ? "Extension connected!" : "Waiting for the extension…"}
+            <span style={{color: effectivelyConnected ? "#6fd27a" : "#f2a03a",fontWeight:600}}>
+              {effectivelyConnected ? "Extension connected!" : "Waiting for the extension…"}
             </span>
-            {!isConnected && (
+            {!effectivelyConnected && (
               <span style={{color:"#c9b8a6",fontSize:"16px",marginLeft:"auto"}}>This turns green when paired.</span>
             )}
           </div>
@@ -136,7 +154,25 @@ export function ExtensionScreen({ onNext, onBack }: ExtensionScreenProps) {
 
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:"16px",flexWrap:"wrap",marginTop:"6px"}}>
             <button type="button" className="btn ghost" onClick={onBack}>BACK</button>
-            <button type="button" className={isConnected ? "btn" : "btn off"} aria-disabled={!isConnected} onClick={isConnected ? () => onNext({ extensionConnected: isConnected }) : undefined}>CONTINUE</button>
+            <div style={{display:"flex",alignItems:"center",gap:"16px"}}>
+              <button
+                type="button"
+                onClick={() => onNext({ extensionConnected: false })}
+                style={{
+                  background:"none",
+                  border:0,
+                  padding:"0 12px",
+                  color:"#c9b8a6",
+                  fontFamily:"'Pixelify Sans',monospace",
+                  fontSize:"15px",
+                  textDecoration:"underline",
+                  cursor:"pointer"
+                }}
+              >
+                Skip for now
+              </button>
+              <button type="button" className={isConnected ? "btn" : "btn off"} aria-disabled={!isConnected} onClick={isConnected ? () => onNext({ extensionConnected: isConnected }) : undefined}>CONTINUE</button>
+            </div>
           </div>
 
         </div>
@@ -150,10 +186,10 @@ export function ExtensionScreen({ onNext, onBack }: ExtensionScreenProps) {
           </div>
           <div style={{flex:1,height:"4px",marginTop:"10px",background:"repeating-linear-gradient(90deg,#f2b632 0 8px,transparent 8px 16px)"}}></div>
           <div style={{width:"88px",display:"flex",flexDirection:"column",alignItems:"center",gap:"12px"}}>
-            <div style={{width:"24px",height:"24px",background:isConnected ? "#f2b632" : "#c41e1e",boxShadow:`0 0 0 4px ${isConnected ? "#5a3a41" : "#f5ecd9"}`}}></div>
-            <span style={{fontSize:"14px",color:isConnected ? "#f2b632" : "#f5ecd9",fontWeight:isConnected ? "normal" : 600}}>Extension</span>
+            <div style={{width:"24px",height:"24px",background:effectivelyConnected ? "#f2b632" : "#c41e1e",boxShadow:`0 0 0 4px ${effectivelyConnected ? "#5a3a41" : "#f5ecd9"}`}}></div>
+            <span style={{fontSize:"14px",color:effectivelyConnected ? "#f2b632" : "#f5ecd9",fontWeight:effectivelyConnected ? "normal" : 600}}>Extension</span>
           </div>
-          <div style={{flex:1,height:"4px",marginTop:"10px",background:isConnected ? "repeating-linear-gradient(90deg,#f2b632 0 8px,transparent 8px 16px)" : "repeating-linear-gradient(90deg,#5a3a41 0 8px,transparent 8px 16px)"}}></div>
+          <div style={{flex:1,height:"4px",marginTop:"10px",background:effectivelyConnected ? "repeating-linear-gradient(90deg,#f2b632 0 8px,transparent 8px 16px)" : "repeating-linear-gradient(90deg,#5a3a41 0 8px,transparent 8px 16px)"}}></div>
           <div style={{width:"88px",display:"flex",flexDirection:"column",alignItems:"center",gap:"12px"}}>
             <div style={{width:"24px",height:"24px",background:"#3a2328",boxShadow:"0 0 0 4px #5a3a41"}}></div>
             <span style={{fontSize:"14px",color:"#b9a898"}}>Brightspace</span>

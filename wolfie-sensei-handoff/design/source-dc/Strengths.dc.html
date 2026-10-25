@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Strength / Weakness</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#1a1214}
+.h{font-family:'Press Start 2P',monospace;line-height:1.5;font-weight:400}
+.card{background:#2a1a1e;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9,8px 8px 0 0 #0d0709}
+.card2{background:#3a2328;box-shadow:0 -4px 0 0 #5a3a41,0 4px 0 0 #5a3a41,-4px 0 0 0 #5a3a41,4px 0 0 0 #5a3a41}
+.btn{display:inline-flex;align-items:center;justify-content:center;border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.4;color:#f5ecd9;background:#c41e1e;padding:16px 22px;min-height:48px;text-decoration:none;text-align:center;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #7a0000,inset 0 6px 0 0 #e0504f}
+.btn:hover{background:#d42a2a}
+.btn:active{transform:translateY(2px)}
+.btn.gold{background:#f2b632;color:#1a1214;box-shadow:0 -4px 0 0 #0d0709,0 4px 0 0 #0d0709,-4px 0 0 0 #0d0709,4px 0 0 0 #0d0709,inset 0 -6px 0 0 #b9801a,inset 0 6px 0 0 #ffd878}
+.btn.gold:hover{background:#ffc94d}
+.nav{display:flex;align-items:center;gap:12px;width:100%;min-height:44px;color:#e0d2c2;font-family:'Press Start 2P',monospace;font-size:10px;line-height:1.5;padding:12px;text-decoration:none;box-sizing:border-box}
+.nav:hover{background:#2a1a1e}
+.nav.on{background:#990000;color:#f5ecd9}
+.nav i{width:12px;height:12px;background:#5a3a41;flex:none}
+.nav.on i{background:#f2b632}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #f2b632;outline-offset:3px}
+.opt{min-height:44px;border:0;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:10px;line-height:1.4;color:#f5ecd9;background:#3a2328;padding:12px 16px;box-shadow:0 -4px 0 0 #5a3a41,0 4px 0 0 #5a3a41,-4px 0 0 0 #5a3a41,4px 0 0 0 #5a3a41}
+.opt:hover{background:#4a2d33}
+.opt.on{background:#990000;box-shadow:0 -4px 0 0 #f5ecd9,0 4px 0 0 #f5ecd9,-4px 0 0 0 #f5ecd9,4px 0 0 0 #f5ecd9}
+.chip{padding:4px 12px;font-size:16px}
+.seg{display:flex;gap:3px}
+.seg span{flex:1;height:12px;background:#5a3a41}
+.seg span.f{background:#c41e1e}
+.seg.g span.f{background:#f2b632}
+.seg.b span.f{background:#6fd27a}
+.seg.w span.f{background:#e5484d}
+.row{padding:12px 14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.row .nm{flex:1 1 180px;min-width:0;display:flex;flex-direction:column}
+.row .bar{flex:0 1 150px;min-width:110px}
+.row .sc{width:84px;flex:none;display:flex;align-items:baseline;justify-content:flex-end;gap:10px}
+.mut{color:#c9b8a6}
+</style>
+</helmet>
+<div style="width:100%;min-height:1500px;background:#1a1214;color:#f5ecd9;font-family:'Pixelify Sans',monospace;font-size:18px;display:flex;flex-direction:column">
+
+<div style="height:44px;background:#0d0709;border-bottom:4px solid #990000;display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex:none">
+<span class="h" style="font-size:11px">WOLFIE SENSEI</span>
+<span class="h" style="font-size:10px;color:#c9b8a6">STRENGTH / WEAKNESS</span>
+<div style="display:flex;gap:8px" aria-hidden="true"><span style="width:14px;height:14px;background:#f2b632"></span><span style="width:14px;height:14px;background:#6fd27a"></span><span style="width:14px;height:14px;background:#e5484d"></span></div>
+</div>
+
+<div style="flex:1;display:flex;flex-wrap:wrap;align-items:stretch">
+
+<nav aria-label="Main" style="flex:0 0 232px;width:232px;max-width:100%;background:#0d0709;padding:24px 16px;display:flex;flex-direction:column;gap:6px;box-sizing:border-box">
+<a class="nav" href="Main.dc.html"><i></i>DASHBOARD</a>
+<a class="nav" href="Report.dc.html"><i></i>REPORT</a>
+<a class="nav on" href="Strengths.dc.html" aria-current="page"><i></i>STRENGTH / WEAKNESS</a>
+<a class="nav" href="Brightspace.dc.html"><i></i>BRIGHTSPACE MATERIAL</a>
+<a class="nav" href="Settings.dc.html"><i></i>SETTINGS</a>
+<div style="margin-top:auto;padding-top:28px;display:flex;flex-direction:column;align-items:center;gap:10px">
+<svg aria-hidden="true" sc-camel-view-box="0 0 16 16" width="88" height="88" shape-rendering="crispEdges" style="image-rendering:pixelated"><rect x="2" y="1" width="3" height="3" fill="#5d6270"></rect><rect x="11" y="1" width="3" height="3" fill="#5d6270"></rect><rect x="3" y="2" width="1" height="2" fill="#d9a3a3"></rect><rect x="12" y="2" width="1" height="2" fill="#d9a3a3"></rect><rect x="3" y="3" width="10" height="1" fill="#9aa0ac"></rect><rect x="2" y="4" width="12" height="6" fill="#9aa0ac"></rect><rect x="3" y="10" width="10" height="1" fill="#9aa0ac"></rect><rect x="4" y="11" width="8" height="1" fill="#9aa0ac"></rect><rect x="2" y="4" width="12" height="2" fill="#c41e1e"></rect><rect x="14" y="5" width="2" height="1" fill="#990000"></rect><rect x="14" y="6" width="1" height="2" fill="#990000"></rect><rect x="4" y="7" width="2" height="2" fill="#1a1214"></rect><rect x="10" y="7" width="2" height="2" fill="#1a1214"></rect><rect x="4" y="7" width="1" height="1" fill="#f5ecd9"></rect><rect x="10" y="7" width="1" height="1" fill="#f5ecd9"></rect><rect x="5" y="9" width="6" height="3" fill="#efe6d6"></rect><rect x="7" y="9" width="2" height="1" fill="#1a1214"></rect></svg>
+<span class="h" style="font-size:9px;color:#c9b8a6">SENSEI · WATCHING</span>
+<span class="h" style="font-size:9px;color:#c9b8a6">LV 4 · 340/500 XP</span>
+</div>
+</nav>
+
+<main style="flex:999 1 560px;min-width:0;padding:32px 36px 40px;display:flex;flex-direction:column;gap:32px;box-sizing:border-box">
+
+<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:10px">
+<h1 class="h" style="margin:0;font-size:20px;color:#f2b632">STRENGTH / WEAKNESS</h1>
+<span style="font-size:16px;color:#c9b8a6">Where you are solid and where to practice next, from problems you solved unaided.</span>
+</div>
+<div style="display:flex;gap:14px;flex-wrap:wrap">
+<button type="button" class="opt on" aria-pressed="true">ALL COURSES</button>
+<button type="button" class="opt" aria-pressed="false">CSE 373</button>
+<button type="button" class="opt" aria-pressed="false">AMS 261</button>
+<button type="button" class="opt" aria-pressed="false">ESE 271</button>
+</div>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:32px">
+<div class="card" style="flex:1 1 150px;padding:20px;display:flex;flex-direction:column;gap:12px"><span class="h" style="font-size:10px;color:#ff7378">WEAK</span><span class="h" style="font-size:24px;color:#ff7378">3</span><span style="font-size:15px;color:#c9b8a6">topics, score 4 or less</span></div>
+<div class="card" style="flex:1 1 150px;padding:20px;display:flex;flex-direction:column;gap:12px"><span class="h" style="font-size:10px;color:#f2b632">GETTING THERE</span><span class="h" style="font-size:24px;color:#f2b632">3</span><span style="font-size:15px;color:#c9b8a6">topics, score 5 to 6</span></div>
+<div class="card" style="flex:1 1 150px;padding:20px;display:flex;flex-direction:column;gap:12px"><span class="h" style="font-size:10px;color:#6fd27a">STRONG</span><span class="h" style="font-size:24px;color:#6fd27a">5</span><span style="font-size:15px;color:#c9b8a6">topics, score 7 or more</span></div>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
+
+<section class="card" aria-labelledby="topics-h" style="flex:3 1 480px;min-width:0;padding:26px;display:flex;flex-direction:column;gap:16px">
+<h2 id="topics-h" class="h" style="margin:0;font-size:13px;color:#f2b632">ALL TOPICS</h2>
+<span style="font-size:15px;color:#c9b8a6">Score is the share of problems solved unaided, weighted toward recent sessions. The change is since two weeks ago.</span>
+
+<span class="h" style="font-size:10px;color:#ff7378;margin-top:6px">WEAK · PRACTICE FIRST</span>
+<div class="card2 row"><div class="nm"><span style="font-weight:600">Dynamic programming</span><span style="font-size:15px;color:#c9b8a6">CSE 373 · 4 of 14 unaided</span></div><div class="bar seg w" role="img" aria-label="3 of 10"><span class="f"></span><span class="f"></span><span class="f"></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div class="sc"><span class="h" style="font-size:12px">3/10</span><span style="font-size:15px;color:#ff7378">-1</span></div></div>
+<div class="card2 row"><div class="nm"><span style="font-weight:600">Phasors</span><span style="font-size:15px;color:#c9b8a6">ESE 271 · 3 of 8 unaided</span></div><div class="bar seg w" role="img" aria-label="3 of 10"><span class="f"></span><span class="f"></span><span class="f"></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div class="sc"><span class="h" style="font-size:12px">3/10</span><span style="font-size:15px;color:#c9b8a6">0</span></div></div>
+<div class="card2 row"><div class="nm"><span style="font-weight:600">Vector fields</span><span style="font-size:15px;color:#c9b8a6">AMS 261 · 5 of 12 unaided</span></div><div class="bar seg w" role="img" aria-label="4 of 10"><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div class="sc"><span class="h" style="font-size:12px">4/10</span><span style="font-size:15px;color:#ff7378">-1</span></div></div>
+
+<span class="h" style="font-size:10px;color:#f2b632;margin-top:10px">GETTING THERE</span>
+<div class="card2 row"><div class="nm"><span style="font-weight:600">Greedy algorithms</span><span style="font-size:15px;color:#c9b8a6">CSE 373 · 6 of 11 unaided</span></div><div class="bar seg g" role="img" aria-label="5 of 10"><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span></span><span></span><span></span><span></span><span></span></div><div class="sc"><span class="h" style="font-size:12px">5/10</span><span style="font-size:15px;color:#c9b8a6">0</span></div></div>
+<div class="card2 row"><div class="nm"><span style="font-weight:600">Op-amp circuits</span><span style="font-size:15px;color:#c9b8a6">ESE 271 · 6 of 11 unaided</span></div><div class="bar seg g" role="img" aria-label="5 of 10"><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span></span><span></span><span></span><span></span><span></span></div><div class="sc"><span class="h" style="font-size:12px">5/10</span><span style="font-size:15px;color:#6fd27a">+1</span></div></div>
+<div class="card2 row"><div class="nm"><span style="font-weight:600">Line integrals</span><span style="font-size:15px;color:#c9b8a6">AMS 261 · 8 of 13 unaided</span></div><div class="bar seg g" role="img" aria-label="6 of 10"><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span></span><span></span><span></span><span></span></div><div class="sc"><span class="h" style="font-size:12px">6/10</span><span style="font-size:15px;color:#6fd27a">+1</span></div></div>
+
+<span class="h" style="font-size:10px;color:#6fd27a;margin-top:10px">STRONG · KEEP IT FRESH</span>
+<div class="card2 row"><div class="nm"><span style="font-weight:600">Recursion</span><span style="font-size:15px;color:#c9b8a6">CSE 373 · 8 of 11 unaided</span></div><div class="bar seg b" role="img" aria-label="7 of 10"><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span></span><span></span><span></span></div><div class="sc"><span class="h" style="font-size:12px">7/10</span><span style="font-size:15px;color:#6fd27a">+1</span></div></div>
+<div class="card2 row"><div class="nm"><span style="font-weight:600">Node analysis</span><span style="font-size:15px;color:#c9b8a6">ESE 271 · 7 of 10 unaided</span></div><div class="bar seg b" role="img" aria-label="7 of 10"><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span></span><span></span><span></span></div><div class="sc"><span class="h" style="font-size:12px">7/10</span><span style="font-size:15px;color:#c9b8a6">0</span></div></div>
+<div class="card2 row"><div class="nm"><span style="font-weight:600">Sorting and searching</span><span style="font-size:15px;color:#c9b8a6">CSE 373 · 11 of 13 unaided</span></div><div class="bar seg b" role="img" aria-label="8 of 10"><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span></span><span></span></div><div class="sc"><span class="h" style="font-size:12px">8/10</span><span style="font-size:15px;color:#c9b8a6">0</span></div></div>
+<div class="card2 row"><div class="nm"><span style="font-weight:600">Double integrals</span><span style="font-size:15px;color:#c9b8a6">AMS 261 · 9 of 11 unaided</span></div><div class="bar seg b" role="img" aria-label="8 of 10"><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span></span><span></span></div><div class="sc"><span class="h" style="font-size:12px">8/10</span><span style="font-size:15px;color:#6fd27a">+1</span></div></div>
+<div class="card2 row"><div class="nm"><span style="font-weight:600">Graph algorithms</span><span style="font-size:15px;color:#c9b8a6">CSE 373 · 14 of 15 unaided</span></div><div class="bar seg b" role="img" aria-label="9 of 10"><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span></span></div><div class="sc"><span class="h" style="font-size:12px">9/10</span><span style="font-size:15px;color:#6fd27a">+1</span></div></div>
+</section>
+
+<aside style="flex:2 1 320px;min-width:0;display:flex;flex-direction:column;gap:32px">
+
+<section class="card" aria-labelledby="focus-h" style="padding:24px;display:flex;flex-direction:column;gap:16px">
+<h2 id="focus-h" class="h" style="margin:0;font-size:10px;color:#ff7378">WORK ON THIS FIRST</h2>
+<span class="h" style="font-size:15px;color:#f2b632">Dynamic programming</span>
+<div class="seg w" role="img" aria-label="Score 3 of 10"><span class="f"></span><span class="f"></span><span class="f"></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+<div style="display:flex;flex-direction:column;gap:6px;font-size:16px">
+<div style="display:flex;justify-content:space-between;gap:10px"><span class="mut">Solved unaided</span><span>4 of 14</span></div>
+<div style="display:flex;justify-content:space-between;gap:10px"><span class="mut">AI unlocks, 14 days</span><span>5</span></div>
+<div style="display:flex;justify-content:space-between;gap:10px"><span class="mut">Usual stall</span><span>Defining the subproblem</span></div>
+</div>
+<span class="h" style="font-size:10px;color:#c9b8a6;margin-top:4px">PRACTICE PLAN</span>
+<div class="card2" style="padding:12px 14px;display:flex;justify-content:space-between;gap:10px"><span>Climbing stairs</span><span class="mut" style="white-space:nowrap">10 min</span></div>
+<div class="card2" style="padding:12px 14px;display:flex;justify-content:space-between;gap:10px"><span>Coin change</span><span class="mut" style="white-space:nowrap">15 min</span></div>
+<div class="card2" style="padding:12px 14px;display:flex;justify-content:space-between;gap:10px"><span>Longest increasing subsequence</span><span class="mut" style="white-space:nowrap">15 min</span></div>
+<a class="btn gold" href="Main.dc.html" style="margin-top:6px">START SESSION ON THIS</a>
+<a class="btn small" href="Brightspace.dc.html" style="align-self:flex-start">OPEN LECTURE NOTES</a>
+</section>
+
+<section class="card" aria-labelledby="best-h" style="padding:24px;display:flex;flex-direction:column;gap:14px">
+<h2 id="best-h" class="h" style="margin:0;font-size:10px;color:#6fd27a">STRONGEST</h2>
+<span class="h" style="font-size:15px;color:#f2b632">Graph algorithms</span>
+<div class="seg b" role="img" aria-label="Score 9 of 10"><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span class="f"></span><span></span></div>
+<span style="font-size:15px;color:#c9b8a6">14 of 15 solved unaided. One problem a week keeps it sharp.</span>
+</section>
+
+</aside>
+</div>
+
+<span style="font-size:15px;color:#c9b8a6">Sample numbers for this mockup. Real ones come from your sessions and the overlay.</span>
+
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1500}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

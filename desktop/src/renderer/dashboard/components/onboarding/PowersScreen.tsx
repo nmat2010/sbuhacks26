@@ -10,19 +10,67 @@ interface PowersScreenProps {
 }
 
 export function PowersScreen({ onNext, onBack }: PowersScreenProps) {
-  const [overlayEnabled] = useState(true);
+  // All powers start disabled - user must explicitly enable them
+  const [overlayEnabled, setOverlayEnabled] = useState(false);
   const [screenRecordingEnabled, setScreenRecordingEnabled] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
 
-  const handleScreenRecordingRecheck = () => {
-    setScreenRecordingEnabled(true);
+  const handleOverlayToggle = async () => {
+    if (!overlayEnabled) {
+      try {
+        // Request accessibility permission - this will show the system dialog or open System Settings
+        const status = await window.electronAPI.invoke('permissions-request', 'accessibility');
+        // Only enable if permission was granted
+        if (status.accessibility === 'granted') {
+          setOverlayEnabled(true);
+        }
+      } catch (error) {
+        console.error('[PowersScreen] Failed to request accessibility permission:', error);
+      }
+    } else {
+      // Disable at app level
+      setOverlayEnabled(false);
+    }
   };
 
-  const handleVoiceToggle = () => {
-    setVoiceEnabled(!voiceEnabled);
+  const handleScreenRecordingToggle = async () => {
+    if (!screenRecordingEnabled) {
+      try {
+        // Request screen recording permission - this opens System Settings on macOS
+        await window.electronAPI.invoke('permissions-request', 'screen');
+        // Check if permission was granted (user may need to enable in settings and come back)
+        const status = await window.electronAPI.invoke('permissions-get');
+        if (status.screen === 'granted') {
+          setScreenRecordingEnabled(true);
+        }
+      } catch (error) {
+        console.error('[PowersScreen] Failed to request screen recording permission:', error);
+      }
+    } else {
+      // Disable at app level
+      setScreenRecordingEnabled(false);
+    }
   };
 
-  const powersLocked = [!screenRecordingEnabled, !voiceEnabled].filter(Boolean).length;
+  const handleVoiceToggle = async () => {
+    if (!voiceEnabled) {
+      try {
+        // Request microphone permission - this will show the system dialog
+        const status = await window.electronAPI.invoke('permissions-request', 'microphone');
+        // Only enable if permission was granted
+        if (status.microphone === 'granted') {
+          setVoiceEnabled(true);
+        }
+      } catch (error) {
+        console.error('[PowersScreen] Failed to request microphone permission:', error);
+      }
+    } else {
+      // Disable at app level
+      setVoiceEnabled(false);
+    }
+  };
+
+  const powersLocked = [!overlayEnabled, !screenRecordingEnabled, !voiceEnabled].filter(Boolean).length;
 
   return (
     <div className="pg-permissions" style={{width: '100%', minHeight: '800px', display: 'flex', flexDirection: 'column', background: '#1a1214', color: '#f5ecd9', fontFamily: "'Pixelify Sans',monospace", fontSize: '18px'}}>
@@ -45,28 +93,27 @@ export function PowersScreen({ onNext, onBack }: PowersScreenProps) {
           <div className="card" style={{flex: '1 1 300px', padding: '28px', display: 'flex', flexDirection: 'column', gap: '18px'}}>
             <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px'}}>
               <svg aria-hidden="true" viewBox="0 0 16 16" width="64" height="64" shapeRendering="crispEdges" style={{imageRendering: 'pixelated'}}><rect x="1" y="3" width="14" height="10" fill="#f5ecd9"/><rect x="2" y="4" width="12" height="8" fill="#1a1214"/><rect x="3" y="5" width="5" height="2" fill="#f2b632"/><rect x="9" y="8" width="4" height="3" fill="#c41e1e"/></svg>
-              <span className="h" style={{fontSize: '9px', background: '#6fd27a', color: '#0d0709', padding: '8px 10px'}}>ENABLED</span>
+              <span className="h" style={{fontSize: '9px', background: overlayEnabled ? '#6fd27a' : '#4a3a3d', color: overlayEnabled ? '#0d0709' : '#e0d2c2', padding: '8px 10px'}}>
+                {overlayEnabled ? 'ENABLED' : 'OFF'}
+              </span>
             </div>
             <h2 className="h" style={{margin: '0', fontSize: '14px'}}>OVERLAY</h2>
             <p style={{margin: '0', lineHeight: '1.35', color: '#e0d2c2'}}>Lets Wolfie appear on top of other windows to warn you, gate a site, or cheer you on.</p>
             <div className="card2" style={{padding: '12px 14px', fontSize: '16px', lineHeight: '1.3', color: '#e0d2c2'}}><span style={{color: '#f2b632', fontWeight: '600'}}>Data: </span>[PLACEHOLDER: state exactly what the overlay reads, e.g. active window title and URL only.]</div>
-            <div style={{marginTop: 'auto'}}><button type="button" className="btn ghost" style={{width: '100%'}}>MANAGE</button></div>
+            <div style={{marginTop: 'auto'}}><button type="button" className="btn" style={{width: '100%'}} onClick={handleOverlayToggle}>{overlayEnabled ? 'DISABLE OVERLAY' : 'ENABLE OVERLAY'}</button></div>
           </div>
 
           <div className="card" style={{flex: '1 1 300px', padding: '28px', display: 'flex', flexDirection: 'column', gap: '18px'}}>
             <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px'}}>
               <svg aria-hidden="true" viewBox="0 0 16 16" width="64" height="64" shapeRendering="crispEdges" style={{imageRendering: 'pixelated'}}><rect x="1" y="2" width="14" height="9" fill="#f5ecd9"/><rect x="2" y="3" width="12" height="7" fill="#1a1214"/><rect x="7" y="5" width="2" height="3" fill="#c41e1e"/><rect x="6" y="11" width="4" height="2" fill="#f5ecd9"/><rect x="4" y="13" width="8" height="1" fill="#f5ecd9"/></svg>
-              <span className="h" style={{fontSize: '9px', background: screenRecordingEnabled ? '#6fd27a' : '#f2a03a', color: '#0d0709', padding: '8px 10px'}}>
-                {screenRecordingEnabled ? 'ENABLED' : 'NEEDS RESTART'}
+              <span className="h" style={{fontSize: '9px', background: screenRecordingEnabled ? '#6fd27a' : '#4a3a3d', color: screenRecordingEnabled ? '#0d0709' : '#e0d2c2', padding: '8px 10px'}}>
+                {screenRecordingEnabled ? 'ENABLED' : 'OFF'}
               </span>
             </div>
             <h2 className="h" style={{margin: '0', fontSize: '14px'}}>SCREEN RECORDING</h2>
             <p style={{margin: '0', lineHeight: '1.35', color: '#e0d2c2'}}>Lets Wolfie see what you're working on so it can tell studying from drifting.</p>
             <div className="card2" style={{padding: '12px 14px', fontSize: '16px', lineHeight: '1.3', color: '#e0d2c2'}}><span style={{color: '#f2b632', fontWeight: '600'}}>Data: </span>[PLACEHOLDER: processed on this computer or sent out? Saved or discarded?]</div>
-            <div style={{marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '12px'}}>
-              <p style={{margin: '0', fontSize: '16px', color: '#c9b8a6', lineHeight: '1.3'}}>macOS asks you to allow this in System Settings, then restart the app.</p>
-              <button type="button" className="btn gold" style={{width: '100%'}} onClick={handleScreenRecordingRecheck}>I ENABLED IT · RECHECK</button>
-            </div>
+            <div style={{marginTop: 'auto'}}><button type="button" className="btn" style={{width: '100%'}} onClick={handleScreenRecordingToggle}>{screenRecordingEnabled ? 'DISABLE SCREEN RECORDING' : 'ENABLE SCREEN RECORDING'}</button></div>
           </div>
 
           <div className="card" style={{flex: '1 1 300px', padding: '28px', display: 'flex', flexDirection: 'column', gap: '18px'}}>
@@ -79,7 +126,7 @@ export function PowersScreen({ onNext, onBack }: PowersScreenProps) {
             <h2 className="h" style={{margin: '0', fontSize: '14px'}}>VOICE</h2>
             <p style={{margin: '0', lineHeight: '1.35', color: '#e0d2c2'}}>Lets you talk to Wolfie: say what you tried, ask for the next step, log a win.</p>
             <div className="card2" style={{padding: '12px 14px', fontSize: '16px', lineHeight: '1.3', color: '#e0d2c2'}}><span style={{color: '#f2b632', fontWeight: '600'}}>Data: </span>[PLACEHOLDER: when is the mic live? push-to-talk or always on?]</div>
-            <div style={{marginTop: 'auto'}}><button type="button" className="btn" style={{width: '100%'}} onClick={handleVoiceToggle}>ENABLE VOICE</button></div>
+            <div style={{marginTop: 'auto'}}><button type="button" className="btn" style={{width: '100%'}} onClick={handleVoiceToggle}>{voiceEnabled ? 'DISABLE VOICE' : 'ENABLE VOICE'}</button></div>
           </div>
 
         </div>
