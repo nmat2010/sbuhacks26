@@ -49,6 +49,8 @@ export function HintConversation({ onClose, voiceMode = false }: HintConversatio
   /** Waiting for Wolfie: the number of Wolfie messages when the request was made. */
   const [waitingFrom, setWaitingFrom] = useState<number | null>(null);
   const [watch, setWatch] = useState<WatchStatus | null>(null);
+  // Wolfie reads his replies aloud (ElevenLabs) unless muted here
+  const [readAloud, setReadAloud] = useState(true);
   const listRef = useRef<HTMLDivElement>(null);
   const firstLoad = useRef(true);
 
@@ -58,9 +60,16 @@ export function HintConversation({ onClose, voiceMode = false }: HintConversatio
   useEffect(() => {
     void window.electronAPI.invoke('watch-get').then(setWatch).catch(() => setWatch(null));
     void window.electronAPI.invoke('chat-history').then(setMessages).catch(() => setMessages([]));
+    void window.electronAPI
+      .invoke('settings-get')
+      .then((s) => setReadAloud(s['voice.read_replies']))
+      .catch(() => undefined);
     const offs = [
       window.electronAPI.on('watch-state', setWatch),
-      window.electronAPI.on('chat-history-changed', setMessages)
+      window.electronAPI.on('chat-history-changed', setMessages),
+      window.electronAPI.on('settings-changed', ({ key, value }) => {
+        if (key === 'voice.read_replies') setReadAloud(value === true);
+      })
     ];
     return () => offs.forEach((off) => off());
   }, []);
@@ -117,7 +126,16 @@ export function HintConversation({ onClose, voiceMode = false }: HintConversatio
     void window.electronAPI.invoke('chat-clear');
   };
 
+  const toggleReadAloud = () => {
+    const next = !readAloud;
+    setReadAloud(next);
+    void window.electronAPI.invoke('settings-set', 'voice.read_replies', next);
+    if (!next) void window.electronAPI.invoke('voice-stop-speaking');
+  };
+
   const handleClose = () => {
+    // Wolfie stops reading when the chat closes
+    void window.electronAPI.invoke('voice-stop-speaking');
     // Closing with a hint or explanation still open ends it, so Wolfie can offer help again later
     const step = openStep();
     if (step?.nudgeId) void window.electronAPI.invoke('nudge-response', { id: step.nudgeId, action: 'dismissed', via: 'button' });
@@ -144,6 +162,14 @@ export function HintConversation({ onClose, voiceMode = false }: HintConversatio
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button
+              className="close-btn read-aloud-btn"
+              title={readAloud ? 'Wolfie reads replies aloud (click to mute)' : 'Replies are muted (click to have Wolfie read them)'}
+              style={{ fontSize: 16, width: 'auto', padding: '0 6px' }}
+              onClick={toggleReadAloud}
+            >
+              {readAloud ? '🔊' : '🔇'}
+            </button>
             {messages.length > 0 && (
               <button className="close-btn" title="Clear chat" style={{ fontSize: 14, width: 'auto', padding: '0 8px' }} onClick={handleClear}>
                 Clear

@@ -317,6 +317,31 @@ app.whenReady().then(() => {
           await new Promise((r) => setTimeout(r, 400));
           console.log(`[smoke] click-after-drag: chat-open=${await ui("!!document.querySelector('.hint-messages')")}`);
         }
+        // WOLFIE_SMOKE_SPEAK=<question>: ask in the chat, then follow Wolfie's sprite and the voice
+        // audio while the reply is worked on and read aloud (needs a real model and ElevenLabs)
+        if (process.env.WOLFIE_SMOKE_SPEAK && overlayWindow) {
+          const ui = (js: string) => overlayWindow!.webContents.executeJavaScript(js);
+          await new Promise((r) => setTimeout(r, 1000));
+          await ui("window.__chunks = 0; window.electronAPI.on('voice-audio-out', () => window.__chunks++); 0");
+          await ui("document.querySelector('.mascot').click()");
+          await new Promise((r) => setTimeout(r, 500));
+          await ui(`(() => {
+            const input = document.querySelector('.hint-input');
+            const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+            set.call(input, ${JSON.stringify(process.env.WOLFIE_SMOKE_SPEAK)});
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            document.querySelector('.send-btn').click();
+          })()`);
+          const states: string[] = [];
+          const started = Date.now();
+          while (Date.now() - started < 20_000) {
+            const s = await ui("document.querySelector('.mascot')?.dataset.state");
+            if (states.at(-1)?.split('@')[0] !== s) states.push(`${s}@${((Date.now() - started) / 1000).toFixed(1)}s`);
+            await new Promise((r) => setTimeout(r, 200));
+          }
+          console.log(`[smoke] speak: states=${states.join(' > ')} audio-chunks=${await ui('window.__chunks')}`);
+          console.log(`[smoke] speak: reply=${await ui("[...document.querySelectorAll('.message-text')].at(-1)?.textContent")}`);
+        }
         // WOLFIE_SMOKE_SHOT=<png path>: open the chat, ask a question, save a picture of the overlay
         if (process.env.WOLFIE_SMOKE_SHOT && overlayWindow) {
           const ui = (js: string) => overlayWindow!.webContents.executeJavaScript(js);
@@ -337,7 +362,8 @@ app.whenReady().then(() => {
             writeFileSync(process.env.WOLFIE_SMOKE_SHOT.replace(/\.png$/, '-bubble.png'), (await overlayWindow.webContents.capturePage()).toPNG());
             console.log(`[smoke] stuck: chat-open=${await ui("!!document.querySelector('.hint-messages')")}`);
           }
-          await ui("document.querySelector('.mascot').click()");
+          // Open the chat (a help step may have opened it already)
+          if (!(await ui("!!document.querySelector('.hint-messages')"))) await ui("document.querySelector('.mascot').click()");
           await new Promise((r) => setTimeout(r, 500));
           console.log(`[smoke] chat-open messages=${await ui("document.querySelectorAll('.message-text').length")} first=${await ui("document.querySelector('.message-text')?.textContent?.slice(0, 40)")}`);
           // Record Wolfie's thinking signal while the question is answered

@@ -44,6 +44,7 @@ export function Mascot({ state, voiceActive, onClick, onMouseEnter, onMouseLeave
         transition: 'all 0.3s ease'
       }}
       className="mascot"
+      data-state={state}
     >
       {/* Sprite Animations for all animated states */}
       {state === 'idle' && (

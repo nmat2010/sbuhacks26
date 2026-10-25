@@ -37,6 +37,7 @@ import { voiceBus } from '../voice/bus.js';
 import { selectVoiceProviders, type VoiceProviderChoice } from '../voice/providers.js';
 import type { SocketFactory } from '../voice/elevenlabs-stt.js';
 import { attachNudgeSpeech } from '../voice/nudge-speech.js';
+import { isUnaskedOffer, spokenReply } from '../voice/read-aloud.js';
 import { createVoiceService, type VoiceService } from '../voice/service.js';
 import type { IntentHandler } from '../voice/router.js';
 import type { VoiceIntent } from '../voice/intents.js';
@@ -68,6 +69,19 @@ let watchHooks: WatchHooks | undefined;
 let chatLog: ChatLog | null = null;
 const notifyChat = () => {
   if (chatLog) broadcast('chat-history-changed', chatLog.list());
+};
+/** Ends the thinking sprite once a reply's first audio arrives (no idle blink before talking). */
+let endReadThinking: (() => void) | null = null;
+const stopReadThinking = () => {
+  endReadThinking?.();
+  endReadThinking = null;
+};
+/** Reads a chat reply aloud (voice.read_replies; ElevenLabs), interrupting what Wolfie was saying. */
+const readReply = (text: string) => {
+  if (!voice || !getSetting('voice.read_replies') || isPaused()) return;
+  stopReadThinking();
+  endReadThinking = beginThinking();
+  void voice.speaker.speak(spokenReply(text)).finally(stopReadThinking);
 };
 /** Set by registerWatch(); the escalation engine asks it before offering help. */
 let engagedCheck: (() => boolean) | null = null;
@@ -201,7 +215,14 @@ function registerHintFlow(): void {
   };
 
   // Any nudge with spokenText is spoken in voice mode (hint bubbles carry the first two sentences)
-  cleanups.push(attachNudgeSpeech(queue, (text) => voice?.speakIfVoice(text) ?? false));
+  // Help steps are read in full from the chat when voice.read_replies is on (not twice)
+  cleanups.push(
+    attachNudgeSpeech(
+      queue,
+      (text) => voice?.speakIfVoice(text) ?? false,
+      (nudge) => getSetting('voice.read_replies') && nudge.kind === 'stuck' && !isUnaskedOffer(nudge)
+    )
+  );
 }
 
 /** Domain suffix match, the same rule the hint service uses for assessment domains. */
@@ -355,6 +376,8 @@ function registerWatch(): void {
   handle('chat-send', async (text) => {
     const message = String(text ?? '').trim();
     if (!message) return { kind: 'error' as const, error: 'Type a question first.' };
+    // A new question: Wolfie stops reading the last answer
+    voice?.speaker.stop();
     const history = chatLog?.recentTurns(6) ?? [];
     chatLog?.add({ role: 'user', text: message });
     notifyChat();
@@ -368,6 +391,7 @@ function registerWatch(): void {
     if (res.success && res.data) {
       chatLog?.add({ role: 'wolfie', text: res.data.answer, label: res.data.label, citations: res.data.citations, resources: res.data.resources });
       notifyChat();
+      readReply(res.data.answer);
       return { kind: 'answer' as const, answer: res.data };
     }
     const error = res.error ?? FALLBACK_WATCH_ERROR;
@@ -390,7 +414,12 @@ const FALLBACK_WATCH_ERROR = "Sorry, I couldn't put that together. Please try ag
 function registerChat(): void {
   const log = new ChatLog(getDatabase);
   chatLog = log;
-  cleanups.push(attachChatLog(getNudgeQueue(), log, notifyChat));
+  cleanups.push(attachChatLog(getNudgeQueue(), log, notifyChat, readReply));
+  // Closing the chat or turning reading off: stop talking now
+  handle('voice-stop-speaking', async () => {
+    voice?.speaker.stop();
+    return { success: true };
+  });
 
   handle('chat-history', async () => log.list());
   handle('open-link', async (url) => {
@@ -508,6 +537,7 @@ function registerVoice(): void {
         if (res.success && res.data) {
           chatLog?.add({ role: 'wolfie', text: res.data.answer, label: res.data.label, citations: res.data.citations, resources: res.data.resources });
           notifyChat();
+          readReply(res.data.answer);
           broadcast('watch-answer', res.data);
           // Also as a bubble until the overlay chat panel (Thu, U2) shows watch-answer itself
           getNudgeQueue().push(
@@ -515,7 +545,8 @@ function registerVoice(): void {
               kind: 'other',
               level: 1,
               text: `${res.data.answer}${res.data.resources.length ? `\n\n${res.data.resources.map((r) => `• ${r.title}`).join('\n')}\n(Links are in the chat.)` : ''}\n\n${res.data.label}`,
-              spokenText: firstSentences(res.data.answer),
+              // Read in full from the chat when that is on; else voice mode speaks the start
+              spokenText: getSetting('voice.read_replies') ? undefined : firstSentences(res.data.answer),
               buttons: [{ label: 'Got it', action: ACTIONS.GOT_IT, variant: 'primary' }],
               priority: 8
             },
@@ -538,7 +569,10 @@ function registerVoice(): void {
     },
     requestHelp: (trigger) => stuckBus.emit('help-requested', trigger),
     announce: (intent, transcript) => voiceBus.emit('intent', intent, transcript),
-    sendAudio: (chunk, meta) => broadcast('voice-audio-out', { ...meta, chunk }),
+    sendAudio: (chunk, meta) => {
+      broadcast('voice-audio-out', { ...meta, chunk });
+      stopReadThinking(); // talking from here (the audio is sent first, so no idle frame)
+    },
     sendStopPlayback: (utteranceId) => broadcast('voice-stop-playback', { utteranceId }),
     sendMic: (live) => broadcast('voice-mic', live),
     sendTrouble: (message) => broadcast('voice-trouble', message),

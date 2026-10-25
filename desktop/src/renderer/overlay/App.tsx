@@ -6,6 +6,7 @@ import { HintConversation } from './components/HintConversation';
 import { StuckButton } from './components/StuckButton';
 import { useNudge } from './hooks/useNudge';
 import { useVoiceIntents } from './hooks/useVoiceIntents';
+import { useVoicePlayer } from './hooks/useVoicePlayer';
 import type { MascotStateType } from '@wolfie/shared';
 
 /** Main's escalation states drawn with Thu's sprites (glance and "?" are thinking, alert is angry). */
@@ -40,6 +41,8 @@ function App() {
   // Thinking sprite while a reply the student asked for is on its way (wins over bubbles)
   const [thinking, setThinking] = useState(false);
   useEffect(() => window.electronAPI.on('wolfie-thinking', setThinking), []);
+  // Talking sprite while Wolfie's voice is playing (ElevenLabs)
+  const speaking = useVoicePlayer();
 
   // While the chat is open it takes the mouse, and help steps are shown in it instead of a bubble
   const chatOpenRef = React.useRef(false);
@@ -111,6 +114,8 @@ function App() {
   useEffect(() => {
     if (thinking) {
       setMascotState('thinking');
+    } else if (speaking) {
+      setMascotState('talking');
     } else if (currentNudge) {
       switch (currentNudge.kind) {
         case 'stuck':
@@ -133,7 +138,7 @@ function App() {
     } else {
       setMascotState(spriteFor(baseState));
     }
-  }, [thinking, currentNudge, baseState]);
+  }, [thinking, speaking, currentNudge, baseState]);
 
   const handleMouseEnter = () => {
     // Disable click-through when hovering over mascot

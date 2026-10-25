@@ -25,6 +25,8 @@ export const SettingsKeys = {
   VOICE_STT_PROVIDER: 'voice.stt_provider',
   VOICE_TTS_PROVIDER: 'voice.tts_provider',
   VOICE_STORE_TRANSCRIPTS: 'voice.store_transcripts',
+  /** Wolfie reads his chat replies aloud (ElevenLabs), separate from voice mode's microphone. */
+  VOICE_READ_REPLIES: 'voice.read_replies',
 
   // Assessment
   ASSESSMENT_DOMAINS: 'assessment.domains',
@@ -124,6 +126,7 @@ export interface SettingsValues {
   'voice.stt_provider': 'elevenlabs' | 'mock';
   'voice.tts_provider': 'elevenlabs' | 'mock';
   'voice.store_transcripts': boolean;
+  'voice.read_replies': boolean;
   'assessment.domains': string[];
   'image.storage_enabled': boolean;
   'streak.qualifying_minutes': number;
@@ -211,6 +214,7 @@ export const SettingsDefaults: SettingsValues = {
   'voice.stt_provider': 'elevenlabs',
   'voice.tts_provider': 'elevenlabs',
   'voice.store_transcripts': false,
+  'voice.read_replies': true,
   'assessment.domains': [],
   'image.storage_enabled': false,
   'streak.qualifying_minutes': 20,

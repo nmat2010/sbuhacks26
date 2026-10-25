@@ -12,10 +12,13 @@ export interface NudgeEmitterLike {
 
 export function attachNudgeSpeech(
   queue: NudgeEmitterLike,
-  speakIfVoice: (text: string) => Promise<boolean> | boolean
+  speakIfVoice: (text: string) => Promise<boolean> | boolean,
+  /** Nudges read another way (chat replies read aloud in full), so they aren't spoken twice. */
+  skip?: (nudge: Nudge) => boolean
 ): () => void {
   const listener = (nudge: Nudge) => {
-    if (nudge.spokenText) void Promise.resolve(speakIfVoice(nudge.spokenText)).catch(() => undefined);
+    if (!nudge.spokenText || skip?.(nudge)) return;
+    void Promise.resolve(speakIfVoice(nudge.spokenText)).catch(() => undefined);
   };
   queue.on('show', listener);
   return () => void queue.off('show', listener);
