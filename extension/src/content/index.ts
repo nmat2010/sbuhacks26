@@ -3,7 +3,7 @@
 import type { ContentState, RuntimeMessage, TabMessage } from '../lib/messages';
 import { ContentRuntime } from './runtime';
 import { defaultSummaryDeps } from './summary';
-import { isBrightspace, isBrightspaceCoursePage, scrapeBrightspace, scrapeCoursePage } from './brightspace';
+import { isBrightspace, isBrightspaceCoursePage, scrapeBrightspace } from './brightspace';
 
 console.log('[Wolfie Extension] Content script loaded on:', location.hostname, location.pathname);
 

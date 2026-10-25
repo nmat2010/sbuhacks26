@@ -3,19 +3,30 @@ import { useDashboard } from './hooks/useDashboard';
 import { useSession } from './hooks/useSession';
 import { useSettings } from './hooks/useSettings';
 import { AppShell, type PageView } from './pixel-components/AppShell';
-import { DashboardPage } from './views/DashboardPage';
-import { ReportPage } from './views/ReportPage';
-import { StrengthWeaknessPage } from './views/StrengthWeaknessPage';
+import { HomeView } from './views/HomeView';
+import { ReportView } from './views/ReportView';
+import { SkillsView } from './views/SkillsView';
+import { SettingsView } from './views/SettingsView';
 import { BrightspaceMaterialPage } from './views/BrightspaceMaterialPage';
-import { SettingsPage } from './views/SettingsPage';
 import { RetroOnboarding } from './components/RetroOnboarding';
 import './styles/tokens.css';
+import './styles/Dashboard.css';
+import './styles/retro-views.css';
 
-// The dashboard skeleton (tuan/reports/dashboard-skeleton.md): the student's performance seen the
-// way a teacher would, and what to do next to grow. Five pages; Thu styles them.
+// The dashboard: the student's performance seen the way a teacher would, and what to do next to
+// grow. Thu's retro shell and look (tuan/reports/dashboard-compare.md); the Dashboard, Report,
+// Strength/Weakness and Settings pages show Tuan's data (sessions, Watch-mode reports, the skills
+// record, real settings); Brightspace Material is Thu's page.
 
-// Legacy type export for backward compatibility
+/** Page names used by Tuan's views (HomeView links), mapped to the shell's pages. */
 export type ViewType = 'home' | 'report' | 'skills' | 'materials' | 'settings';
+const PAGE_OF: Record<ViewType, PageView> = {
+  home: 'dashboard',
+  report: 'report',
+  skills: 'strength-weakness',
+  materials: 'brightspace-material',
+  settings: 'settings'
+};
 
 function App() {
   const [currentView, setCurrentView] = useState<PageView>('dashboard');
@@ -23,7 +34,6 @@ function App() {
   const { summary } = useDashboard();
   const { isActive, isPaused } = useSession();
   const { settings } = useSettings();
-  const isSample = !!summary && !summary.latestSession;
 
   // Appearance prefs apply to the whole window
   useEffect(() => {
@@ -63,16 +73,16 @@ function App() {
   const renderView = () => {
     switch (currentView) {
       case 'report':
-        return <ReportPage isSample={isSample} onNavigate={setCurrentView} />;
+        return <ReportView />;
       case 'strength-weakness':
-        return <StrengthWeaknessPage isSample={isSample} onNavigate={setCurrentView} />;
+        return <SkillsView />;
       case 'brightspace-material':
         return <BrightspaceMaterialPage />;
       case 'settings':
-        return <SettingsPage />;
+        return <SettingsView />;
       case 'dashboard':
       default:
-        return <DashboardPage summary={summary} onNavigate={setCurrentView} />;
+        return <HomeView onNavigate={(view) => setCurrentView(PAGE_OF[view])} />;
     }
   };
 

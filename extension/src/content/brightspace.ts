@@ -170,7 +170,7 @@ export function scrapeCourses(doc: Document): BrightspaceCourse[] {
 
       // Look for the course title in the card - usually in a heading
       const headingEl = card.querySelector('h3, [role="heading"], d2l-heading');
-      let titleText = headingEl?.textContent?.trim() || link.textContent?.trim() || '';
+      const titleText = headingEl?.textContent?.trim() || link.textContent?.trim() || '';
 
       if (!titleText || titleText.length < 3) continue;
 

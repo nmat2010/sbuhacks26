@@ -339,7 +339,7 @@ app.whenReady().then(() => {
           console.log(`[smoke] report: prose=${JSON.stringify(report?.prose)}`);
           dash.webContents.reload();
           await new Promise<void>((r) => dash.webContents.once('did-finish-load', () => r()));
-          await d("document.querySelectorAll('.nav-item')[1].click(); 0");
+          await d("document.querySelectorAll('.app-shell__nav-item, .nav-item')[1].click(); 0");
           await new Promise((r) => setTimeout(r, 1200));
           writeFileSync(process.env.WOLFIE_SMOKE_REPORT, (await dash.webContents.capturePage()).toPNG());
         }
@@ -353,11 +353,12 @@ app.whenReady().then(() => {
           await ui("window.electronAPI.invoke('session-start').then(() => new Promise((r) => setTimeout(r, 1500))).then(() => window.electronAPI.invoke('session-stop')).then(() => 0)");
           dash.webContents.reload();
           await new Promise<void>((r) => dash.webContents.once('did-finish-load', () => r()));
-          const pages = (await ui("[...document.querySelectorAll('.nav-item .nav-label')].map((e) => e.textContent)")) as string[];
+          const NAV = "'.app-shell__nav-item, .nav-item'";
+          const pages = (await ui(`[...document.querySelectorAll(${NAV})].map((e) => e.textContent.trim())`)) as string[];
           for (const [i, label] of pages.entries()) {
-            await ui(`document.querySelectorAll('.nav-item')[${i}].click(); 0`);
+            await ui(`document.querySelectorAll(${NAV})[${i}].click(); 0`);
             await new Promise((r) => setTimeout(r, 800));
-            const height = await ui('document.querySelector(".main-content").scrollHeight');
+            const height = await ui('document.querySelector(".app-shell__main, .main-content")?.scrollHeight');
             console.log(`[smoke] dash: ${label} title=${await ui("document.querySelector('.view-title')?.textContent")} height=${height}`);
             writeFileSync(`${process.env.WOLFIE_SMOKE_DASH}-${i}.png`, (await dash.webContents.capturePage()).toPNG());
           }

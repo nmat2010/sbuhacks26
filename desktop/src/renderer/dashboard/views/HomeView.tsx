@@ -88,7 +88,7 @@ export function HomeView({ onNavigate }: { onNavigate: (view: ViewType) => void 
         <div className="card-content">
           {active ? (
             <div>
-              <p style={{ fontSize: '16px', color: '#27ae60', marginBottom: '16px' }}>
+              <p className="session-active">
                 ✅ Session active since {new Date(active.startedAt).toLocaleTimeString()}
               </p>
               <button className="btn btn-secondary" onClick={handleStop}>
@@ -97,7 +97,7 @@ export function HomeView({ onNavigate }: { onNavigate: (view: ViewType) => void 
             </div>
           ) : (
             <div>
-              <p style={{ fontSize: '16px', color: '#6e6e73', marginBottom: '16px' }}>No active session</p>
+              <p className="session-idle">No active session</p>
               <button className="btn btn-primary" onClick={handleStart}>
                 Start Session
               </button>

@@ -35,3 +35,21 @@ For Tuan to decide later what to keep.
    - XP and level, as light gamification;
    - the study topic and timer at session start;
    - the Brightspace page.
+
+## Done on tuan/dashboard-merge (not pushed; main untouched)
+- **Merge:** Thu's main merged into `tuan/dashboard-merge`, made from `tuan/skills`. It merged cleanly; her pages and backend are all there.
+- **Fixes to her code:**
+  - contract fixtures for `ext.brightspace_data` and `desk.request_brightspace`, so the shared contract test passes;
+  - two type annotations in `extension/src/content/brightspace.ts`, so typecheck passes.
+- **`App.tsx`:**
+  - **Thu's:** `AppShell` (top bar, sidebar, Sensei sprite, level and XP from her `dash-summary`) and her retro onboarding.
+  - **Tuan's pages:** `HomeView`, `ReportView`, `SkillsView`, `SettingsView`.
+  - **Her page:** `BrightspaceMaterialPage`.
+  - Her `DashboardPage`, `ReportPage`, `StrengthWeaknessPage` and `SettingsPage` stay in the tree, unused, for the later decision.
+- **`styles/retro-views.css`:** restyles Tuan's markup in Thu's look (her tokens, pixel borders, gold headings, gold and red buttons, chips, badges, her square switch), scoped to `.app-shell`. Our base layout (`Dashboard.css`) is still imported for grids and rows. Hard-coded light colors in `HomeView` and `SettingsView` became classes.
+- **Smoke:** nav selectors updated for her shell.
+- **Verified** on a copy of Tuan's real data:
+  - all five pages load in her shell;
+  - Settings still saves (add, switch off, remove);
+  - screenshots look right.
+  - Tests: 703 pass. Typecheck and lint are clean (also fixed 2 lint errors in her extension code: a `let` → `const`, an unused import).
