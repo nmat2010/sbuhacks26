@@ -21,6 +21,9 @@ export const MIN_SIGNAL_LIFETIME_MS = 5 * 60_000;
 /** After push() returns null, wait before offering again (cooldown / cap / snooze). */
 export const PUSH_RETRY_MS = 5_000;
 
+/** After "Not now", a new wrong answer is offered help again after this long. */
+export const WRONG_ANSWER_QUIET_AFTER_DECLINE_MS = 60_000;
+
 export const OFFER_TEXT = "This one looks tricky. Want a hint? Just say \"I'm stuck\" and I'll help.";
 
 export interface EngineDeps {
@@ -59,6 +62,10 @@ export class EscalationEngine {
   private state: EscalationState;
   private signals = new Map<SignalTypeType, ActiveSignal>();
   private offer: { id: string } | null = null;
+  /** Watch mode saw a new wrong answer that hasn't been offered help for yet. */
+  private wrongAnswerPending = false;
+  /** When the last offer was declined ("Not now"); null if not declined since. */
+  private declinedAt: number | null = null;
   private ladderOpen = false;
   private nextPushAt = 0;
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -96,6 +103,7 @@ export class EscalationEngine {
     this.ladderOpen = open;
     if (open) {
       this.signals.clear();
+      this.wrongAnswerPending = false;
       this.offer = null;
       this.setLevelDisplay(0);
     }
@@ -120,6 +128,7 @@ export class EscalationEngine {
     const now = this.deps.now();
     this.state = applyEscalationEvent(this.state, { type: 'im_good', at: now, problemId: this.state.currentProblemId });
     this.signals.clear();
+    this.wrongAnswerPending = false;
     this.offer = null;
     this.setLevelDisplay(0);
     this.deps.log('offer.declined', { reason: 'im_good', problem: this.redactedProblem() });
@@ -151,12 +160,8 @@ export class EscalationEngine {
     const fresh = !existing;
     this.signals.set(signal.type, { signal, expiresAt: now + this.lifetimeMs(signal.type) });
     if (fresh) this.deps.log('stuck.signal', { type: signal.type, strength: signal.strength });
-    // Watch mode read a wrong answer on screen: step in now with the offer instead of climbing
-    // glance -> "?" over 90 s. The usual guards still apply (5 s after typing, declines, "I'm good",
-    // snooze, pause, not engaged), because the offer still goes through computeLevel.
-    if (signal.type === 'answer_seen_wrong' && this.state.lastLevel < 2) {
-      this.state = applyEscalationEvent(this.state, { type: 'shown', level: 2, at: now - ESCALATION_TIMING.stepCooldownMs });
-    }
+    // Watch mode read a (new) wrong answer: offer help without climbing glance -> "?" (see tick)
+    if (signal.type === 'answer_seen_wrong') this.wrongAnswerPending = true;
     this.tick();
   }
 
@@ -169,6 +174,7 @@ export class EscalationEngine {
     const hadOffer = this.offer !== null;
     this.state = applyEscalationEvent(this.state, { type: 'accepted', at: now });
     this.signals.clear();
+    this.wrongAnswerPending = false;
     this.offer = null;
     this.setLevelDisplay(0);
     if (trigger === 'auto' || hadOffer) this.deps.log('offer.accepted', { trigger });
@@ -181,6 +187,7 @@ export class EscalationEngine {
     if (key === this.state.currentProblemId) return;
     this.state = applyEscalationEvent(this.state, { type: 'problem_changed', at: this.deps.now(), problemId: key });
     this.signals.clear();
+    this.wrongAnswerPending = false;
     this.offer = null;
     this.setLevelDisplay(0);
   }
@@ -200,6 +207,8 @@ export class EscalationEngine {
       case AUTO_RESPONSES.DISMISSED:
         this.state = applyEscalationEvent(this.state, { type: 'declined', at: now });
         this.signals.clear();
+        this.wrongAnswerPending = false;
+        this.declinedAt = now;
         this.offer = null;
         this.setLevelDisplay(0);
         this.deps.log('offer.declined', { reason: response.action });
@@ -230,6 +239,7 @@ export class EscalationEngine {
     // Not really working (away, or not on a study task): hold where we are. No new step, and an
     // offer already on screen stays answerable (dropping to 0 would orphan its buttons).
     if (this.deps.isEngaged && !this.deps.isEngaged()) return;
+    this.fastTrackWrongAnswer(now);
     const active = [...this.signals.values()].map((a) => a.signal);
     const level = computeLevel(active, this.state);
     const previous = this.state.lastLevel;
@@ -258,6 +268,23 @@ export class EscalationEngine {
   }
 
   // ---- Helpers -----------------------------------------------------------------------------
+
+  /**
+   * A new wrong answer is new information: offer help right away instead of climbing glance ->
+   * "?" over 90 s. After "Not now", a *different* wrong answer is offered again once a minute has
+   * passed, at full strength (the decline's 3 min quiet and 10 min weaker period are for vague
+   * signals). The same answer is never flagged twice (the watcher dedupes), and "I'm good",
+   * snooze, pause and the 5 s typing guard still apply through computeLevel.
+   */
+  private fastTrackWrongAnswer(now: number): void {
+    if (!this.wrongAnswerPending) return;
+    if (this.declinedAt !== null && now - this.declinedAt < WRONG_ANSWER_QUIET_AFTER_DECLINE_MS) return;
+    this.wrongAnswerPending = false;
+    this.state = { ...this.state, declineCooldownUntil: null, declinePenaltyUntil: null };
+    if (this.state.lastLevel < 2) {
+      this.state = applyEscalationEvent(this.state, { type: 'shown', level: 2, at: now - ESCALATION_TIMING.stepCooldownMs });
+    }
+  }
 
   /** When Watch mode saw a wrong answer, the offer says what looks off (never the answer). */
   private offerText(): string {
@@ -311,6 +338,8 @@ export class EscalationEngine {
 
   private reset(): void {
     this.signals.clear();
+    this.wrongAnswerPending = false;
+    this.declinedAt = null;
     this.offer = null;
     this.ladderOpen = false;
     this.nextPushAt = 0;

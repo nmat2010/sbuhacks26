@@ -425,3 +425,48 @@ describe('EscalationEngine: the offer says what looks off', () => {
     expect(u.pushed.at(-1)?.text).toBe(OFFER_TEXT);
   });
 });
+
+describe('EscalationEngine: a new wrong answer after "Not now"', () => {
+  const wrong = (t: ReturnType<typeof setup>, issue: string) =>
+    t.bus.emit('signal', { type: 'answer_seen_wrong', strength: 'strong', timestamp: t.clock.t, metadata: { source: 'watch', issue } });
+
+  it('stays quiet for a minute, then offers again at full strength', () => {
+    const t = setup({ voice: false });
+    wrong(t, 'This describes overfitting rather than underfitting.');
+    const first = t.pushed.at(-1)!;
+    expect(first.level).toBe(3);
+    t.responses.emit('response', { id: 'n1', action: 'decline', via: 'button' });
+    const shown = t.pushed.length;
+
+    t.advance(30);
+    wrong(t, 'This still describes overfitting.');
+    t.advance(45);
+    expect(t.pushed).toHaveLength(shown); // still inside the minute of quiet
+
+    t.advance(61);
+    expect(t.pushed.length).toBe(shown + 1);
+    expect(t.pushed.at(-1)).toMatchObject({ level: 3, text: 'Hmm, something looks off: this still describes overfitting. Want a hint?' });
+  });
+
+  it('vague signals still get the full decline quiet', () => {
+    const t = setup({ voice: false });
+    wrong(t, 'x');
+    t.responses.emit('response', { id: 'n1', action: 'decline', via: 'button' });
+    const shown = t.pushed.length;
+    t.advance(70);
+    t.bus.emit('signal', t.strong());
+    for (let s = 75; s <= 170; s += 5) t.advance(s);
+    expect(t.pushed).toHaveLength(shown); // 3 min quiet not over yet
+  });
+
+  it("\"I'm good\" still silences wrong-answer offers", () => {
+    const t = setup({ voice: false });
+    wrong(t, 'x');
+    t.responses.emit('response', { id: 'n1', action: 'im_good', via: 'button' });
+    const shown = t.pushed.length;
+    t.advance(120);
+    wrong(t, 'y');
+    t.advance(130);
+    expect(t.pushed).toHaveLength(shown);
+  });
+});

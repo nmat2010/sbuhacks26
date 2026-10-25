@@ -160,3 +160,12 @@
   - "The problem statement in the scratch work (2x + 5 = 31) does not match the original problem (2x + 5 = 13)."
   - One call took 22 s, which is why the timeout was raised.
 - Tests: 632 pass.
+
+## Update: no new nudge after "Not now"
+- **Reported:** after declining the offer, a changed (still wrong) underfitting answer got no nudge.
+- **Cause (spec 4c as built):** "Not now" gives 3 min with no offers, then target − 1 until 10 min after the decline, so even a strong signal stops at "?". In practice there are no offers for 10 minutes.
+- **Fix, for wrong answers only:** a different wrong answer is offered help again, at full strength, once 1 minute has passed since "Not now".
+  - The same answer is never flagged twice (the watcher dedupes).
+  - Vague signals keep the 3 min quiet plus the 10 min weaker period.
+  - "I'm good" still silences offers for the session.
+- Tests: 635 pass.
