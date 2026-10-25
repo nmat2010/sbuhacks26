@@ -30,6 +30,7 @@ export function StreakGrid({ days, label }: StreakGridProps) {
         key={index}
         className={`streak-grid__day ${statusClass}`.trim()}
         title={day.date}
+        style={{ ['--i' as string]: index }}
       >
         {day.status === 'leaned-on-ai' ? 'X' : ''}
       </span>
@@ -47,7 +48,7 @@ export function StreakGrid({ days, label }: StreakGridProps) {
         {week1.map(renderDay)}
       </div>
       <div className="streak-grid__row">
-        {week2.map(renderDay)}
+        {week2.map((d, i) => renderDay(d, i + 7))}
       </div>
     </div>
   );

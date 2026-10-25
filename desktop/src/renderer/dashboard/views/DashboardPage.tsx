@@ -10,7 +10,8 @@ import {
   StreakGrid,
   StepChart,
   WolfieSprite,
-  SampleNotice
+  SampleNotice,
+  CountUp
 } from '../pixel-components';
 import type { PageView } from '../pixel-components';
 import type { DashOutcome, DashSession, DashSummary } from '../../../common/ipc-dashboard';
@@ -155,6 +156,7 @@ export function DashboardPage({ summary, onNavigate }: DashboardPageProps) {
         </div>
         <div style={{ flex: '1 1 320px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <h2 id="start-h" className="ws-heading" style={{ margin: 0, fontSize: '13px', color: 'var(--ws-gold)' }}>
+            {isActive && <span className="live-dot" aria-hidden="true" />}
             {isActive ? 'SESSION RUNNING' : 'START A STUDY SESSION'}
           </h2>
           {isActive ? (
@@ -343,7 +345,7 @@ export function DashboardPage({ summary, onNavigate }: DashboardPageProps) {
             </h2>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
               <span className="ws-heading" style={{ fontSize: '32px', color: 'var(--ws-gold)' }}>
-                {streak.current}
+                <CountUp value={streak.current} />
               </span>
               <span style={{ fontWeight: 600 }}>{streak.current === 1 ? 'day' : 'days'} on your own</span>
             </div>

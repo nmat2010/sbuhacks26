@@ -3,6 +3,7 @@ import { useDashboard } from './hooks/useDashboard';
 import { useSession } from './hooks/useSession';
 import { useSettings } from './hooks/useSettings';
 import { AppShell, type PageView } from './pixel-components/AppShell';
+import { MascotTransitionProvider } from './pixel-components/MascotTransition';
 import { HomeView } from './views/HomeView';
 import { ReportView } from './views/ReportView';
 import { SkillsView } from './views/SkillsView';
@@ -12,6 +13,8 @@ import { RetroOnboarding } from './components/RetroOnboarding';
 import './styles/tokens.css';
 import './styles/Dashboard.css';
 import './styles/retro-views.css';
+// Thu's page transitions (pages rise in, staggered) and the mascot launch transition
+import './styles/motion.css';
 
 // The dashboard: the student's performance seen the way a teacher would, and what to do next to
 // grow. Thu's retro shell and look (tuan/reports/dashboard-compare.md); the Dashboard, Report,
@@ -91,6 +94,7 @@ function App() {
   }
 
   return (
+    <MascotTransitionProvider sound={settings?.appearance.soundEffects ?? true}>
     <AppShell
       currentView={currentView}
       onNavigate={setCurrentView}
@@ -98,8 +102,11 @@ function App() {
       xp={summary?.xp}
       mood={isPaused ? 'PAUSED' : isActive ? 'WATCHING' : 'READY'}
     >
-      {renderView()}
+      <div key={currentView} className="page-enter">
+        {renderView()}
+      </div>
     </AppShell>
+    </MascotTransitionProvider>
   );
 }
 

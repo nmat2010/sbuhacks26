@@ -22,6 +22,7 @@ export function SegBar({ value, tone = 'default', label }: SegBarProps) {
         <span
           key={index}
           className={`seg-bar__segment ${filled ? 'seg-bar__segment--filled' : ''}`.trim()}
+          style={{ ['--i' as string]: index }}
         />
       ))}
     </div>

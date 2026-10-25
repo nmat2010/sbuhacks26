@@ -63,3 +63,11 @@ For Tuan to decide later what to keep.
   - **Course chips:** semester, course count, Brightspace synced, extension connected, now in our Dashboard header (her `useBrightspace` / `useAppStatus`).
   - **Sample data:** dropped.
 - **Chat avatar:** Thu's pixel Wolfie (`WolfieSprite`) replaces the 🐺 emoji in the chat header, beside each Wolfie message, and in "Thinking...".
+
+## Thu's transitions merged (origin/main 83d4442 "page transitions", cae2af7 "add animation")
+- **Taken:** both commits, which are only transition and motion work:
+  - **`motion.css`:** each page rises in with its sections staggered, plus hover and press motion. Our pages get it through the `page-enter` wrapper in `App.tsx`.
+  - **`MascotTransitionProvider`:** the mascot "launch" (Wolfie charges, digs and dives while a pixel iris covers the page, then emerges and waves), with optional sound effects; her Brightspace page uses it to open course links.
+  - **`CountUp`** and small edits to her own (unused) pages.
+- **Conflict:** only `App.tsx` imports. Kept our pages and added `MascotTransitionProvider` and `motion.css`.
+- **Verified:** all five pages render in the real app, and a screenshot caught a page mid-rise. 707 tests pass. Typecheck and lint have no errors.
