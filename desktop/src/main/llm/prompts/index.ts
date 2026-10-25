@@ -18,6 +18,7 @@ import watchAnswerV1 from './watch-answer.v1.md?raw';
 import watchAnswerV2 from './watch-answer.v2.md?raw';
 import sessionReportV1 from './session-report.v1.md?raw';
 import sessionReportV2 from './session-report.v2.md?raw';
+import sessionReportV3 from './session-report.v3.md?raw';
 import skillsMergeV1 from './skills-merge.v1.md?raw';
 
 // Versioned prompt files (SPEC 6: prompts are files, not inline strings). To change a prompt,
@@ -44,6 +45,7 @@ export const PROMPTS = {
   'watch-answer.v2': watchAnswerV2,
   'session-report.v1': sessionReportV1,
   'session-report.v2': sessionReportV2,
+  'session-report.v3': sessionReportV3,
   'skills-merge.v1': skillsMergeV1
 } as const;
 

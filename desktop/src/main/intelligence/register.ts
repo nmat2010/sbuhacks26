@@ -45,6 +45,7 @@ import { ReportStore, type StoredReport } from '../report/store.js';
 import { SkillRecordStore, skillStatus } from '../skills/record.js';
 import { tidySkills } from '../skills/tidy.js';
 import { getHistory } from '../history/queries.js';
+import { getFocusCurve, sessionDrifts } from '../history/focus-curve.js';
 import { createVoiceService, type VoiceService } from '../voice/service.js';
 import type { IntentHandler } from '../voice/router.js';
 import type { VoiceIntent } from '../voice/intents.js';
@@ -501,6 +502,10 @@ function registerReports(): void {
   } catch (error) {
     console.error('[skills] could not build the record from past reports:', error);
   }
+  const ruleLists = () => ({ aiTools: getSetting('monitored.ai_tools'), distractions: getSetting('monitored.distractions') });
+  handle('focus-curve-get', async () => getFocusCurve(getDatabase(), ruleLists()));
+  handle('session-drifts-get', async (sessionId) => sessionDrifts(getDatabase(), String(sessionId ?? ''), ruleLists()));
+
   handle('skills-get', async () =>
     skills.list().map((s) => ({
       id: s.id,
@@ -526,6 +531,7 @@ function registerReports(): void {
       return s ? { startedAt: s.startedAt, endedAt: s.endedAt, seconds: s.seconds, hintCount: s.hintCount, deepestHintLevel: s.deepestHintLevel } : null;
     },
     onUpdated: (sessionId) => broadcast('report-updated', { sessionId }),
+    drifts: (sessionId) => sessionDrifts(getDatabase(), sessionId, ruleLists()),
     // The report reuses the record's names, and its topics go into the record
     knownSkills: () => skills.names(),
     onWritten: (report) => {

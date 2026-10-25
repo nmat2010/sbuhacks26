@@ -9,6 +9,7 @@ import type { SkillView } from '../../../common/ipc-intelligence';
 import { Chip } from '../pixel-components/Chip';
 import { useAppStatus, useBrightspace } from '../hooks';
 import { FocusBars } from '../components/FocusBars';
+import { FocusCurve } from '../components/FocusCurve';
 import { SessionReport } from '../components/SessionReport';
 import { duration, minutes, sessionDate, totalSeconds } from '../format';
 
@@ -232,24 +233,21 @@ export function HomeView({ onNavigate }: { onNavigate: (view: ViewType) => void 
         </div>
       </div>
 
-      {/* 5. Productivity curve (optional) */}
+      {/* 5. Productivity curve: focus across a session and when you usually drift */}
       <div className="card">
         <div className="card-header">
-          <h2 className="card-title">Focus</h2>
+          <h2 className="card-title">Productivity curve</h2>
         </div>
         <div className="card-content">
+          <FocusCurve />
+          <h3 className="report-section-title" style={{ marginTop: 8 }}>
+            Recent sessions
+          </h3>
           {week && week.sessions.length > 0 ? (
             <FocusBars sessions={week.sessions.slice(0, 5)} />
           ) : (
             <p className="list-item-subtitle">No sessions this week yet.</p>
           )}
-          <div style={{ marginTop: 16 }}>
-            <Planned
-              owner="optional"
-              shows={['A focus curve inside each session: when your focus drops and you start side-tracking']}
-              source="Watch mode's looks (studying vs browsing), idle time, distraction warnings"
-            />
-          </div>
         </div>
       </div>
     </div>

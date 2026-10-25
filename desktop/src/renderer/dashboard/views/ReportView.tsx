@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { HistoryData, HistorySession } from '../../../common/ipc-sensing';
+import type { DriftView } from '../../../common/ipc-intelligence';
 import { FocusBars } from '../components/FocusBars';
 import { SessionReport } from '../components/SessionReport';
 import { duration, minutes, sessionDate, totalSeconds } from '../format';
@@ -57,6 +58,7 @@ export function ReportView() {
                   <Stat label="Deepest hint" value={session.deepestHintLevel ? `${session.deepestHintLevel} / 5` : '–'} />
                 </div>
                 <FocusBars sessions={[session]} bare />
+                <SessionDrifts sessionId={session.id} />
                 <div style={{ marginTop: 20 }}>
                   <SessionReport sessionId={session.id} />
                 </div>
@@ -95,6 +97,33 @@ export function ReportView() {
         </>
       )}
     </div>
+  );
+}
+
+/** When this session left for distracting or AI sites (recorded app activity). */
+function SessionDrifts({ sessionId }: { sessionId: string }) {
+  const [drifts, setDrifts] = useState<DriftView[] | null>(null);
+  useEffect(() => {
+    void window.electronAPI
+      .invoke('session-drifts-get', sessionId)
+      .then(setDrifts)
+      .catch(() => setDrifts([]));
+  }, [sessionId]);
+  if (!drifts) return null;
+  return (
+    <p className="drift-list">
+      {drifts.length
+        ? drifts.map((d, i) => (
+            <span key={i}>
+              {i > 0 && ' · '}
+              <strong>
+                min {d.minute}: {d.site}
+              </strong>{' '}
+              ({d.minutes < 1 ? '<1' : Math.round(d.minutes)} min{d.kind === 'ai_tool' ? ', AI' : ''})
+            </span>
+          ))
+        : 'No drifts to distracting or AI sites in this session.'}
+    </p>
   );
 }
 

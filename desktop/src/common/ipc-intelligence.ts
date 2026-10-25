@@ -320,6 +320,27 @@ export interface SessionReportView {
   error?: string;
 }
 
+/** A time a session left for a distracting or AI site (main: history/focus-curve.ts). */
+export interface DriftView {
+  /** Minutes into the session. */
+  minute: number;
+  site: string;
+  kind: 'distraction' | 'ai_tool';
+  minutes: number;
+}
+
+/** The focus curve (main: history/focus-curve.ts). */
+export interface FocusCurveView {
+  sample: boolean;
+  sessions: number;
+  avgSessionMinutes: number;
+  bucketMinutes: number;
+  points: Array<{ minute: number; focus: number; distraction: number }>;
+  firstDrift: { minute: number; sessionsWithDrift: number; topSites: string[] } | null;
+  peak: { fromMinute: number; toMinute: number; focus: number } | null;
+  dropAfterDrift: number | null;
+}
+
 /** A skill in the strengths & weaknesses record (main: skills/record.ts). */
 export interface SkillView {
   id: string;
@@ -407,6 +428,10 @@ export interface IntelligenceInvoke {
   'report-get': { args: [sessionId: string]; result: SessionReportView | null };
   /** Write a session's report again from its saved facts (e.g. after the AI limit reset). */
   'report-regenerate': { args: [sessionId: string]; result: { success: boolean } };
+  /** How focus moves through a session, from the recorded sessions (sample until there are enough). */
+  'focus-curve-get': { args: []; result: FocusCurveView };
+  /** When one session left for distracting or AI sites. */
+  'session-drifts-get': { args: [sessionId: string]; result: DriftView[] };
   /** The strengths & weaknesses record, newest first. */
   'skills-get': { args: []; result: SkillView[] };
   /** Push-to-talk: may the mic be used? Asks macOS the first time; false if denied (opens settings). */

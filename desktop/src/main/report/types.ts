@@ -48,6 +48,8 @@ export interface SessionFacts {
   questionsAsked: string[];
   /** Help asked for with no particular problem in focus. */
   generalHelp: number;
+  /** Each time the student left for a distracting or AI site (history/focus-curve.ts). */
+  drifts?: Array<{ minute: number; site: string; kind: 'distraction' | 'ai_tool'; minutes: number }>;
 }
 
 /** What the model writes from the facts. */

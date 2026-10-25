@@ -30,6 +30,8 @@ export interface ReportServiceDeps {
     hintCount: number;
     deepestHintLevel: number;
   } | null;
+  /** When the session left for distracting or AI sites. */
+  drifts?: (sessionId: string) => NonNullable<SessionFacts['drifts']>;
   /** A report changed (pending, ready): tell the dashboard. */
   onUpdated?: (sessionId: string) => void;
   /** Skills already in the student's record, so the report reuses their names (no duplicates). */
@@ -54,6 +56,7 @@ export class ReportService {
       seconds: numbers.seconds,
       hintCount: numbers.hintCount,
       deepestHintLevel: numbers.deepestHintLevel,
+      drifts: this.deps.drifts?.(sessionId) ?? [],
       ...snapshot
     };
     return this.write(facts);
@@ -89,7 +92,7 @@ export class ReportService {
     try {
       const prose = await deps.llm().generate({
         task: 'session_report',
-        system: renderPrompt('session-report.v2'),
+        system: renderPrompt('session-report.v3'),
         messages: [{ role: 'user', content: JSON.stringify({ ...promptFacts(facts), known_skills: deps.knownSkills?.() ?? [] }) }],
         schema: ReportProseSchema,
         mockKey: { problems: facts.problems.map((p) => ({ question: p.question, outcome: p.outcome })), sources: facts.sources.map((s) => s.title) },
@@ -121,7 +124,8 @@ function promptFacts(facts: SessionFacts) {
     timeline: facts.timeline.map((t) => ({ minutes_in: Math.round((t.from - facts.startedAt) / 60_000), activity: t.activity, summary: t.summary })),
     problems: facts.problems,
     questionsAsked: facts.questionsAsked,
-    general_help_requests: facts.generalHelp
+    general_help_requests: facts.generalHelp,
+    drifts: facts.drifts ?? []
   };
 }
 

@@ -361,6 +361,13 @@ app.whenReady().then(() => {
             const height = await ui('document.querySelector(".app-shell__main, .main-content")?.scrollHeight');
             console.log(`[smoke] dash: ${label} title=${await ui("document.querySelector('.view-title')?.textContent")} height=${height}`);
             writeFileSync(`${process.env.WOLFIE_SMOKE_DASH}-${i}.png`, (await dash.webContents.capturePage()).toPNG());
+            // The Dashboard's productivity curve is further down: a picture of it too
+            if (i === 0 && (await ui("!!document.querySelector('.focus-curve')"))) {
+              await ui("document.querySelector('.focus-curve').closest('.card').scrollIntoView(); 0");
+              await new Promise((r) => setTimeout(r, 300));
+              console.log(`[smoke] dash: focus-curve ${await ui("document.querySelector('.focus-curve__summary')?.textContent")}`);
+              writeFileSync(`${process.env.WOLFIE_SMOKE_DASH}-focus.png`, (await dash.webContents.capturePage()).toPNG());
+            }
           }
           // Settings (the last page): add a distracting site, switch it off, then remove it; each saved
           const saved = () => ui("window.electronAPI.invoke('settings-get').then((s) => JSON.stringify(s['monitored.distractions'].filter((r) => r.name === 'Discord')))");

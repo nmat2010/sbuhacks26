@@ -304,3 +304,16 @@
   color: var(--ws-text);
   margin: 0 0 18px;
 }
+
+/* Focus curve: focus across the minutes of a session, the usual drift point marked */
+.app-shell .focus-curve__chart { width: 100%; height: auto; display: block; margin: 8px 0 12px; }
+.app-shell .focus-curve__grid { stroke: var(--ws-edge); stroke-width: 2; stroke-dasharray: 4 4; }
+.app-shell .focus-curve__label { fill: var(--ws-text-muted); font-family: var(--ws-font-body); font-size: 13px; }
+.app-shell .focus-curve__area { fill: var(--ws-red-deep); opacity: 0.55; }
+.app-shell .focus-curve__line { fill: none; stroke: var(--ws-gold); stroke-width: 4; }
+.app-shell .focus-curve__peak { fill: var(--ws-gold); opacity: 0.12; }
+.app-shell .focus-curve__drift { stroke: var(--ws-weak); stroke-width: 3; stroke-dasharray: 6 4; }
+.app-shell .focus-curve__drift-label { fill: var(--ws-weak-text); font-family: var(--ws-font-heading); font-size: 10px; }
+.app-shell .focus-curve__summary { color: var(--ws-text); font-size: 17px; line-height: 1.5; margin: 0 0 18px; }
+.app-shell .drift-list { color: var(--ws-text-muted); font-size: 15px; margin: 8px 0 0; }
+.app-shell .drift-list strong { color: var(--ws-weak-text); font-weight: 600; }
