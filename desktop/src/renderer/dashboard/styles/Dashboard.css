@@ -329,3 +329,173 @@ input:checked + .slider:before {
 .main-content::-webkit-scrollbar-thumb:hover {
   background: #b8b8bd;
 }
+
+/* ---- Dashboard skeleton (Tuan): placeholders, chips, focus bars. Thu restyles freely. ---- */
+
+.card-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: #CC0000;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.planned {
+  border: 1px dashed #d1d1d6;
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: #fafafa;
+}
+
+.planned-badge,
+.example-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.planned-badge {
+  background: #fff3cd;
+  color: #8a6d00;
+}
+
+.example-badge {
+  background: #e8e8ed;
+  color: #6e6e73;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.planned-list {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: #3a3a3c;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.planned-source {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #6e6e73;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  background: #f5f5f7;
+}
+
+.chip-strong {
+  background: #e3f5e8;
+  color: #1e7b3a;
+}
+
+.chip-weak {
+  background: #fde8e8;
+  color: #a30000;
+}
+
+/* Time per category in a session: work, AI tools, distraction, idle */
+.focus-row {
+  display: grid;
+  grid-template-columns: 150px 1fr 70px;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 13px;
+  color: #3a3a3c;
+}
+
+.focus-bar {
+  display: flex;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #f0f0f2;
+}
+
+.focus-bar span { height: 100%; }
+.focus-work { background: #2e9e57; }
+.focus-ai { background: #6c5ce7; }
+.focus-distraction { background: #e67e22; }
+.focus-idle { background: #c7c7cc; }
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 12px;
+  color: #6e6e73;
+  margin-top: 8px;
+}
+
+.legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+/* Settings: site lists */
+.rule-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f2;
+}
+
+.rule-row:last-child { border-bottom: none; }
+.rule-name { font-weight: 600; font-size: 14px; min-width: 110px; }
+.rule-domains { flex: 1; font-size: 13px; color: #6e6e73; }
+
+.rule-add {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.rule-add input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #d1d1d6;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.session-row {
+  cursor: pointer;
+}
+
+.session-row.selected {
+  background: #fff5f5;
+}

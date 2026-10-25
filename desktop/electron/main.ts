@@ -317,6 +317,44 @@ app.whenReady().then(() => {
           await new Promise((r) => setTimeout(r, 400));
           console.log(`[smoke] click-after-drag: chat-open=${await ui("!!document.querySelector('.hint-messages')")}`);
         }
+        // WOLFIE_SMOKE_DASH=<png prefix>: a picture of every dashboard page (after one short session)
+        if (process.env.WOLFIE_SMOKE_DASH && dashboardWindow) {
+          const dash = dashboardWindow;
+          const ui = (js: string) => dash.webContents.executeJavaScript(js);
+          await ui("localStorage.setItem('wolfie_onboarded', 'true'); 0");
+          dash.webContents.reload();
+          await new Promise<void>((r) => dash.webContents.once('did-finish-load', () => r()));
+          await ui("window.electronAPI.invoke('session-start').then(() => new Promise((r) => setTimeout(r, 1500))).then(() => window.electronAPI.invoke('session-stop')).then(() => 0)");
+          dash.webContents.reload();
+          await new Promise<void>((r) => dash.webContents.once('did-finish-load', () => r()));
+          const pages = (await ui("[...document.querySelectorAll('.nav-item .nav-label')].map((e) => e.textContent)")) as string[];
+          for (const [i, label] of pages.entries()) {
+            await ui(`document.querySelectorAll('.nav-item')[${i}].click(); 0`);
+            await new Promise((r) => setTimeout(r, 800));
+            const height = await ui('document.querySelector(".main-content").scrollHeight');
+            console.log(`[smoke] dash: ${label} title=${await ui("document.querySelector('.view-title')?.textContent")} height=${height}`);
+            writeFileSync(`${process.env.WOLFIE_SMOKE_DASH}-${i}.png`, (await dash.webContents.capturePage()).toPNG());
+          }
+          // Settings (the last page): add a distracting site, switch it off, then remove it; each saved
+          const saved = () => ui("window.electronAPI.invoke('settings-get').then((s) => JSON.stringify(s['monitored.distractions'].filter((r) => r.name === 'Discord')))");
+          await ui(`(() => {
+            const card = [...document.querySelectorAll('.card')].find((c) => c.textContent.includes('Distracting Websites'));
+            const [name, sites] = card.querySelectorAll('.rule-add input');
+            const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+            set.call(name, 'Discord'); name.dispatchEvent(new Event('input', { bubbles: true }));
+            set.call(sites, 'https://discord.com/channels'); sites.dispatchEvent(new Event('input', { bubbles: true }));
+            setTimeout(() => card.querySelector('.rule-add button').click(), 50);
+            return 0;
+          })()`);
+          await new Promise((r) => setTimeout(r, 600));
+          console.log(`[smoke] dash: added=${await saved()}`);
+          await ui("[...document.querySelectorAll('.rule-row')].find((r) => r.textContent.includes('Discord')).querySelector('input').click(); 0");
+          await new Promise((r) => setTimeout(r, 600));
+          console.log(`[smoke] dash: switched-off=${await saved()}`);
+          await ui("[...document.querySelectorAll('.rule-row')].find((r) => r.textContent.includes('Discord')).querySelector('.link-btn').click(); 0");
+          await new Promise((r) => setTimeout(r, 600));
+          console.log(`[smoke] dash: removed=${await saved()}`);
+        }
         // WOLFIE_SMOKE_PTT=<audio file>: push-to-talk with that recording standing in for the mic
         // (hold the mic button for its length, let go), then see what the chat got
         if (process.env.WOLFIE_SMOKE_PTT && overlayWindow) {
